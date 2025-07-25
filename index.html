@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PKPW - Profil Kesejahteraan dan Personaliti Warga</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #f8fafc;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 { color: #1e40af; margin-bottom: 20px; }
+        .button {
+            background-color: #3b82f6;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+        }
+        .button:hover { background-color: #2563eb; }
+        .loading {
+            color: #6b7280;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚧 PKPW Questionnaire</h1>
+        <h2>Profil Kesejahteraan dan Personaliti Warga</h2>
+        
+        <div id="status">
+            <p class="loading">⏳ Site is being deployed... Please wait a few minutes.</p>
+            <p>The React application is currently being built and deployed.</p>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <a href="javascript:location.reload()" class="button">🔄 Refresh Page</a>
+            <a href="https://github.com/upskipgm/PKPW" class="button">📂 View Repository</a>
+        </div>
+        
+        <div style="margin-top: 30px; font-size: 14px; color: #6b7280;">
+            <p>If you continue to see this page after 10 minutes, please check the GitHub Actions tab in your repository.</p>
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh every 30 seconds to check if app is ready
+        setTimeout(() => {
+            if (document.getElementById('status')) {
+                location.reload();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
