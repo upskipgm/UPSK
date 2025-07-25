@@ -1,1 +1,5 @@
-export default PKPWQuestionnaire;
+function App() {
+  return <PKPWQuestionnaire />;
+}
+
+export default App;
