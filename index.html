@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PKPW - Profil Kesejahteraan dan Personaliti Warga</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .progress-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .step-number {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.875rem;
+        }
+        .step.active .step-number {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .step.inactive .step-number {
+            background-color: #d1d5db;
+            color: #6b7280;
+        }
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-4xl mx-auto p-6">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-800 mb-2">Profil Kesejahteraan dan Personaliti Warga</h1>
+            <p class="text-gray-600 mb-4">Masa yang diambil: Anggaran 20 minit</p>
+            
+            <!-- Progress Indicator -->
+            <div class="progress-indicator">
+                <div class="step active" id="step-1">
+                    <div class="step-number">1</div>
+                    <div class="text-sm">
+                        <div>Maklumat Peribadi</div>
+                    </div>
+                </div>
+                <div class="text-gray-400">→</div>
+                <div class="step inactive" id="step-2">
+                    <div class="step-number">2</div>
+                    <div class="text-sm">
+                        <div>Personaliti</div>
+                        <div>Big 5</div>
+                    </div>
+                </div>
+                <div class="text-gray-400">→</div>
+                <div class="step inactive" id="step-3">
+                    <div class="step-number">3</div>
+                    <div class="text-sm">
+                        <div>Kesejahteraan Edinburgh</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 1: Demographics -->
+        <div id="section-1" class="section active">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-6">Bahagian A: Maklumat Demografi</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-lg shadow">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nama Penuh *</label>
+                    <input type="text" id="nama" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">No. MyKad (Tanpa sempang) *</label>
+                    <input type="text" id="mykad" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Jantina *</label>
+                    <select id="jantina" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <option value="">Pilih jantina</option>
+                        <option value="Lelaki">Lelaki</option>
+                        <option value="Perempuan">Perempuan</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Bangsa *</label>
+                    <select id="bangsa" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <option value="">Pilih bangsa</option>
+                        <option value="Melayu">Melayu</option>
+                        <option value="Cina">Cina</option>
+                        <option value="India">India</option>
+                        <option value="Bajau">Bajau</option>
+                        <option value="Kadazan/Dusun">Kadazan/Dusun</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Agama *</label>
+                    <select id="agama" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <option value="">Pilih agama</option>
+                        <option value="Islam">Islam</option>
+                        <option value="Buddha">Buddha</option>
+                        <option value="Hindu">Hindu</option>
+                        <option value="Kristian">Kristian</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">No. Telefon (Bimbit) *</label>
+                    <input type="text" id="telefon" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Institut Pendidikan Guru Malaysia Kampus *</label>
+                    <select id="kampus" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <option value="">Pilih kampus</option>
+                        <option value="IPG Kampus Batu Lintang">IPG Kampus Batu Lintang</option>
+                        <option value="IPG Kampus Bahasa Melayu">IPG Kampus Bahasa Melayu</option>
+                        <option value="IPG Kampus Darulaman">IPG Kampus Darulaman</option>
+                        <option value="IPG Kampus Gaya">IPG Kampus Gaya</option>
+                        <option value="IPG Kampus Ilmu Khas">IPG Kampus Ilmu Khas</option>
+                        <option value="IPG Kampus Ipoh">IPG Kampus Ipoh</option>
+                        <option value="IPG Kampus Jitra">IPG Kampus Jitra</option>
+                        <option value="IPG Kampus Keningau">IPG Kampus Keningau</option>
+                        <option value="IPG Kampus Kent">IPG Kampus Kent</option>
+                        <option value="IPG Kampus Kota Bharu">IPG Kampus Kota Bharu</option>
+                        <option value="IPG Kampus Kota Samarahan">IPG Kampus Kota Samarahan</option>
+                        <option value="IPG Kampus Kubang Pasu">IPG Kampus Kubang Pasu</option>
+                        <option value="IPG Kampus Melaka">IPG Kampus Melaka</option>
+                        <option value="IPG Kampus Pendidikan Islam">IPG Kampus Pendidikan Islam</option>
+                        <option value="IPG Kampus Pendidikan Teknik">IPG Kampus Pendidikan Teknik</option>
+                        <option value="IPG Kampus Perlis">IPG Kampus Perlis</option>
+                        <option value="IPG Kampus Pulau Pinang">IPG Kampus Pulau Pinang</option>
+                        <option value="IPG Kampus Raja Melewar">IPG Kampus Raja Melewar</option>
+                        <option value="IPG Kampus Rajang">IPG Kampus Rajang</option>
+                        <option value="IPG Kampus Sarawak">IPG Kampus Sarawak</option>
+                        <option value="IPG Kampus Segamat">IPG Kampus Segamat</option>
+                        <option value="IPG Kampus Semanggol">IPG Kampus Semanggol</option>
+                        <option value="IPG Kampus Sultan Abdul Halim">IPG Kampus Sultan Abdul Halim</option>
+                        <option value="IPG Kampus Sultan Mizan">IPG Kampus Sultan Mizan</option>
+                        <option value="IPG Kampus Tawau">IPG Kampus Tawau</option>
+                        <option value="IPG Kampus Tengku Ampuan Afzan">IPG Kampus Tengku Ampuan Afzan</option>
+                        <option value="IPG Kampus Tuanku Bainun">IPG Kampus Tuanku Bainun</option>
+                        <option value="IPG Kampus Tun Hussein Onn">IPG Kampus Tun Hussein Onn</option>
+                        <option value="IPG Kampus Ungku Omar">IPG Kampus Ungku Omar</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Jawatan *</label>
+                    <select id="jawatan" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <option value="">Pilih jawatan</option>
+                        <option value="REKTOR">REKTOR</option>
+                        <option value="TIMBALAN REKTOR KANAN">TIMBALAN REKTOR KANAN</option>
+                        <option value="TIMBALAN REKTOR">TIMBALAN REKTOR</option>
+                        <option value="KETUA PENOLONG PENGARAH">KETUA PENOLONG PENGARAH</option>
+                        <option value="PENOLONG PENGARAH">PENOLONG PENGARAH</option>
+                        <option value="PENGARAH">PENGARAH</option>
+                        <option value="TIMBALAN PENGARAH">TIMBALAN PENGARAH</option>
+                        <option value="PENSYARAH">PENSYARAH</option>
+                        <option value="KAUNSELOR">KAUNSELOR</option>
+                        <option value="PEGAWAI PENGURUSAN">PEGAWAI PENGURUSAN</option>
+                        <option value="PEGAWAI GUNASAMA">PEGAWAI GUNASAMA</option>
+                        <option value="ANGGOTA KHIDMAT PENGURUSAN (AKP)">ANGGOTA KHIDMAT PENGURUSAN (AKP)</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Gred *</label>
+                    <select id="gred" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <option value="">Pilih gred</option>
+                        <option value="JUSA B">JUSA B</option>
+                        <option value="JUSA C">JUSA C</option>
+                        <option value="DG14">DG14</option>
+                        <option value="DG13">DG13</option>
+                        <option value="DG12">DG12</option>
+                        <option value="DG10">DG10</option>
+                        <option value="DG9">DG9</option>
+                        <option value="F10">F10</option>
+                        <option value="F9">F9</option>
+                        <option value="S10">S10</option>
+                        <option value="S9">S9</option>
+                        <option value="N2">N2</option>
+                        <option value="N1">N1</option>
+                    </select>
+                </div>
+                
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Jabatan/Unit *</label>
+                    <input type="text" id="jabatan" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Personality -->
+        <div id="section-2" class="section">
+            <div class="mb-6">
+                <h2 class="text-2xl font-semibold text-blue-700">Bahagian B: Personaliti</h2>
+                <h3 class="text-2xl font-semibold text-blue-700 mt-1">Big 5</h3>
+            </div>
+            
+            <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                <p class="text-sm text-blue-800">
+                    <strong>Arahan:</strong> Di bawah adalah beberapa kenyataan yang mungkin berkaitan atau tidak berkaitan dengan anda. 
+                    Sila nyatakan sejauh mana anda bersetuju atau tidak bersetuju dengan setiap kenyataan.
+                </p>
+                <div class="mt-3 text-sm text-blue-700">
+                    <strong>Skala:</strong> 1=Sangat Tidak Bersetuju, 2=Tidak Bersetuju, 3=Tidak Pasti, 4=Bersetuju, 5=Sangat Bersetuju
+                </div>
+            </div>
+            
+            <div id="personality-questions" class="space-y-4 bg-white p-6 rounded-lg shadow">
+                <!-- Personality questions will be loaded here by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Section 3: Wellbeing -->
+        <div id="section-3" class="section">
+            <h2 class="text-2xl font-semibold text-green-700 mb-6">Bahagian C: Skala Kesejahteraan Mental Warwick-Edinburgh</h2>
+            
+            <div class="bg-green-50 p-4 rounded-lg mb-6">
+                <p class="text-sm text-green-800">
+                    <strong>Arahan:</strong> Di bawah adalah beberapa kenyataan tentang perasaan dan pemikiran. 
+                    Sila pilih jawapan yang paling menggambarkan pengalaman anda dalam <strong>2 minggu yang lalu</strong>.
+                </p>
+                <div class="mt-3 text-sm text-green-700">
+                    <strong>Skala:</strong> 1=Tidak pernah, 2=Jarang-jarang, 3=Kadang-kadang, 4=Kerap, 5=Sepanjang masa
+                </div>
+            </div>
+            
+            <div id="wellbeing-questions" class="space-y-4 bg-white p-6 rounded-lg shadow">
+                <!-- Wellbeing questions will be loaded here by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="section-results" class="section">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-blue-800 mb-2">Laporan Keputusan PKPW</h1>
+                <p class="text-gray-600">Profil Kesejahteraan dan Personaliti Warga</p>
+                <p class="text-sm text-gray-500 mt-2" id="result-date"></p>
+            </div>
+
+            <div id="personal-info" class="mb-8 p-6 bg-gray-50 rounded-lg">
+                <!-- Personal info will be displayed here -->
+            </div>
+
+            <div class="mb-8">
+                <h2 class="text-2xl font-semibold mb-6 text-blue-700">Keputusan Personaliti Big 5</h2>
+                
+                <div class="bg-white rounded-lg p-6 shadow-sm mb-6">
+                    <h3 class="text-lg font-semibold text-center mb-4 text-blue-600">Profil Personaliti Anda</h3>
+                    <div class="flex justify-center">
+                        <canvas id="personalityChart" width="400" height="400"></canvas>
+                    </div>
+                    <div class="text-center text-sm text-gray-600 mt-4">
+                        <p>Carta radar menunjukkan profil personaliti anda berdasarkan model Big 5</p>
+                        <p>Semakin jauh dari pusat, semakin tinggi skor dimensi tersebut</p>
+                    </div>
+                </div>
+
+                <div id="personality-results" class="space-y-4">
+                    <!-- Personality results will be displayed here -->
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <h2 class="text-2xl font-semibold mb-6 text-green-700">Keputusan Kesejahteraan Mental</h2>
+                <div id="wellbeing-results" class="border rounded-lg p-6 bg-white shadow-sm">
+                    <!-- Wellbeing results will be displayed here -->
+                </div>
+            </div>
+
+            <div class="flex justify-center space-x-4 mt-8 no-print">
+                <button onclick="printReport()" class="flex items-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                    <span>🖨️ Cetak Laporan</span>
+                </button>
+                <button onclick="downloadPDF()" class="flex items-center space-x-2 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors">
+                    <span>💾 Simpan Laporan</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="flex justify-between mt-8 pt-6 border-t no-print">
+            <button id="prev-btn" onclick="previousSection()" class="flex items-center space-x-2 px-6 py-3 rounded-lg transition-colors bg-gray-300 text-gray-500 cursor-not-allowed" disabled>
+                <span>← Sebelumnya</span>
+            </button>
+            
+            <button id="next-btn" onclick="nextSection()" class="flex items-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                <span id="next-text">Seterusnya →</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentSection = 1;
+        let formData = {
+            demographics: {},
+            personality: {},
+            wellbeing: {}
+        };
+
+        // Personality questions data
+        const personalityItems = [
+            { id: 1, text: "Saya seorang yang bercakap-cakap", dimension: "extraversion", reverse: false },
+            { id: 2, text: "Saya cenderung untuk mencari kesalahan orang lain", dimension: "agreeableness", reverse: true },
+            { id: 3, text: "Saya melakukan kerja dengan teliti", dimension: "conscientiousness", reverse: false },
+            { id: 4, text: "Saya mudah tertekan dan sedih", dimension: "neuroticism", reverse: false },
+            { id: 5, text: "Saya mempunyai imaginasi yang aktif", dimension: "openness", reverse: false },
+            { id: 6, text: "Saya suka menyendiri", dimension: "extraversion", reverse: true },
+            { id: 7, text: "Saya suka menolong dan tidak mementingkan diri sendiri", dimension: "agreeableness", reverse: false },
+            { id: 8, text: "Saya agak ceroboh", dimension: "conscientiousness", reverse: true },
+            { id: 9, text: "Saya tenang, dapat menangani tekanan dengan baik", dimension: "neuroticism", reverse: true },
+            { id: 10, text: "Saya ingin tahu tentang pelbagai perkara", dimension: "openness", reverse: false },
+            { id: 11, text: "Saya penuh dengan tenaga", dimension: "extraversion", reverse: false },
+            { id: 12, text: "Saya sering memulakan pertengkaran dengan orang lain", dimension: "agreeableness", reverse: true },
+            { id: 13, text: "Saya seorang pekerja yang boleh dipercayai", dimension: "conscientiousness", reverse: false },
+            { id: 14, text: "Saya boleh menjadi tegang", dimension: "neuroticism", reverse: false },
+            { id: 15, text: "Saya bijak, seorang pemikir yang mendalam", dimension: "openness", reverse: false },
+            { id: 16, text: "Saya bersemangat tinggi", dimension: "extraversion", reverse: false },
+            { id: 17, text: "Saya seorang yang pemaaf", dimension: "agreeableness", reverse: false },
+            { id: 18, text: "Saya cenderung tidak teratur", dimension: "conscientiousness", reverse: true },
+            { id: 19, text: "Saya banyak bimbang", dimension: "neuroticism", reverse: false },
+            { id: 20, text: "Saya mempunyai imaginasi yang aktif", dimension: "openness", reverse: false },
+            { id: 21, text: "Saya cenderung pendiam", dimension: "extraversion", reverse: true },
+            { id: 22, text: "Saya pada umumnya mempercayai orang", dimension: "agreeableness", reverse: false },
+            { id: 23, text: "Saya cenderung malas", dimension: "conscientiousness", reverse: true },
+            { id: 24, text: "Saya stabil dari segi emosi, tidak mudah marah", dimension: "neuroticism", reverse: true },
+            { id: 25, text: "Saya inventif", dimension: "openness", reverse: false },
+            { id: 26, text: "Saya mempunyai personaliti yang kuat, tegas", dimension: "extraversion", reverse: false },
+            { id: 27, text: "Saya boleh menjadi dingin dan tidak mesra", dimension: "agreeableness", reverse: true },
+            { id: 28, text: "Saya gigih sehingga tugas selesai", dimension: "conscientiousness", reverse: false },
+            { id: 29, text: "Saya boleh menjadi murung", dimension: "neuroticism", reverse: false },
+            { id: 30, text: "Saya menghargai pengalaman artistik dan estetik", dimension: "openness", reverse: false },
+            { id: 31, text: "Saya kadang-kadang pemalu, terhambat", dimension: "extraversion", reverse: true },
+            { id: 32, text: "Saya peramah dan mesra kepada hampir semua orang", dimension: "agreeableness", reverse: false },
+            { id: 33, text: "Saya melakukan sesuatu dengan cekap", dimension: "conscientiousness", reverse: false },
+            { id: 34, text: "Saya kekal tenang dalam situasi yang tegang", dimension: "neuroticism", reverse: true },
+            { id: 35, text: "Saya lebih suka kerja rutin", dimension: "openness", reverse: true },
+            { id: 36, text: "Saya ramah, suka bergaul", dimension: "extraversion", reverse: false },
+            { id: 37, text: "Saya kadang-kadang kasar kepada orang lain", dimension: "agreeableness", reverse: true },
+            { id: 38, text: "Saya merancang dan mengikuti rancangan", dimension: "conscientiousness", reverse: false },
+            { id: 39, text: "Saya mudah gugup", dimension: "neuroticism", reverse: false },
+            { id: 40, text: "Saya suka merenung, bermain dengan idea", dimension: "openness", reverse: false },
+            { id: 41, text: "Saya mempunyai sedikit minat artistik", dimension: "openness", reverse: true },
+            { id: 42, text: "Saya suka bekerjasama dengan orang lain", dimension: "agreeableness", reverse: false },
+            { id: 43, text: "Saya mudah terganggu", dimension: "conscientiousness", reverse: true },
+            { id: 44, text: "Saya berkemahiran dalam seni, muzik, atau kesusasteraan", dimension: "openness", reverse: false }
+        ];
+
+        // Wellbeing questions data
+        const wellbeingItems = [
+            { id: 1, text: "Saya berasa optimis tentang masa depan" },
+            { id: 2, text: "Saya berasa berguna" },
+            { id: 3, text: "Saya berasa santai" },
+            { id: 4, text: "Saya berasa berminat dengan orang lain" },
+            { id: 5, text: "Saya mempunyai tenaga yang mencukupi" },
+            { id: 6, text: "Saya menangani masalah dengan baik" },
+            { id: 7, text: "Saya berfikir dengan jelas" },
+            { id: 8, text: "Saya berasa baik tentang diri saya" },
+            { id: 9, text: "Saya berasa rapat dengan orang lain" },
+            { id: 10, text: "Saya berasa yakin" },
+            { id: 11, text: "Saya dapat membuat keputusan sendiri tentang perkara-perkara" },
+            { id: 12, text: "Saya berasa disayangi" },
+            { id: 13, text: "Saya berminat dengan perkara-perkara baru" },
+            { id: 14, text: "Saya berasa gembira" }
+        ];
+
+        // Initialize
+        function init() {
+            loadPersonalityQuestions();
+            loadWellbeingQuestions();
+        }
+
+        function loadPersonalityQuestions() {
+            const container = document.getElementById('personality-questions');
+            container.innerHTML = '';
+            
+            personalityItems.forEach(item => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'border rounded-lg p-4 bg-gray-50';
+                questionDiv.innerHTML = `
+                    <div class="flex items-start space-x-4">
+                        <span class="text-sm font-medium text-gray-600 mt-1">${item.id}.</span>
+                        <div class="flex-1">
+                            <p class="text-gray-800 mb-3">${item.text}</p>
+                            <div class="flex space-x-4">
+                                ${[1,2,3,4,5].map(value => `
+                                    <label class="flex items-center space-x-1 cursor-pointer">
+                                        <input type="radio" name="personality_${item.id}" value="${value}" class="text-blue-600" required>
+                                        <span class="text-sm text-gray-600">${value}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(questionDiv);
+            });
+        }
+
+        function loadWellbeingQuestions() {
+            const container = document.getElementById('wellbeing-questions');
+            container.innerHTML = '';
+            
+            wellbeingItems.forEach(item => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'border rounded-lg p-4 bg-gray-50';
+                questionDiv.innerHTML = `
+                    <div class="flex items-start space-x-4">
+                        <span class="text-sm font-medium text-gray-600 mt-1">${item.id}.</span>
+                        <div class="flex-1">
+                            <p class="text-gray-800 mb-3">${item.text}</p>
+                            <div class="flex space-x-4">
+                                ${[1,2,3,4,5].map(value => `
+                                    <label class="flex items-center space-x-1 cursor-pointer">
+                                        <input type="radio" name="wellbeing_${item.id}" value="${value}" class="text-green-600" required>
+                                        <span class="text-sm text-gray-600">${value}</span>
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(questionDiv);
+            });
+        }
+
+        function validateSection(section) {
+            if (section === 1) {
+                const required = ['nama', 'mykad', 'jantina', 'bangsa', 'agama', 'telefon', 'kampus', 'jawatan', 'gred', 'jabatan'];
+                return required.every(field => document.getElementById(field).value.trim() !== '');
+            } else if (section === 2) {
+                return personalityItems.every(item => {
+                    const radios = document.querySelectorAll(`input[name="personality_${item.id}"]`);
+                    return Array.from(radios).some(radio => radio.checked);
+                });
+            } else if (section === 3) {
+                return wellbeingItems.every(item => {
+                    const radios = document.querySelectorAll(`input[name="wellbeing_${item.id}"]`);
+                    return Array.from(radios).some(radio => radio.checked);
+                });
+            }
+            return true;
+        }
+
+        function collectFormData() {
+            // Demographics
+            const demographics = {};
+            ['nama', 'mykad', 'jantina', 'bangsa', 'agama', 'telefon', 'kampus', 'jawatan', 'gred', 'jabatan'].forEach(field => {
+                demographics[field] = document.getElementById(field).value;
+            });
+
+            // Personality
+            const personality = {};
+            personalityItems.forEach(item => {
+                const selected = document.querySelector(`input[name="personality_${item.id}"]:checked`);
+                if (selected) personality[`item_${item.id}`] = parseInt(selected.value);
+            });
+
+            // Wellbeing
+            const wellbeing = {};
+            wellbeingItems.forEach(item => {
+                const selected = document.querySelector(`input[name="wellbeing_${item.id}"]:checked`);
+                if (selected) wellbeing[`item_${item.id}`] = parseInt(selected.value);
+            });
+
+            formData = { demographics, personality, wellbeing };
+        }
+
+        function calculateScores() {
+            const dimensions = ['extraversion', 'agreeableness', 'conscientiousness', 'neuroticism', 'openness'];
+            const personalityScores = {};
+
+            dimensions.forEach(dim => {
+                const items = personalityItems.filter(item => item.dimension === dim);
+                let score = 0;
+                items.forEach(item => {
+                    const value = formData.personality[`item_${item.id}`];
+                    score += item.reverse ? (6 - value) : value;
+                });
+                personalityScores[dim] = {
+                    raw: score,
+                    average: (score / items.length).toFixed(2),
+                    percentage: ((score / (items.length * 5)) * 100).toFixed(1)
+                };
+            });
+
+            let wellbeingScore = 0;
+            wellbeingItems.forEach(item => {
+                wellbeingScore += formData.wellbeing[`item_${item.id}`];
+            });
+
+            return {
+                personality: personalityScores,
+                wellbeing: {
+                    raw: wellbeingScore,
+                    average: (wellbeingScore / 14).toFixed(2),
+                    percentage: ((wellbeingScore / 70) * 100).toFixed(1)
+                }
+            };
+        }
+
+        function showResults() {
+            collectFormData();
+            const scores = calculateScores();
+            
+            // Show personal info
+            document.getElementById('personal-info').innerHTML = `
+                <h2 class="text-xl font-semibold mb-4">Maklumat Peribadi</h2>
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div><strong>Nama:</strong> ${formData.demographics.nama}</div>
+                    <div><strong>Kampus:</strong> ${formData.demographics.kampus}</div>
+                    <div><strong>Jawatan:</strong> ${formData.demographics.jawatan}</div>
+                    <div><strong>Gred:</strong> ${formData.demographics.gred}</div>
+                </div>
+            `;
+
+            // Show date
+            document.getElementById('result-date').textContent = `Tarikh: ${new Date().toLocaleDateString('ms-MY')}`;
+
+            // Show personality results
+            const dimensionNames = {
+                extraversion: "Ekstraversi",
+                agreeableness: "Kesefahaman", 
+                conscientiousness: "Kesedaran",
+                neuroticism: "Neurotisisme",
+                openness: "Keterbukaan"
+            };
+
+            let personalityHTML = '<h3 class="text-lg font-semibold text-blue-600 mb-4">Butiran Skor Personaliti</h3>';
+            Object.entries(scores.personality).forEach(([dimension, score]) => {
+                const interpretation = getInterpretation(score.percentage);
+                personalityHTML += `
+                    <div class="border rounded-lg p-4 bg-white shadow-sm mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-semibold text-lg">${dimensionNames[dimension]}</h4>
+                            <span class="font-bold text-lg ${interpretation.color}">${interpretation.level}</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3 mb-2">
+                            <div class="bg-blue-500 h-3 rounded-full transition-all duration-500" style="width: ${score.percentage}%"></div>
+                        </div>
+                        <div class="text-sm text-gray-600">
+                            Skor: ${score.raw} | Purata: ${score.average} | Peratusan: ${score.percentage}%
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('personality-results').innerHTML = personalityHTML;
+
+            // Show wellbeing results
+            const wellbeingInterpretation = getWellbeingInterpretation(scores.wellbeing.percentage);
+            document.getElementById('wellbeing-results').innerHTML = `
+                <div class="text-center mb-4">
+                    <div class="text-4xl font-bold text-green-600 mb-2">${scores.wellbeing.percentage}%</div>
+                    <div class="w-full bg-gray-200 rounded-full h-4 mb-4">
+                        <div class="bg-green-500 h-4 rounded-full transition-all duration-500" style="width: ${scores.wellbeing.percentage}%"></div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <h3 class="text-xl font-semibold mb-2 ${wellbeingInterpretation.color}">${wellbeingInterpretation.level}</h3>
+                    <p class="text-gray-600 mb-4">${wellbeingInterpretation.desc}</p>
+                    <div class="text-sm text-gray-500">
+                        Skor: ${scores.wellbeing.raw}/70 | Purata: ${scores.wellbeing.average}
+                    </div>
+                </div>
+            `;
+
+            // Create radar chart
+            createRadarChart(scores.personality);
+
+            // Sync to Google Sheets (placeholder)
+            syncToGoogleSheets();
+        }
+
+        function createRadarChart(personalityScores) {
+            const ctx = document.getElementById('personalityChart').getContext('2d');
+            
+            const dimensionNames = {
+                extraversion: "Ekstraversi",
+                agreeableness: "Kesefahaman", 
+                conscientiousness: "Kesedaran",
+                neuroticism: "Neurotisisme",
+                openness: "Keterbukaan"
+            };
+
+            const data = {
+                labels: Object.keys(personalityScores).map(dim => dimensionNames[dim]),
+                datasets: [{
+                    label: 'Personaliti',
+                    data: Object.values(personalityScores).map(score => parseFloat(score.percentage)),
+                    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 3,
+                    pointBackgroundColor: 'rgb(29, 78, 216)',
+                    pointBorderColor: 'rgb(59, 130, 246)',
+                    pointRadius: 5
+                }]
+            };
+
+            new Chart(ctx, {
+                type: 'radar',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: '#e2e8f0'
+                            },
+                            pointLabels: {
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                },
+                                color: '#475569'
+                            },
+                            ticks: {
+                                stepSize: 20,
+                                color: '#64748b',
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        function getInterpretation(percentage) {
+            const percent = parseFloat(percentage);
+            if (percent >= 80) return { level: "Sangat Tinggi", color: "text-green-600" };
+            if (percent >= 60) return { level: "Tinggi", color: "text-blue-600" };
+            if (percent >= 40) return { level: "Sederhana", color: "text-yellow-600" };
+            if (percent >= 20) return { level: "Rendah", color: "text-orange-600" };
+            return { level: "Sangat Rendah", color: "text-red-600" };
+        }
+
+        function getWellbeingInterpretation(percentage) {
+            const percent = parseFloat(percentage);
+            if (percent >= 80) return { level: "Kesejahteraan Mental Sangat Baik", color: "text-green-600", desc: "Anda mempunyai tahap kesejahteraan mental yang sangat baik." };
+            if (percent >= 60) return { level: "Kesejahteraan Mental Baik", color: "text-blue-600", desc: "Anda mempunyai tahap kesejahteraan mental yang baik." };
+            if (percent >= 40) return { level: "Kesejahteraan Mental Sederhana", color: "text-yellow-600", desc: "Anda mempunyai tahap kesejahteraan mental yang sederhana." };
+            if (percent >= 20) return { level: "Kesejahteraan Mental Rendah", color: "text-orange-600", desc: "Anda mungkin perlu memberi perhatian kepada kesejahteraan mental anda." };
+            return { level: "Kesejahteraan Mental Sangat Rendah", color: "text-red-600", desc: "Adalah disyorkan untuk mendapatkan bantuan profesional." };
+        }
+
+        function syncToGoogleSheets() {
+            // Placeholder for Google Sheets integration
+            console.log('Data would be synced to Google Sheets:', formData);
+            // Replace with actual Google Apps Script URL when ready
+        }
+
+        function nextSection() {
+            if (!validateSection(currentSection)) {
+                alert('Sila lengkapkan semua medan yang diperlukan sebelum meneruskan.');
+                return;
+            }
+
+            if (currentSection < 3) {
+                currentSection++;
+                showSection(currentSection);
+            } else {
+                showResults();
+                currentSection = 'results';
+                showSection('results');
+            }
+        }
+
+        function previousSection() {
+            if (currentSection > 1) {
+                currentSection--;
+                showSection(currentSection);
+            }
+        }
+
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            
+            // Show current section
+            if (section === 'results') {
+                document.getElementById('section-results').classList.add('active');
+            } else {
+                document.getElementById(`section-${section}`).classList.add('active');
+            }
+            
+            // Update progress indicator
+            updateProgressIndicator(section);
+            
+            // Update navigation buttons
+            updateNavigationButtons(section);
+        }
+
+        function updateProgressIndicator(section) {
+            const steps = ['step-1', 'step-2', 'step-3'];
+            steps.forEach((stepId, index) => {
+                const step = document.getElementById(stepId);
+                if (section === 'results' || index + 1 <= section) {
+                    step.classList.remove('inactive');
+                    step.classList.add('active');
+                } else {
+                    step.classList.remove('active');
+                    step.classList.add('inactive');
+                }
+            });
+        }
+
+        function updateNavigationButtons(section) {
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const nextText = document.getElementById('next-text');
+            
+            if (section === 'results') {
+                prevBtn.style.display = 'none';
+                nextBtn.style.display = 'none';
+                return;
+            }
+            
+            // Previous button
+            if (section === 1) {
+                prevBtn.disabled = true;
+                prevBtn.className = 'flex items-center space-x-2 px-6 py-3 rounded-lg transition-colors bg-gray-300 text-gray-500 cursor-not-allowed';
+            } else {
+                prevBtn.disabled = false;
+                prevBtn.className = 'flex items-center space-x-2 px-6 py-3 rounded-lg transition-colors bg-gray-600 text-white hover:bg-gray-700';
+            }
+            
+            // Next button text
+            if (section === 3) {
+                nextText.textContent = 'Lihat Keputusan 📊';
+            } else {
+                nextText.textContent = 'Seterusnya →';
+            }
+        }
+
+        function printReport() {
+            window.print();
+        }
+
+        function downloadPDF() {
+            if (window.html2pdf) {
+                const element = document.getElementById('section-results');
+                const opt = {
+                    margin: 1,
+                    filename: `PKPW_Results_${formData.demographics.nama || 'Unknown'}_${new Date().toLocaleDateString('ms-MY').replace(/\//g, '-')}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2 },
+                    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+                };
+                html2pdf().set(opt).from(element).save();
+            } else {
+                alert('PDF download functionality is loading. Please try again in a moment.');
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
