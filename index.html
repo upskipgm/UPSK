@@ -432,101 +432,140 @@
             // Set font
             doc.setFont("helvetica");
             
-            // KMP Logo header section
-            // Draw the Malaysian coat of arms and KMP header
-            
-            // Main shield outline
-            doc.setDrawColor(0, 0, 0);
-            doc.setLineWidth(2);
-            
-            // Shield shape (simplified)
+            // Malaysian Coat of Arms - Detailed recreation
             const centerX = 105;
-            const shieldY = 8;
-            const shieldWidth = 40;
-            const shieldHeight = 35;
+            const logoY = 8;
             
-            // Draw shield outline
+            // Crescent and Star at top
+            doc.setFillColor(255, 223, 0); // Yellow
+            // Crescent moon
+            doc.circle(centerX - 3, logoY + 5, 4, 'F');
             doc.setFillColor(255, 255, 255);
-            doc.roundedRect(centerX - shieldWidth/2, shieldY, shieldWidth, shieldHeight, 3, 3, 'FD');
+            doc.circle(centerX - 1, logoY + 4, 3.5, 'F');
             
-            // Malaysian flag stripes (simplified representation)
-            const stripeHeight = 2;
-            for (let i = 0; i < 14; i++) {
-                if (i % 2 === 0) {
-                    doc.setFillColor(204, 0, 0); // Red stripes
-                } else {
-                    doc.setFillColor(255, 255, 255); // White stripes
-                }
-                doc.rect(centerX - shieldWidth/2 + 2, shieldY + 2 + i * stripeHeight, shieldWidth - 4, stripeHeight, 'F');
+            // 14-point star
+            doc.setFillColor(255, 223, 0);
+            doc.circle(centerX + 4, logoY + 5, 2, 'F');
+            
+            // Main shield
+            const shieldX = centerX - 15;
+            const shieldY = logoY + 12;
+            const shieldW = 30;
+            const shieldH = 25;
+            
+            // Shield outline
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(1);
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(shieldX, shieldY, shieldW, shieldH, 2, 2, 'FD');
+            
+            // Federal Territory section (top red with 5 keris)
+            doc.setFillColor(204, 0, 0); // Red
+            doc.rect(shieldX + 2, shieldY + 2, shieldW - 4, 6, 'F');
+            doc.setFillColor(255, 223, 0); // Yellow keris
+            for(let i = 0; i < 5; i++) {
+                doc.rect(shieldX + 4 + i * 4, shieldY + 3, 1, 4, 'F');
             }
             
-            // Blue canton
-            doc.setFillColor(0, 56, 147);
-            doc.rect(centerX - shieldWidth/2 + 2, shieldY + 2, 15, 14, 'F');
+            // State emblems section (middle - simplified as colored rectangles)
+            // Row 1: Penang, Perak, Selangor
+            doc.setFillColor(70, 130, 180); // Blue for Penang
+            doc.rect(shieldX + 2, shieldY + 8, 8, 6, 'F');
+            doc.setFillColor(255, 255, 255); // White for Perak
+            doc.rect(shieldX + 10, shieldY + 8, 8, 6, 'F');
+            doc.setFillColor(255, 215, 0); // Gold for Selangor
+            doc.rect(shieldX + 18, shieldY + 8, 8, 6, 'F');
             
-            // Yellow crescent
-            doc.setFillColor(255, 223, 0);
-            doc.circle(centerX - shieldWidth/2 + 7, shieldY + 9, 3, 'F');
-            doc.setFillColor(0, 56, 147);
-            doc.circle(centerX - shieldWidth/2 + 8, shieldY + 8, 2.5, 'F');
+            // Row 2: Pahang, Johor, etc.
+            doc.setFillColor(0, 0, 0); // Black
+            doc.rect(shieldX + 2, shieldY + 14, 8, 6, 'F');
+            doc.setFillColor(0, 100, 0); // Green
+            doc.rect(shieldX + 10, shieldY + 14, 8, 6, 'F');
+            doc.setFillColor(139, 69, 19); // Brown
+            doc.rect(shieldX + 18, shieldY + 14, 8, 6, 'F');
             
-            // Yellow star
-            doc.setFillColor(255, 223, 0);
-            doc.circle(centerX - shieldWidth/2 + 12, shieldY + 7, 1, 'F');
-            
-            // Tigers (simplified as decorative elements)
+            // Malacca and Sabah/Sarawak section
+            doc.setFillColor(220, 20, 60); // Crimson
+            doc.rect(shieldX + 2, shieldY + 20, 12, 5, 'F');
             doc.setFillColor(255, 140, 0); // Orange
-            // Left tiger
-            doc.circle(centerX - 25, shieldY + 15, 4, 'F');
-            doc.setFillColor(0, 0, 0);
-            doc.circle(centerX - 27, shieldY + 13, 1, 'F');
-            doc.circle(centerX - 23, shieldY + 13, 1, 'F');
+            doc.rect(shieldX + 14, shieldY + 20, 12, 5, 'F');
             
-            // Right tiger
+            // Tigers (supporters)
+            doc.setFillColor(255, 140, 0); // Orange base
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.5);
+            
+            // Left tiger - simplified body and head
+            doc.ellipse(centerX - 30, logoY + 20, 6, 8, 'FD');
+            doc.circle(centerX - 35, logoY + 15, 4, 'FD');
+            // Tiger stripes
+            doc.setDrawColor(139, 69, 19);
+            doc.setLineWidth(1);
+            for(let i = 0; i < 3; i++) {
+                doc.line(centerX - 33, logoY + 18 + i * 2, centerX - 27, logoY + 18 + i * 2);
+            }
+            
+            // Right tiger - simplified body and head
             doc.setFillColor(255, 140, 0);
-            doc.circle(centerX + 25, shieldY + 15, 4, 'F');
-            doc.setFillColor(0, 0, 0);
-            doc.circle(centerX + 23, shieldY + 13, 1, 'F');
-            doc.circle(centerX + 27, shieldY + 13, 1, 'F');
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.5);
+            doc.ellipse(centerX + 30, logoY + 20, 6, 8, 'FD');
+            doc.circle(centerX + 35, logoY + 15, 4, 'FD');
+            // Tiger stripes
+            doc.setDrawColor(139, 69, 19);
+            doc.setLineWidth(1);
+            for(let i = 0; i < 3; i++) {
+                doc.line(centerX + 27, logoY + 18 + i * 2, centerX + 33, logoY + 18 + i * 2);
+            }
             
-            // Ribbons with text
-            doc.setFillColor(255, 223, 0);
-            doc.roundedRect(centerX - 25, shieldY + 30, 50, 6, 2, 2, 'F');
+            // Ribbon banners
+            doc.setFillColor(255, 223, 0); // Yellow ribbon
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.5);
             
-            // Add text on ribbon
-            doc.setFontSize(8);
+            // Main ribbon
+            const ribbonY = logoY + 35;
+            doc.roundedRect(centerX - 30, ribbonY, 60, 8, 2, 2, 'FD');
+            
+            // Ribbon text
+            doc.setFontSize(7);
             doc.setFont("helvetica", "bold");
             doc.setTextColor(0, 0, 0);
-            doc.text("BERSEKUTU BERTAMBAH MUTU", centerX, shieldY + 34, { align: "center" });
+            doc.text("BERSEKUTU", centerX - 12, ribbonY + 2.5, { align: "center" });
+            doc.text("بحکمت تتبعگ", centerX + 12, ribbonY + 2.5, { align: "center" }); // Jawi text
             
-            // Institution text
-            doc.setFontSize(12);
+            // Bottom ribbon
+            doc.text("BERTAMBAH MUTU", centerX - 12, ribbonY + 6, { align: "center" });
+            doc.text("برتمباه موتو", centerX + 12, ribbonY + 6, { align: "center" }); // Jawi text
+            
+            // Institution header
+            doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
             doc.setTextColor(0, 0, 0);
-            doc.text("KEMENTERIAN PENDIDIKAN", centerX, shieldY + 42, { align: "center" });
+            doc.text("KEMENTERIAN PENDIDIKAN", centerX, ribbonY + 15, { align: "center" });
             
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
-            doc.text("Unit Psikologi & Kaunseling", centerX, shieldY + 48, { align: "center" });
-            doc.text("Institut Pendidikan Guru Malaysia", centerX, shieldY + 53, { align: "center" });
+            doc.text("Unit Psikologi & Kaunseling", centerX, ribbonY + 22, { align: "center" });
+            doc.text("Institut Pendidikan Guru Malaysia", centerX, ribbonY + 27, { align: "center" });
             
             // Title
             doc.setFontSize(16);
             doc.setFont("helvetica", "bold");
-            doc.text("PROFIL KESEJAHTERAAN DAN PERSONALITI WARGA", centerX, shieldY + 63, { align: "center" });
+            doc.text("PROFIL KESEJAHTERAAN DAN PERSONALITI WARGA", centerX, ribbonY + 37, { align: "center" });
             
             // Date
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
-            doc.text(`Tarikh: ${new Date().toLocaleDateString('ms-MY')}`, centerX, shieldY + 70, { align: "center" });
+            doc.text(`Tarikh: ${new Date().toLocaleDateString('ms-MY')}`, centerX, ribbonY + 44, { align: "center" });
             
             // Demographics Section - Table format
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text("MAKLUMAT DIRI", 20, shieldY + 83);
+            doc.text("MAKLUMAT DIRI", 20, ribbonY + 57);
             
             // Table setup
-            const tableStartY = shieldY + 93;
+            const tableStartY = ribbonY + 67;
             const rowHeight = 10;
             const col1X = 20;
             const col2X = 110;
