@@ -452,58 +452,97 @@
             
             // Table setup
             const tableStartY = 60;
-            const rowHeight = 8;
+            const rowHeight = 10;
             const col1X = 20;
-            const col2X = 105;
-            const col1Width = 80;
-            const col2Width = 80;
+            const col2X = 110;
+            const tableWidth = 170;
+            const col1Width = 85;
+            const col2Width = 85;
             
             // Table data
             const tableData = [
                 ['Nama:', demographics.name || 'Tidak dinyatakan', 'No. MyKad:', demographics.ic || 'Tidak dinyatakan'],
                 ['Jantina:', demographics.gender || 'Tidak dinyatakan', 'Bangsa:', demographics.race || 'Tidak dinyatakan'],
-                ['Agama:', demographics.religion || 'Tidak dinyatakan', 'No. Telefon:', demographics.phone || 'Tidak dinyatakan'],
-                ['IPG Kampus:', demographics.ipgKampus || 'Tidak dinyatakan', '', '']
+                ['Agama:', demographics.religion || 'Tidak dinyatakan', 'No. Telefon:', demographics.phone || 'Tidak dinyatakan']
             ];
             
             doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
             
-            // Draw table
+            // Draw table border
+            doc.setDrawColor(100, 100, 100);
+            doc.setLineWidth(0.5);
+            doc.rect(col1X, tableStartY - 5, tableWidth, (tableData.length + 1) * rowHeight);
+            
+            // Draw table rows
             tableData.forEach((row, index) => {
                 const currentY = tableStartY + (index * rowHeight);
                 
-                // Draw row border
-                doc.setDrawColor(200, 200, 200);
+                // Draw horizontal lines
+                doc.setDrawColor(180, 180, 180);
                 doc.setLineWidth(0.3);
-                doc.rect(col1X, currentY - 5, col1Width + col2Width, rowHeight);
-                
-                // Left column
-                if (row[0]) {
-                    doc.setFont("helvetica", "bold");
-                    doc.text(row[0], col1X + 2, currentY);
-                    doc.setFont("helvetica", "normal");
-                    doc.text(row[1], col1X + 15, currentY);
+                if (index > 0) {
+                    doc.line(col1X, currentY - 5, col1X + tableWidth, currentY - 5);
                 }
                 
-                // Right column (only if not IPG Kampus row which spans full width)
-                if (row[2] && index < 3) {
-                    doc.setFont("helvetica", "bold");
-                    doc.text(row[2], col2X + 2, currentY);
-                    doc.setFont("helvetica", "normal");
-                    doc.text(row[3], col2X + 20, currentY);
-                }
+                // Draw vertical line in middle
+                doc.line(col2X, tableStartY - 5, col2X, tableStartY + (tableData.length * rowHeight) - 5);
                 
-                // Special handling for IPG Kampus (full width)
-                if (index === 3) {
-                    doc.setFont("helvetica", "bold");
-                    doc.text(row[0], col1X + 2, currentY);
-                    doc.setFont("helvetica", "normal");
-                    doc.text(row[1], col1X + 20, currentY);
-                }
+                // Left column - Label
+                doc.setFont("helvetica", "bold");
+                doc.text(row[0], col1X + 3, currentY);
+                
+                // Left column - Value
+                doc.setFont("helvetica", "normal");
+                doc.text(row[1], col1X + 18, currentY);
+                
+                // Right column - Label
+                doc.setFont("helvetica", "bold");
+                doc.text(row[2], col2X + 3, currentY);
+                
+                // Right column - Value
+                doc.setFont("helvetica", "normal");
+                doc.text(row[3], col2X + 23, currentY);
             });
             
-            let yPos = tableStartY + (tableData.length * rowHeight) + 10;
+            // IPG Kampus - Full width row
+            const ipgY = tableStartY + (tableData.length * rowHeight);
+            
+            // Draw horizontal line
+            doc.setDrawColor(180, 180, 180);
+            doc.line(col1X, ipgY - 5, col1X + tableWidth, ipgY - 5);
+            
+            // IPG Kampus text
+            doc.setFont("helvetica", "bold");
+            doc.text("IPG Kampus:", col1X + 3, ipgY);
+            doc.setFont("helvetica", "normal");
+            
+            // Handle long IPG Kampus text
+            const ipgText = demographics.ipgKampus || 'Tidak dinyatakan';
+            if (ipgText.length > 45) {
+                // Split long text into two lines if needed
+                const words = ipgText.split(' ');
+                let line1 = '';
+                let line2 = '';
+                let currentLine = 1;
+                
+                words.forEach(word => {
+                    if (currentLine === 1 && (line1 + word).length < 35) {
+                        line1 += (line1 ? ' ' : '') + word;
+                    } else {
+                        if (currentLine === 1) currentLine = 2;
+                        line2 += (line2 ? ' ' : '') + word;
+                    }
+                });
+                
+                doc.text(line1, col1X + 25, ipgY);
+                if (line2) {
+                    doc.text(line2, col1X + 25, ipgY + 5);
+                }
+            } else {
+                doc.text(ipgText, col1X + 25, ipgY);
+            }
+            
+            let yPos = ipgY + 15;
             
             // Side by side layout - LEFT SIDE: Personality
             doc.setFontSize(14);
