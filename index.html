@@ -432,59 +432,40 @@
             // Set font
             doc.setFont("helvetica");
             
-            // KPM Logo - Base64 encoded (simplified version)
-            const kmpLogo = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAAoCAYAAAAIeF9DAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAA1OSURBV..."; // This would be the full base64 string
-            
-            // Since I can't see the exact logo file, I'll create a Malaysian flag colors representation
-            // Malaysian flag colors: Red, White, Blue, Yellow
-            
-            // Draw Malaysian coat of arms representation
-            doc.setFillColor(220, 20, 60); // Red
-            doc.circle(105, 15, 8, 'F');
-            
-            doc.setFillColor(255, 223, 0); // Yellow
-            doc.circle(105, 15, 6, 'F');
-            
-            doc.setFillColor(0, 56, 147); // Blue
-            doc.circle(105, 15, 4, 'F');
-            
-            doc.setFillColor(255, 255, 255); // White center
-            doc.circle(105, 15, 2, 'F');
-            
-            // Add text elements around the symbol
-            doc.setFontSize(6);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 0, 0);
-            doc.text("BERSEKUTU", 105, 10, { align: "center" });
-            doc.text("BERTAMBAH MUTU", 105, 22, { align: "center" });
+            // KPM Logo placeholder (since complex logos are difficult in jsPDF)
+            // Adding a text representation or simple graphic
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(100, 100, 100);
+            doc.text("[LOGO KEMENTERIAN PENDIDIKAN MALAYSIA]", 105, 15, { align: "center" });
             
             // Unit and Institution
             doc.setFontSize(11);
             doc.setFont("helvetica", "bold");
             doc.setTextColor(0, 0, 0);
-            doc.text("Unit Psikologi & Kaunseling", 105, 32, { align: "center" });
+            doc.text("Unit Psikologi & Kaunseling", 105, 25, { align: "center" });
             
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
-            doc.text("Institut Pendidikan Guru Malaysia", 105, 39, { align: "center" });
+            doc.text("Institut Pendidikan Guru Malaysia", 105, 32, { align: "center" });
             
             // Title
             doc.setFontSize(16);
             doc.setFont("helvetica", "bold");
-            doc.text("PROFIL KESEJAHTERAAN DAN PERSONALITI WARGA", 105, 52, { align: "center" });
+            doc.text("PROFIL KESEJAHTERAAN DAN PERSONALITI WARGA", 105, 45, { align: "center" });
             
             // Date
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
-            doc.text(`Tarikh: ${new Date().toLocaleDateString('ms-MY')}`, 105, 59, { align: "center" });
+            doc.text(`Tarikh: ${new Date().toLocaleDateString('ms-MY')}`, 105, 52, { align: "center" });
             
             // Demographics Section - Table format
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text("MAKLUMAT DIRI", 20, 72);
+            doc.text("MAKLUMAT DIRI", 20, 65);
             
             // Table setup
-            const tableStartY = 82;
+            const tableStartY = 75;
             const rowHeight = 10;
             const col1X = 20;
             const col2X = 110;
