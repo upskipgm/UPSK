@@ -847,12 +847,9 @@
                     <h1 class="text-3xl font-bold text-center text-blue-800 mb-2">
                         Profil Kesejahteraan dan Personaliti Warga
                     </h1>
-                    <h2 class="text-xl font-semibold text-center text-blue-700 mb-2">
+                    <h2 class="text-xl font-semibold text-center text-blue-700 mb-4">
                         Institut Pendidikan Guru Malaysia
                     </h2>
-                    <p class="text-center text-sm text-gray-600 mb-4">
-                        © Unit Psikologi & Kaunseling, IPGM
-                    </p>
                     <div class="bg-blue-50 p-4 rounded-lg mb-6">
                         <h3 class="font-bold text-blue-800 mb-2">Pengenalan:</h3>
                         <p class="text-sm text-gray-700 mb-2">
@@ -1192,6 +1189,16 @@
             `;
         }
 
+        function renderFooter() {
+            return `
+                <div class="mt-12 pt-6 border-t border-gray-200">
+                    <p class="text-center text-sm text-gray-500">
+                        © Unit Psikologi & Kaunseling, IPGM
+                    </p>
+                </div>
+            `;
+        }
+
         function renderNavigation() {
             if (state.showResults) return '';
             
@@ -1253,6 +1260,9 @@
                 
                 content += renderNavigation();
             }
+            
+            // Add footer to every page
+            content += renderFooter();
             
             document.getElementById('app').innerHTML = content;
             
