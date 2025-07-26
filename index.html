@@ -859,7 +859,7 @@
                         <ul class="text-sm text-gray-700 space-y-1 ml-4">
                             <li>• Bahagian A: Maklumat Diri</li>
                             <li>• Bahagian B: Ujian Personaliti (44 ITEM)</li>
-                            <li>• Bahagian C: Skala Kesejahteraan Mental Warwick–Edinburgh (14 ITEM)</li>
+                            <li>• Bahagian C: Skala Kesejahteraan Psikologi (14 ITEM)</li>
                         </ul>
                         <p class="text-sm text-gray-700 mt-2">
                             <strong>Komitmen Masa:</strong> Masa yang diambil untuk menjawab inventori ini adalah antara 20 minit.
@@ -881,7 +881,7 @@
                                             ${index === 0 ? '👤' : index === 1 ? '🧠' : '❤️'}
                                         </div>
                                         <div class="text-center">
-                                            <div class="text-sm font-semibold">Bahagian ${index + 1}</div>
+                                            <div class="text-sm font-semibold">Bahagian ${String.fromCharCode(65 + index)}</div>
                                             <div class="text-xs font-medium">${title}</div>
                                         </div>
                                     </div>
@@ -897,7 +897,7 @@
             return `
                 <div class="space-y-6 fade-in">
                     <h2 class="text-2xl font-bold text-blue-800">Bahagian A: Maklumat Diri</h2>
-                    <p class="text-gray-600 text-sm">Sila isi maklumat peribadi anda dengan lengkap dan tepat. Maklumat ini adalah sulit.</p>
+                    <p class="text-gray-600 text-sm">Sila isi maklumat peribadi anda dengan lengkap dan tepat.</p>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         ${demographicsQuestions.map(q => `
@@ -934,17 +934,6 @@
                                 `}
                             </div>
                         `).join('')}
-                    </div>
-                    
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <div class="flex">
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium text-yellow-800">Privasi Maklumat</h3>
-                                <div class="mt-2 text-sm text-yellow-700">
-                                    <p>Semua maklumat yang diberikan adalah sulit.</p>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             `;
@@ -1213,7 +1202,7 @@
                     </button>
 
                     <div class="text-sm text-gray-500 text-center">
-                        Bahagian ${state.currentSection + 1} daripada 3
+                        Bahagian ${String.fromCharCode(65 + state.currentSection)} daripada 3
                     </div>
 
                     ${state.currentSection < 2 ? `
