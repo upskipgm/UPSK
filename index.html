@@ -759,7 +759,7 @@
             currentY += 35;
             
             // Wellbeing Section
-            doc.setFillColor(135, 206, 250); // Light blue
+            doc.setFillColor(34, 197, 94); // Green
             doc.rect(20, currentY - 5, 170, 8, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFont("helvetica", "bold");
@@ -767,7 +767,20 @@
             
             currentY += 15;
             
-            doc.setFillColor(240, 248, 255); // Very light blue
+            // Determine wellbeing color based on level
+            let wellbeingColor, wellbeingLevel;
+            if (wellbeingScore.percentage >= 70) {
+                wellbeingColor = [144, 238, 144]; // Light green
+                wellbeingLevel = 'TINGGI';
+            } else if (wellbeingScore.percentage >= 50) {
+                wellbeingColor = [255, 255, 224]; // Light yellow  
+                wellbeingLevel = 'SEDERHANA';
+            } else {
+                wellbeingColor = [255, 182, 193]; // Light red
+                wellbeingLevel = 'RENDAH';
+            }
+            
+            doc.setFillColor(wellbeingColor[0], wellbeingColor[1], wellbeingColor[2]);
             doc.rect(20, currentY - 5, 170, 15, 'F');
             doc.setTextColor(0, 0, 0);
             doc.setFont("helvetica", "normal");
@@ -775,7 +788,7 @@
             doc.text("dalam kehidupan seharian.", 25, currentY + 5);
             doc.setFont("helvetica", "bold");
             doc.text(wellbeingScore.total.toString() + '/70', 105, currentY + 5, { align: "center" });
-            doc.text(wellbeingScore.percentage >= 70 ? 'TINGGI' : wellbeingScore.percentage >= 50 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
+            doc.text(wellbeingLevel, 150, currentY + 5, { align: "center" });
             
             currentY += 30;
             
