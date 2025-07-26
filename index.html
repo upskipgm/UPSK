@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profil Kesejahteraan dan Personaliti Warga</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { 
@@ -424,31 +425,138 @@
             const wellbeingScore = calculateWellbeingScore();
             const { demographics } = state.responses;
 
-            const reportContent = `PROFIL KESEJAHTERAAN DAN PERSONALITI WARGA
+            // Initialize jsPDF
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
 
-Nama: ${demographics.name || 'Tidak dinyatakan'}  |  No. MyKad: ${demographics.ic || 'Tidak dinyatakan'}
-Jantina: ${demographics.gender || 'Tidak dinyatakan'}  |  Bangsa: ${demographics.race || 'Tidak dinyatakan'}
-Agama: ${demographics.religion || 'Tidak dinyatakan'}  |  No. Telefon: ${demographics.phone || 'Tidak dinyatakan'}
-IPG Kampus: ${demographics.ipgKampus || 'Tidak dinyatakan'}
-
-PERSONALITI BIG 5:
-Extraversion: ${personalityScores.extraversion}%  |  Agreeableness: ${personalityScores.agreeableness}%  |  Conscientiousness: ${personalityScores.conscientiousness}%
-Neuroticism: ${personalityScores.neuroticism}%  |  Openness: ${personalityScores.openness}%
-
-KESEJAHTERAAN MENTAL: ${wellbeingScore.total}/70 (${wellbeingScore.percentage}%)
-Status: ${wellbeingScore.percentage >= 70 ? 'Tahap kesejahteraan yang baik' : wellbeingScore.percentage >= 50 ? 'Tahap kesejahteraan sederhana' : 'Mungkin memerlukan perhatian lebih'}
-
-Tarikh: ${new Date().toLocaleDateString('ms-MY')} | Institut Pendidikan Guru Malaysia`;
-
-            const blob = new Blob([reportContent], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Laporan_${demographics.name ? demographics.name.replace(/\s+/g, '_') : 'Personaliti'}_${new Date().toISOString().split('T')[0]}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // Set font
+            doc.setFont("helvetica");
+            
+            // Title
+            doc.setFontSize(16);
+            doc.setFont("helvetica", "bold");
+            doc.text("PROFIL KESEJAHTERAAN DAN PERSONALITI WARGA", 105, 20, { align: "center" });
+            
+            // Institution
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text("Institut Pendidikan Guru Malaysia", 105, 28, { align: "center" });
+            
+            // Date
+            doc.text(`Tarikh: ${new Date().toLocaleDateString('ms-MY')}`, 105, 35, { align: "center" });
+            
+            // Demographics Section
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("MAKLUMAT DIRI", 20, 50);
+            
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            let yPos = 60;
+            
+            doc.text(`Nama: ${demographics.name || 'Tidak dinyatakan'}`, 20, yPos);
+            doc.text(`No. MyKad: ${demographics.ic || 'Tidak dinyatakan'}`, 120, yPos);
+            yPos += 8;
+            
+            doc.text(`Jantina: ${demographics.gender || 'Tidak dinyatakan'}`, 20, yPos);
+            doc.text(`Bangsa: ${demographics.race || 'Tidak dinyatakan'}`, 120, yPos);
+            yPos += 8;
+            
+            doc.text(`Agama: ${demographics.religion || 'Tidak dinyatakan'}`, 20, yPos);
+            doc.text(`No. Telefon: ${demographics.phone || 'Tidak dinyatakan'}`, 120, yPos);
+            yPos += 8;
+            
+            doc.text(`IPG Kampus: ${demographics.ipgKampus || 'Tidak dinyatakan'}`, 20, yPos);
+            yPos += 15;
+            
+            // Personality Section
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("PERSONALITI BIG 5", 20, yPos);
+            yPos += 10;
+            
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            
+            // Personality scores in a table-like format
+            const traits = [
+                ['Extraversion', personalityScores.extraversion],
+                ['Agreeableness', personalityScores.agreeableness],
+                ['Conscientiousness', personalityScores.conscientiousness],
+                ['Neuroticism', personalityScores.neuroticism],
+                ['Openness', personalityScores.openness]
+            ];
+            
+            traits.forEach(([trait, score], index) => {
+                doc.text(`${trait}:`, 25, yPos);
+                doc.text(`${score}%`, 80, yPos);
+                
+                // Draw progress bar
+                doc.setDrawColor(200, 200, 200);
+                doc.rect(90, yPos - 3, 60, 5);
+                
+                // Fill progress bar
+                doc.setFillColor(59, 130, 246); // Blue color
+                doc.rect(90, yPos - 3, (score / 100) * 60, 5, 'F');
+                
+                yPos += 12;
+            });
+            
+            yPos += 5;
+            
+            // Wellbeing Section
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("KESEJAHTERAAN MENTAL", 20, yPos);
+            yPos += 10;
+            
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            
+            doc.text(`Skor Total: ${wellbeingScore.total}/70 (${wellbeingScore.percentage}%)`, 25, yPos);
+            yPos += 8;
+            
+            // Wellbeing progress bar
+            doc.setDrawColor(200, 200, 200);
+            doc.rect(25, yPos, 100, 8);
+            
+            // Fill wellbeing progress bar
+            doc.setFillColor(34, 197, 94); // Green color
+            doc.rect(25, yPos, (wellbeingScore.percentage / 100) * 100, 8, 'F');
+            yPos += 15;
+            
+            // Status interpretation
+            const status = wellbeingScore.percentage >= 70 ? 'Tahap kesejahteraan yang baik' :
+                          wellbeingScore.percentage >= 50 ? 'Tahap kesejahteraan sederhana' :
+                          'Mungkin memerlukan perhatian lebih';
+            
+            doc.text(`Status: ${status}`, 25, yPos);
+            yPos += 15;
+            
+            // Personality Interpretation
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text("INTERPRETASI PERSONALITI", 20, yPos);
+            yPos += 10;
+            
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "normal");
+            
+            traits.forEach(([trait, score]) => {
+                const level = score >= 70 ? 'Tinggi' : score >= 30 ? 'Sederhana' : 'Rendah';
+                doc.text(`${trait}: ${level} (${score}%)`, 25, yPos);
+                yPos += 6;
+            });
+            
+            // Footer
+            yPos = 280;
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "italic");
+            doc.text("Laporan ini dijana secara automatik oleh Sistem Profil Kesejahteraan dan Personaliti Warga IPG", 105, yPos, { align: "center" });
+            
+            // Save the PDF
+            const fileName = `Laporan_Personaliti_${demographics.name ? demographics.name.replace(/\s+/g, '_') : 'IPG'}_${new Date().toISOString().split('T')[0]}.pdf`;
+            doc.save(fileName);
         }
 
         function saveState() {
