@@ -83,7 +83,7 @@
     </div>
 
     <script>
-        // State management
+        // State management - using in-memory storage instead of localStorage
         let state = {
             currentSection: 0,
             showResults: false,
@@ -115,7 +115,7 @@
                     'IPG Kampus Raja Melewar',
                     'IPG Kampus Tun Hussein Onn',
                     'IPG Kampus Temenggong Ibrahim',
-                    'IPG Kampus Perempuan Melalyu Melaka',
+                    'IPG Kampus Perempuan Melayu Melaka',
                     'English Language Teaching Centre (ELTC)',
                     'IPG Kampus Ipoh',
                     'IPG Kampus Pulau Pinang',
@@ -215,7 +215,6 @@
             } else {
                 state.responses.demographics[id] = value;
             }
-            saveState();
             // Only update specific elements instead of full re-render for text inputs
             if (id === 'ic') {
                 updateICCounter();
@@ -232,14 +231,12 @@
 
         function handlePersonalityChange(index, value) {
             state.responses.personality[index] = parseInt(value);
-            saveState();
             // Don't re-render, just update the visual state
             updateRadioButtonVisual('personality', index, value);
         }
 
         function handleWellbeingChange(index, value) {
             state.responses.wellbeing[index] = parseInt(value);
-            saveState();
             // Don't re-render, just update the visual state
             updateRadioButtonVisual('wellbeing', index, value);
         }
@@ -307,13 +304,11 @@
                 return;
             }
             state.currentSection++;
-            saveState();
             render();
         }
 
         function handlePrevSection() {
             state.currentSection = Math.max(0, state.currentSection - 1);
-            saveState();
             render();
         }
 
@@ -379,27 +374,6 @@
             };
         }
 
-        // Google Sheets Integration
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyPggH3ZPDC2gfqiXqtG0s3JgDm2EPZKz56zZJH7oSGTHHdUyqh5mQceDKSRsWRBpOCzw/exec'; // Replace with your actual URL
-        
-        async function syncToGoogleSheets(data) {
-            try {
-                const response = await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                return result;
-            } catch (error) {
-                console.error('Error syncing to Google Sheets:', error);
-                return { status: 'error', message: error.message };
-            }
-        }
-
         function showResults() {
             const validation = validateCurrentSection();
             if (!validation.isValid) {
@@ -407,37 +381,36 @@
                 return;
             }
             
-            // Calculate scores
+            // Log data for database integration
             const personalityScores = calculatePersonalityScores();
             const wellbeingScore = calculateWellbeingScore();
             
-            // Prepare data for Google Sheets
-            const dataForSync = {
-                demographics: state.responses.demographics,
-                personalityScores: personalityScores,
-                wellbeingScore: wellbeingScore,
-                personalityResponses: state.responses.personality,
-                wellbeingResponses: state.responses.wellbeing
-            };
+            const formattedData = [
+                new Date().toISOString(),
+                state.responses.demographics.name || '',
+                state.responses.demographics.ic || '',
+                state.responses.demographics.gender || '',
+                state.responses.demographics.race || '',
+                state.responses.demographics.religion || '',
+                state.responses.demographics.phone || '',
+                state.responses.demographics.ipgKampus || '',
+                personalityScores.extraversion || 0,
+                personalityScores.agreeableness || 0,
+                personalityScores.conscientiousness || 0,
+                personalityScores.neuroticism || 0,
+                personalityScores.openness || 0,
+                ...Array.from({length: 44}, (_, i) => state.responses.personality[i] || 0),
+                wellbeingScore.total || 0,
+                wellbeingScore.percentage || 0,
+                ...Array.from({length: 14}, (_, i) => state.responses.wellbeing[i] || 0)
+            ];
             
-            // Log data for debugging
-            console.log('📊 DATA FOR SYNC:', dataForSync);
-            
-            // Sync to Google Sheets
-            syncToGoogleSheets(dataForSync).then(result => {
-                if (result.status === 'success') {
-                    console.log('✅ Data successfully synced to Google Sheets');
-                    // Optional: Show success message to user
-                    // alert('Data berjaya disimpan ke Google Sheets!');
-                } else {
-                    console.error('❌ Failed to sync to Google Sheets:', result.message);
-                    // Optional: Show error message to user
-                    // alert('Ralat menyimpan data: ' + result.message);
-                }
-            });
+            console.log('📊 DATA FOR DATABASE:', formattedData);
+            console.log('👤 Demographics:', state.responses.demographics);
+            console.log('🧠 Personality Scores:', personalityScores);
+            console.log('❤️ Wellbeing Score:', wellbeingScore);
             
             state.showResults = true;
-            saveState();
             render();
         }
 
@@ -453,44 +426,30 @@
             // Set font
             doc.setFont("helvetica");
             
-            // Simple header without logo
-            const centerX = 105;
-            const headerY = 20;
-            
-            // Institution header
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 0, 0);
-            doc.text("KEMENTERIAN PENDIDIKAN", centerX, headerY, { align: "center" });
-            
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "normal");
-            doc.text("Institut Pendidikan Guru Malaysia", centerX, headerY + 8, { align: "center" });
-            doc.text("Unit Psikologi dan Kaunseling", centerX, headerY + 15, { align: "center" });
-            
             // Title
             doc.setFontSize(16);
             doc.setFont("helvetica", "bold");
-            doc.text("PROFIL KESEJAHTERAAN DAN PERSONALITI WARGA", centerX, headerY + 28, { align: "center" });
+            doc.text("PROFIL KESEJAHTERAAN DAN PERSONALITI WARGA", 105, 20, { align: "center" });
             
-            // Date
+            // Institution
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
-            doc.text(`Tarikh: ${new Date().toLocaleDateString('ms-MY')}`, centerX, headerY + 38, { align: "center" });
+            doc.text("Institut Pendidikan Guru Malaysia", 105, 28, { align: "center" });
+            
+            // Date
+            doc.text(`Tarikh: ${new Date().toLocaleDateString('ms-MY')}`, 105, 35, { align: "center" });
             
             // Demographics Section - Table format
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text("MAKLUMAT DIRI", 20, headerY + 55);
+            doc.text("MAKLUMAT DIRI", 20, 50);
             
             // Table setup
-            const tableStartY = headerY + 65;
+            const tableStartY = 60;
             const rowHeight = 10;
             const col1X = 20;
             const col2X = 110;
             const tableWidth = 170;
-            const col1Width = 85;
-            const col2Width = 85;
             
             // Table data
             const tableData = [
@@ -701,26 +660,6 @@
             doc.save(fileName);
         }
 
-        function saveState() {
-            try {
-                localStorage.setItem('questionnaireState', JSON.stringify(state));
-            } catch (e) {
-                console.warn('Could not save state to localStorage');
-            }
-        }
-
-        function loadState() {
-            try {
-                const saved = localStorage.getItem('questionnaireState');
-                if (saved) {
-                    const parsedState = JSON.parse(saved);
-                    state = { ...state, ...parsedState };
-                }
-            } catch (e) {
-                console.warn('Could not load state from localStorage');
-            }
-        }
-
         // Render functions
         function renderHeader() {
             return `
@@ -806,8 +745,7 @@
                                         value="${state.responses.demographics[q.id] || ''}"
                                         placeholder="${q.id === 'ic' ? 'Contoh: 901201081234' : q.id === 'name' ? 'Sila isi nama penuh anda' : q.id === 'phone' ? 'Contoh: 0123456789' : 'Sila isi...'}"
                                         maxlength="${q.maxLength || ''}"
-                                        onblur="handleDemographicChange('${q.id}', this.value)"
-                                        onkeyup="handleDemographicChange('${q.id}', this.value)"
+                                        oninput="handleDemographicChange('${q.id}', this.value)"
                                     />
                                 `}
                             </div>
@@ -1136,36 +1074,29 @@
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
-            loadState();
             render();
             
-            // Auto-save every 30 seconds
-            setInterval(saveState, 30000);
-            
-            // Save before page unload
-            window.addEventListener('beforeunload', saveState);
-        });
-
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            if (state.showResults) return;
-            
-            if (e.ctrlKey || e.metaKey) {
-                switch(e.key) {
-                    case 'ArrowLeft':
-                        e.preventDefault();
-                        if (state.currentSection > 0) handlePrevSection();
-                        break;
-                    case 'ArrowRight':
-                        e.preventDefault();
-                        if (state.currentSection < 2) {
-                            handleNextSection();
-                        } else {
-                            showResults();
-                        }
-                        break;
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (state.showResults) return;
+                
+                if (e.ctrlKey || e.metaKey) {
+                    switch(e.key) {
+                        case 'ArrowLeft':
+                            e.preventDefault();
+                            if (state.currentSection > 0) handlePrevSection();
+                            break;
+                        case 'ArrowRight':
+                            e.preventDefault();
+                            if (state.currentSection < 2) {
+                                handleNextSection();
+                            } else {
+                                showResults();
+                            }
+                            break;
+                    }
                 }
-            }
+            });
         });
     </script>
 </body>
