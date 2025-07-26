@@ -660,6 +660,181 @@
             doc.setTextColor(100, 100, 100);
             doc.text("Laporan ini dijana secara automatik oleh Sistem Profil Kesejahteraan dan Personaliti Warga IPG", 105, 280, { align: "center" });
             
+            // PAGE 2 - INTERPRETATION
+            doc.addPage();
+            
+            // Page 2 Title
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text("PENTAFSIRAN SKOR", 105, 20, { align: "center" });
+            
+            // Personality Interpretation Table
+            let currentY = 35;
+            
+            // Table headers
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            
+            // Draw header background for personality section
+            doc.setFillColor(100, 149, 237); // Blue
+            doc.rect(20, currentY - 5, 170, 8, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.text("KONSTRUK PERSONALITI", 25, currentY);
+            doc.text("SKOR", 105, currentY, { align: "center" });
+            doc.text("TAHAP", 150, currentY, { align: "center" });
+            
+            currentY += 15;
+            
+            // Extraversion
+            doc.setFillColor(135, 206, 235); // Light blue
+            doc.rect(20, currentY - 5, 170, 15, 'F');
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.text("EXTRAVERSION (Ekstraverti)", 25, currentY);
+            doc.setFont("helvetica", "normal");
+            doc.text("Individu yang mempunyai kecenderungan untuk bersosialisasi dan", 25, currentY + 5);
+            doc.text("berhubung dengan orang lain.", 25, currentY + 10);
+            doc.setFont("helvetica", "bold");
+            doc.text(personalityScores.extraversion.toString(), 105, currentY + 5, { align: "center" });
+            doc.text(personalityScores.extraversion >= 70 ? 'TINGGI' : personalityScores.extraversion >= 30 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
+            
+            currentY += 25;
+            
+            // Agreeableness
+            doc.setFillColor(255, 255, 224); // Light yellow
+            doc.rect(20, currentY - 5, 170, 15, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.text("AGREEABLENESS (Kesetujuan)", 25, currentY);
+            doc.setFont("helvetica", "normal");
+            doc.text("Individu yang akan menunjukkan ciri-ciri boleh dipercayai,", 25, currentY + 5);
+            doc.text("bertoleransi, baik, dan bersikap kasih sayang.", 25, currentY + 10);
+            doc.setFont("helvetica", "bold");
+            doc.text(personalityScores.agreeableness.toString(), 105, currentY + 5, { align: "center" });
+            doc.text(personalityScores.agreeableness >= 70 ? 'TINGGI' : personalityScores.agreeableness >= 30 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
+            
+            currentY += 25;
+            
+            // Conscientiousness
+            doc.setFillColor(255, 182, 193); // Light pink
+            doc.rect(20, currentY - 5, 170, 15, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.text("CONSCIENTIOUSNESS (Ketelitian)", 25, currentY);
+            doc.setFont("helvetica", "normal");
+            doc.text("Individu yang mempunyai kecenderungan untuk berfokus teliti,", 25, currentY + 5);
+            doc.text("bersungguh, bermatlamat dan berpegang teguh pada cita tinggi.", 25, currentY + 10);
+            doc.setFont("helvetica", "bold");
+            doc.text(personalityScores.conscientiousness.toString(), 105, currentY + 5, { align: "center" });
+            doc.text(personalityScores.conscientiousness >= 70 ? 'TINGGI' : personalityScores.conscientiousness >= 30 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
+            
+            currentY += 25;
+            
+            // Neuroticism
+            doc.setFillColor(255, 160, 160); // Light red
+            doc.rect(20, currentY - 5, 170, 15, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.text("NEUROTICISM (Neurotisisme)", 25, currentY);
+            doc.setFont("helvetica", "normal");
+            doc.text("Individu yang mudah terjerumus dengan kesedihan, dan keletakstabilan", 25, currentY + 5);
+            doc.text("emosi.", 25, currentY + 10);
+            doc.setFont("helvetica", "bold");
+            doc.text(personalityScores.neuroticism.toString(), 105, currentY + 5, { align: "center" });
+            doc.text(personalityScores.neuroticism >= 70 ? 'TINGGI' : personalityScores.neuroticism >= 30 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
+            
+            currentY += 25;
+            
+            // Openness
+            doc.setFillColor(144, 238, 144); // Light green
+            doc.rect(20, currentY - 5, 170, 15, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.text("OPENNESS (Keterbukaan)", 25, currentY);
+            doc.setFont("helvetica", "normal");
+            doc.text("Individu yang mempunyai kemahiran berinteraksi dengan budaya,", 25, currentY + 5);
+            doc.text("orang, idea dan pengalaman yang pelbagai.", 25, currentY + 10);
+            doc.setFont("helvetica", "bold");
+            doc.text(personalityScores.openness.toString(), 105, currentY + 5, { align: "center" });
+            doc.text(personalityScores.openness >= 70 ? 'TINGGI' : personalityScores.openness >= 30 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
+            
+            currentY += 35;
+            
+            // Wellbeing Section
+            doc.setFillColor(135, 206, 250); // Light blue
+            doc.rect(20, currentY - 5, 170, 8, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("helvetica", "bold");
+            doc.text("SKALA KESEJAHTERAAN PSIKOLOGI", 25, currentY);
+            
+            currentY += 15;
+            
+            doc.setFillColor(240, 248, 255); // Very light blue
+            doc.rect(20, currentY - 5, 170, 15, 'F');
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "normal");
+            doc.text("Skala yang mengukur kesejahteraan mental dan emosi individu", 25, currentY);
+            doc.text("dalam kehidupan seharian.", 25, currentY + 5);
+            doc.setFont("helvetica", "bold");
+            doc.text(wellbeingScore.total.toString() + '/70', 105, currentY + 5, { align: "center" });
+            doc.text(wellbeingScore.percentage >= 70 ? 'TINGGI' : wellbeingScore.percentage >= 50 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
+            
+            currentY += 30;
+            
+            // Interpretation Guidelines
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text("PANDUAN INTERPRETASI:", 25, currentY);
+            
+            currentY += 15;
+            
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            
+            // Personality interpretation guidelines
+            doc.setFont("helvetica", "bold");
+            doc.text("PERSONALITI:", 25, currentY);
+            doc.setFont("helvetica", "normal");
+            currentY += 8;
+            doc.text("• TINGGI (70-100): Ciri personaliti yang sangat menonjol", 30, currentY);
+            currentY += 6;
+            doc.text("• SEDERHANA (30-69): Ciri personaliti yang seimbang", 30, currentY);
+            currentY += 6;
+            doc.text("• RENDAH (0-29): Ciri personaliti yang kurang menonjol", 30, currentY);
+            
+            currentY += 15;
+            
+            // Wellbeing interpretation guidelines
+            doc.setFont("helvetica", "bold");
+            doc.text("KESEJAHTERAAN PSIKOLOGI:", 25, currentY);
+            doc.setFont("helvetica", "normal");
+            currentY += 8;
+            doc.text("• TINGGI (70-100%): Tahap kesejahteraan yang sangat baik", 30, currentY);
+            currentY += 6;
+            doc.text("• SEDERHANA (50-69%): Tahap kesejahteraan yang sederhana", 30, currentY);
+            currentY += 6;
+            doc.text("• RENDAH (0-49%): Mungkin memerlukan perhatian dan sokongan", 30, currentY);
+            
+            currentY += 20;
+            
+            // Recommendation section
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(255, 0, 0); // Red
+            doc.text("Sila dapatkan perundingan Kaunselor Pendidikan terdekat bagi sebarang urusan", 25, currentY);
+            doc.text("(yang berkaitan sahaja / jika perlu)", 25, currentY + 7);
+            
+            currentY += 25;
+            
+            // Counselor info section
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text("TANDATANGAN KAUNSELOR:", 25, currentY);
+            
+            currentY += 20;
+            doc.setFont("helvetica", "normal");
+            doc.text("NAMA KAUNSELOR: ......................................................................", 25, currentY);
+            
+            currentY += 15;
+            doc.text("COP RASMI: ......................................................................", 25, currentY);
+            
             // Save the PDF
             const fileName = `Keputusan_PKPW_${demographics.name ? demographics.name.replace(/\s+/g, '_') : 'IPG'}_${new Date().toISOString().split('T')[0]}.pdf`;
             doc.save(fileName);
@@ -982,8 +1157,10 @@
                             <span>📥</span>
                             <span>Muat Turun Laporan</span>
                         </button>
-                        <button
-                            onclick="window.print()"
+        function customPrint() {
+            // Just use the same PDF generation as generatePDF
+            generatePDF();
+        }
                             class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition flex items-center justify-center space-x-2 shadow-md"
                         >
                             <span>🖨️</span>
