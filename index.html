@@ -432,40 +432,101 @@
             // Set font
             doc.setFont("helvetica");
             
-            // KPM Logo placeholder (since complex logos are difficult in jsPDF)
-            // Adding a text representation or simple graphic
-            doc.setFontSize(8);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(100, 100, 100);
-            doc.text("[LOGO KEMENTERIAN PENDIDIKAN MALAYSIA]", 105, 15, { align: "center" });
+            // KMP Logo header section
+            // Draw the Malaysian coat of arms and KMP header
             
-            // Unit and Institution
-            doc.setFontSize(11);
+            // Main shield outline
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(2);
+            
+            // Shield shape (simplified)
+            const centerX = 105;
+            const shieldY = 8;
+            const shieldWidth = 40;
+            const shieldHeight = 35;
+            
+            // Draw shield outline
+            doc.setFillColor(255, 255, 255);
+            doc.roundedRect(centerX - shieldWidth/2, shieldY, shieldWidth, shieldHeight, 3, 3, 'FD');
+            
+            // Malaysian flag stripes (simplified representation)
+            const stripeHeight = 2;
+            for (let i = 0; i < 14; i++) {
+                if (i % 2 === 0) {
+                    doc.setFillColor(204, 0, 0); // Red stripes
+                } else {
+                    doc.setFillColor(255, 255, 255); // White stripes
+                }
+                doc.rect(centerX - shieldWidth/2 + 2, shieldY + 2 + i * stripeHeight, shieldWidth - 4, stripeHeight, 'F');
+            }
+            
+            // Blue canton
+            doc.setFillColor(0, 56, 147);
+            doc.rect(centerX - shieldWidth/2 + 2, shieldY + 2, 15, 14, 'F');
+            
+            // Yellow crescent
+            doc.setFillColor(255, 223, 0);
+            doc.circle(centerX - shieldWidth/2 + 7, shieldY + 9, 3, 'F');
+            doc.setFillColor(0, 56, 147);
+            doc.circle(centerX - shieldWidth/2 + 8, shieldY + 8, 2.5, 'F');
+            
+            // Yellow star
+            doc.setFillColor(255, 223, 0);
+            doc.circle(centerX - shieldWidth/2 + 12, shieldY + 7, 1, 'F');
+            
+            // Tigers (simplified as decorative elements)
+            doc.setFillColor(255, 140, 0); // Orange
+            // Left tiger
+            doc.circle(centerX - 25, shieldY + 15, 4, 'F');
+            doc.setFillColor(0, 0, 0);
+            doc.circle(centerX - 27, shieldY + 13, 1, 'F');
+            doc.circle(centerX - 23, shieldY + 13, 1, 'F');
+            
+            // Right tiger
+            doc.setFillColor(255, 140, 0);
+            doc.circle(centerX + 25, shieldY + 15, 4, 'F');
+            doc.setFillColor(0, 0, 0);
+            doc.circle(centerX + 23, shieldY + 13, 1, 'F');
+            doc.circle(centerX + 27, shieldY + 13, 1, 'F');
+            
+            // Ribbons with text
+            doc.setFillColor(255, 223, 0);
+            doc.roundedRect(centerX - 25, shieldY + 30, 50, 6, 2, 2, 'F');
+            
+            // Add text on ribbon
+            doc.setFontSize(8);
             doc.setFont("helvetica", "bold");
             doc.setTextColor(0, 0, 0);
-            doc.text("Unit Psikologi & Kaunseling", 105, 25, { align: "center" });
+            doc.text("BERSEKUTU BERTAMBAH MUTU", centerX, shieldY + 34, { align: "center" });
+            
+            // Institution text
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text("KEMENTERIAN PENDIDIKAN", centerX, shieldY + 42, { align: "center" });
             
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
-            doc.text("Institut Pendidikan Guru Malaysia", 105, 32, { align: "center" });
+            doc.text("Unit Psikologi & Kaunseling", centerX, shieldY + 48, { align: "center" });
+            doc.text("Institut Pendidikan Guru Malaysia", centerX, shieldY + 53, { align: "center" });
             
             // Title
             doc.setFontSize(16);
             doc.setFont("helvetica", "bold");
-            doc.text("PROFIL KESEJAHTERAAN DAN PERSONALITI WARGA", 105, 45, { align: "center" });
+            doc.text("PROFIL KESEJAHTERAAN DAN PERSONALITI WARGA", centerX, shieldY + 63, { align: "center" });
             
             // Date
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
-            doc.text(`Tarikh: ${new Date().toLocaleDateString('ms-MY')}`, 105, 52, { align: "center" });
+            doc.text(`Tarikh: ${new Date().toLocaleDateString('ms-MY')}`, centerX, shieldY + 70, { align: "center" });
             
             // Demographics Section - Table format
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text("MAKLUMAT DIRI", 20, 65);
+            doc.text("MAKLUMAT DIRI", 20, shieldY + 83);
             
             // Table setup
-            const tableStartY = 75;
+            const tableStartY = shieldY + 93;
             const rowHeight = 10;
             const col1X = 20;
             const col2X = 110;
@@ -1151,4 +1212,3 @@
     </script>
 </body>
 </html>
-                                
