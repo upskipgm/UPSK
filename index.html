@@ -170,7 +170,18 @@
                 state.responses.demographics[id] = value;
             }
             saveState();
-            render();
+            // Only update specific elements instead of full re-render for text inputs
+            if (id === 'ic') {
+                updateICCounter();
+            }
+        }
+
+        function updateICCounter() {
+            const counterElement = document.getElementById('ic-counter');
+            if (counterElement && state.responses.demographics.ic) {
+                const length = state.responses.demographics.ic.length;
+                counterElement.innerHTML = `<span class="${length === 12 ? 'text-green-600' : 'text-red-500'}">(${length}/12)</span>`;
+            }
         }
 
         function handlePersonalityChange(index, value) {
@@ -482,10 +493,10 @@ Profil Kesejahteraan dan Personaliti Warga
                             <div class="space-y-2 ${q.id === 'ipgKampus' ? 'md:col-span-2' : ''}">
                                 <label class="block text-sm font-medium text-gray-700">
                                     ${q.label} ${q.required ? '<span class="text-red-500">*</span>' : ''}
-                                    ${q.id === 'ic' && state.responses.demographics.ic ? `
+                                    ${q.id === 'ic' ? `
                                         <div class="text-xs text-gray-500 mt-1">
-                                            <span class="${state.responses.demographics.ic.length === 12 ? 'text-green-600' : 'text-red-500'}">
-                                                (${state.responses.demographics.ic.length}/12)
+                                            <span id="ic-counter" class="${state.responses.demographics.ic && state.responses.demographics.ic.length === 12 ? 'text-green-600' : 'text-red-500'}">
+                                                ${state.responses.demographics.ic ? `(${state.responses.demographics.ic.length}/12)` : '(0/12)'}
                                             </span>
                                         </div>
                                     ` : ''}
@@ -507,7 +518,8 @@ Profil Kesejahteraan dan Personaliti Warga
                                         value="${state.responses.demographics[q.id] || ''}"
                                         placeholder="${q.id === 'ic' ? 'Contoh: 901201081234' : q.id === 'name' ? 'Sila isi nama penuh anda' : q.id === 'phone' ? 'Contoh: 0123456789' : 'Sila isi...'}"
                                         maxlength="${q.maxLength || ''}"
-                                        oninput="handleDemographicChange('${q.id}', this.value)"
+                                        onblur="handleDemographicChange('${q.id}', this.value)"
+                                        onkeyup="handleDemographicChange('${q.id}', this.value)"
                                     />
                                 `}
                             </div>
