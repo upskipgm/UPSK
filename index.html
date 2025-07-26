@@ -379,6 +379,27 @@
             };
         }
 
+        // Google Sheets Integration
+        const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE'; // Replace with your actual URL
+        
+        async function syncToGoogleSheets(data) {
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                return result;
+            } catch (error) {
+                console.error('Error syncing to Google Sheets:', error);
+                return { status: 'error', message: error.message };
+            }
+        }
+
         function showResults() {
             const validation = validateCurrentSection();
             if (!validation.isValid) {
@@ -386,34 +407,34 @@
                 return;
             }
             
-            // Log data for database integration
+            // Calculate scores
             const personalityScores = calculatePersonalityScores();
             const wellbeingScore = calculateWellbeingScore();
             
-            const formattedData = [
-                new Date().toISOString(),
-                state.responses.demographics.name || '',
-                state.responses.demographics.ic || '',
-                state.responses.demographics.gender || '',
-                state.responses.demographics.race || '',
-                state.responses.demographics.religion || '',
-                state.responses.demographics.phone || '',
-                state.responses.demographics.ipgKampus || '',
-                personalityScores.extraversion || 0,
-                personalityScores.agreeableness || 0,
-                personalityScores.conscientiousness || 0,
-                personalityScores.neuroticism || 0,
-                personalityScores.openness || 0,
-                ...Array.from({length: 44}, (_, i) => state.responses.personality[i] || 0),
-                wellbeingScore.total || 0,
-                wellbeingScore.percentage || 0,
-                ...Array.from({length: 14}, (_, i) => state.responses.wellbeing[i] || 0)
-            ];
+            // Prepare data for Google Sheets
+            const dataForSync = {
+                demographics: state.responses.demographics,
+                personalityScores: personalityScores,
+                wellbeingScore: wellbeingScore,
+                personalityResponses: state.responses.personality,
+                wellbeingResponses: state.responses.wellbeing
+            };
             
-            console.log('📊 DATA FOR DATABASE:', formattedData);
-            console.log('👤 Demographics:', state.responses.demographics);
-            console.log('🧠 Personality Scores:', personalityScores);
-            console.log('❤️ Wellbeing Score:', wellbeingScore);
+            // Log data for debugging
+            console.log('📊 DATA FOR SYNC:', dataForSync);
+            
+            // Sync to Google Sheets
+            syncToGoogleSheets(dataForSync).then(result => {
+                if (result.status === 'success') {
+                    console.log('✅ Data successfully synced to Google Sheets');
+                    // Optional: Show success message to user
+                    // alert('Data berjaya disimpan ke Google Sheets!');
+                } else {
+                    console.error('❌ Failed to sync to Google Sheets:', result.message);
+                    // Optional: Show error message to user
+                    // alert('Ralat menyimpan data: ' + result.message);
+                }
+            });
             
             state.showResults = true;
             saveState();
