@@ -467,18 +467,24 @@
             yPos += 8;
             
             doc.text(`IPG Kampus: ${demographics.ipgKampus || 'Tidak dinyatakan'}`, 20, yPos);
+            yPos += 20;
+            
+            // Side by side layout - LEFT SIDE: Personality
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(37, 99, 235); // Blue color
+            doc.text("Personaliti Big 5", 20, yPos);
+            
+            // RIGHT SIDE: Wellbeing title
+            doc.setTextColor(34, 197, 94); // Green color
+            doc.text("Kesejahteraan Mental", 115, yPos);
             yPos += 15;
             
-            // Personality Section
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.text("PERSONALITI BIG 5", 20, yPos);
-            yPos += 10;
-            
+            // LEFT SIDE: Personality scores
             doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0); // Black
             doc.setFont("helvetica", "normal");
             
-            // Personality scores in a table-like format
             const traits = [
                 ['Extraversion', personalityScores.extraversion],
                 ['Agreeableness', personalityScores.agreeableness],
@@ -487,75 +493,103 @@
                 ['Openness', personalityScores.openness]
             ];
             
+            let leftYPos = yPos;
             traits.forEach(([trait, score], index) => {
-                doc.text(`${trait}:`, 25, yPos);
-                doc.text(`${score}%`, 80, yPos);
+                doc.text(`${trait}`, 22, leftYPos);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(37, 99, 235); // Blue
+                doc.text(`${score}%`, 75, leftYPos);
                 
                 // Draw progress bar
-                doc.setDrawColor(200, 200, 200);
-                doc.rect(90, yPos - 3, 60, 5);
+                doc.setDrawColor(229, 231, 235);
+                doc.setLineWidth(0.5);
+                doc.rect(22, leftYPos + 2, 60, 4);
                 
                 // Fill progress bar
                 doc.setFillColor(59, 130, 246); // Blue color
-                doc.rect(90, yPos - 3, (score / 100) * 60, 5, 'F');
+                doc.rect(22, leftYPos + 2, (score / 100) * 60, 4, 'F');
                 
-                yPos += 12;
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(0, 0, 0);
+                leftYPos += 15;
             });
             
-            yPos += 5;
+            // RIGHT SIDE: Wellbeing scores
+            let rightYPos = yPos;
             
-            // Wellbeing Section
-            doc.setFontSize(12);
+            // Large wellbeing score
+            doc.setFontSize(36);
             doc.setFont("helvetica", "bold");
-            doc.text("KESEJAHTERAAN MENTAL", 20, yPos);
-            yPos += 10;
+            doc.setTextColor(34, 197, 94); // Green
+            doc.text(`${wellbeingScore.total}/70`, 140, rightYPos + 15, { align: "center" });
             
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
-            
-            doc.text(`Skor Total: ${wellbeingScore.total}/70 (${wellbeingScore.percentage}%)`, 25, yPos);
-            yPos += 8;
+            doc.setFontSize(20);
+            doc.text(`${wellbeingScore.percentage}%`, 140, rightYPos + 30, { align: "center" });
             
             // Wellbeing progress bar
-            doc.setDrawColor(200, 200, 200);
-            doc.rect(25, yPos, 100, 8);
+            doc.setDrawColor(229, 231, 235);
+            doc.setLineWidth(0.5);
+            doc.rect(117, rightYPos + 35, 65, 8);
             
             // Fill wellbeing progress bar
             doc.setFillColor(34, 197, 94); // Green color
-            doc.rect(25, yPos, (wellbeingScore.percentage / 100) * 100, 8, 'F');
-            yPos += 15;
+            doc.rect(117, rightYPos + 35, (wellbeingScore.percentage / 100) * 65, 8, 'F');
             
-            // Status interpretation
-            const status = wellbeingScore.percentage >= 70 ? 'Tahap kesejahteraan yang baik' :
-                          wellbeingScore.percentage >= 50 ? 'Tahap kesejahteraan sederhana' :
-                          'Mungkin memerlukan perhatian lebih';
+            rightYPos += 50;
             
-            doc.text(`Status: ${status}`, 25, yPos);
-            yPos += 15;
+            // Status
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(34, 197, 94);
+            doc.text("Status Kesejahteraan:", 117, rightYPos);
+            rightYPos += 8;
             
-            // Personality Interpretation
+            const status = wellbeingScore.percentage >= 70 ? '✓ Tahap kesejahteraan yang baik' :
+                          wellbeingScore.percentage >= 50 ? '⚠ Tahap kesejahteraan sederhana' :
+                          '! Mungkin memerlukan perhatian lebih';
+            
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(0, 0, 0);
+            doc.text(status, 117, rightYPos);
+            rightYPos += 10;
+            
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Skor minimum: 14 | Skor maksimum: 70`, 117, rightYPos);
+            doc.text(`Skor anda: ${wellbeingScore.total} (${wellbeingScore.percentage}%)`, 117, rightYPos + 6);
+            
+            // Personality Interpretation (bottom section)
+            let interpretationYPos = leftYPos + 10;
+            
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text("INTERPRETASI PERSONALITI", 20, yPos);
-            yPos += 10;
+            doc.setTextColor(37, 99, 235);
+            doc.text("Interpretasi Personaliti:", 20, interpretationYPos);
+            interpretationYPos += 10;
             
             doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
+            doc.setTextColor(0, 0, 0);
             
             traits.forEach(([trait, score]) => {
                 const level = score >= 70 ? 'Tinggi' : score >= 30 ? 'Sederhana' : 'Rendah';
-                doc.text(`${trait}: ${level} (${score}%)`, 25, yPos);
-                yPos += 6;
+                doc.setTextColor(37, 99, 235);
+                doc.setFont("helvetica", "bold");
+                doc.text(`${trait}:`, 22, interpretationYPos);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(0, 0, 0);
+                doc.text(`${level}`, 55, interpretationYPos);
+                interpretationYPos += 8;
             });
             
             // Footer
-            yPos = 280;
             doc.setFontSize(8);
             doc.setFont("helvetica", "italic");
-            doc.text("Laporan ini dijana secara automatik oleh Sistem Profil Kesejahteraan dan Personaliti Warga IPG", 105, yPos, { align: "center" });
+            doc.setTextColor(100, 100, 100);
+            doc.text("Laporan ini dijana secara automatik oleh Sistem Profil Kesejahteraan dan Personaliti Warga IPG", 105, 280, { align: "center" });
             
             // Save the PDF
-            const fileName = `Laporan_Personaliti_${demographics.name ? demographics.name.replace(/\s+/g, '_') : 'IPG'}_${new Date().toISOString().split('T')[0]}.pdf`;
+            const fileName = `Keputusan_PKPW_${demographics.name ? demographics.name.replace(/\s+/g, '_') : 'IPG'}_${new Date().toISOString().split('T')[0]}.pdf`;
             doc.save(fileName);
         }
 
