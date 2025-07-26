@@ -141,55 +141,55 @@
             }
         ];
 
-        // Personality questions (44 items)
+        // Personality questions (44 items) - Updated from Word document
         const personalityQuestions = [
             'Saya melihat diri saya sebagai seorang yang bersikap terbuka',
-            'Saya melihat diri saya sebagai seorang yang pemalu, pendiam',
-            'Saya melihat diri saya sebagai seorang yang penuh tenaga',
+            'Saya melihat diri saya sebagai seorang yang pemalu',
+            'Saya melihat diri saya sebagai seorang yang penuh bertenaga',
             'Saya melihat diri saya sebagai seorang yang suka bersendirian',
             'Saya melihat diri saya sebagai seorang yang bercakap banyak',
             'Saya melihat diri saya sebagai seorang yang pendiam',
             'Saya melihat diri saya sebagai seorang yang berani',
             'Saya melihat diri saya sebagai seorang yang suka berkumpul',
-            'Saya melihat diri saya sebagai seorang yang suka membantu dan tidak mementingkan diri sendiri',
+            'Saya melihat diri saya sebagai seorang yang tidak mementingkan diri sendiri',
             'Saya melihat diri saya sebagai seorang yang suka mencari kesalahan orang lain',
             'Saya melihat diri saya sebagai seorang yang suka bergaduh',
             'Saya melihat diri saya sebagai seorang yang memaafkan',
             'Saya melihat diri saya sebagai seorang yang percaya kepada orang lain',
-            'Saya melihat diri saya sebagai seorang yang boleh menjadi dingin dan tidak peduli',
+            'Saya melihat diri saya sebagai seorang yang boleh menjadi dingin (tidak peduli)',
             'Saya melihat diri saya sebagai seorang yang berhati mulia',
-            'Saya melihat diri saya sebagai seorang yang pertimbangkan dan baik kepada orang lain',
+            'Saya melihat diri saya sebagai seorang yang baik kepada orang lain',
             'Saya melihat diri saya sebagai seorang yang suka bekerjasama',
-            'Saya melihat diri saya sebagai seorang yang buat kerja dengan teliti',
+            'Saya melihat diri saya sebagai seorang yang melakukan kerja dengan teliti',
             'Saya melihat diri saya sebagai seorang yang agak cuai',
             'Saya melihat diri saya sebagai seorang yang boleh dipercayai',
             'Saya melihat diri saya sebagai seorang yang tidak teratur',
             'Saya melihat diri saya sebagai seorang yang berdisiplin diri',
-            'Saya melihat diri saya sebagai seorang yang suka melengahkan',
+            'Saya melihat diri saya sebagai seorang yang suka menangguh kerja',
             'Saya melihat diri saya sebagai seorang yang bekerja dengan cekap',
-            'Saya melihat diri saya sebagai seorang yang membuat rancangan dan mengikutinya',
+            'Saya melihat diri saya sebagai seorang yang merancang dan mengikutinya',
             'Saya melihat diri saya sebagai seorang yang mudah teralih perhatian',
-            'Saya melihat diri saya sebagai seorang yang tenang dan dapat menangani tekanan',
+            'Saya melihat diri saya sebagai seorang yang dapat menangani tekanan',
             'Saya melihat diri saya sebagai seorang yang mudah tertekan',
             'Saya melihat diri saya sebagai seorang yang tidak mudah kecewa',
-            'Saya melihat diri saya sebagai seorang yang murung, sedih',
+            'Saya melihat diri saya sebagai seorang yang murung',
             'Saya melihat diri saya sebagai seorang yang mudah risau',
             'Saya melihat diri saya sebagai seorang yang kadang-kadang berasa tertekan',
             'Saya melihat diri saya sebagai seorang yang mudah marah',
-            'Saya melihat diri saya sebagai seorang yang emosi stabil, tidak mudah marah',
-            'Saya melihat diri saya sebagai seorang yang inventif',
-            'Saya melihat diri saya sebagai seorang yang suka mencuba perkara baru',
+            'Saya melihat diri saya sebagai seorang yang emosi stabil',
+            'Saya melihat diri saya sebagai seorang yang inventif (berdaya cipta)',
+            'Saya melihat diri saya sebagai seorang yang suka mencuba perkara baharu',
             'Saya melihat diri saya sebagai seorang yang mempunyai imaginasi aktif',
-            'Saya melihat diri saya sebagai seorang yang suka merenung, bermain dengan idea',
+            'Saya melihat diri saya sebagai seorang yang suka bermain dengan idea',
             'Saya melihat diri saya sebagai seorang yang artistik',
-            'Saya melihat diri saya sebagai seorang yang suka rutin',
+            'Saya melihat diri saya sebagai seorang yang suka kerja rutin',
             'Saya melihat diri saya sebagai seorang yang menghargai pengalaman artistik',
             'Saya melihat diri saya sebagai seorang yang konvensional, tradisional',
             'Saya melihat diri saya sebagai seorang yang kreatif',
             'Saya melihat diri saya sebagai seorang yang ingin tahu tentang banyak perkara'
         ];
 
-        // Wellbeing questions (14 items)
+        // Wellbeing questions (14 items) - Updated from Word document
         const wellbeingQuestions = [
             'Saya rasa optimistik mengenai masa depan',
             'Saya rasa berguna',
@@ -201,9 +201,9 @@
             'Saya rasa baik tentang diri saya',
             'Saya berasa yakin',
             'Saya dapat menikmati aktiviti harian saya',
-            'Saya boleh membuat keputusan tentang perkara',
+            'Saya boleh membuat keputusan terhadap sesuatu perkara',
             'Saya rasa disayangi',
-            'Saya berminat dengan perkara baru',
+            'Saya berminat dengan perkara baharu',
             'Saya rasa ceria'
         ];
 
@@ -1161,10 +1161,8 @@
                             <span>📥</span>
                             <span>Muat Turun Laporan</span>
                         </button>
-        function customPrint() {
-            // Just use the same PDF generation as generatePDF
-            generatePDF();
-        }
+                        <button
+                            onclick="window.print()"
                             class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition flex items-center justify-center space-x-2 shadow-md"
                         >
                             <span>🖨️</span>
