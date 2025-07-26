@@ -187,13 +187,32 @@
         function handlePersonalityChange(index, value) {
             state.responses.personality[index] = parseInt(value);
             saveState();
-            render();
+            // Don't re-render, just update the visual state
+            updateRadioButtonVisual('personality', index, value);
         }
 
         function handleWellbeingChange(index, value) {
             state.responses.wellbeing[index] = parseInt(value);
             saveState();
-            render();
+            // Don't re-render, just update the visual state
+            updateRadioButtonVisual('wellbeing', index, value);
+        }
+
+        function updateRadioButtonVisual(section, index, selectedValue) {
+            // Update the visual state of radio buttons without re-rendering
+            const buttons = document.querySelectorAll(`input[name="${section}-${index}"]`);
+            buttons.forEach(button => {
+                const container = button.nextElementSibling;
+                if (parseInt(button.value) === parseInt(selectedValue)) {
+                    if (section === 'personality') {
+                        container.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 bg-blue-500 text-white shadow-lg transform scale-110';
+                    } else {
+                        container.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 bg-green-500 text-white shadow-lg transform scale-110';
+                    }
+                } else {
+                    container.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 bg-gray-200 text-gray-600 hover:bg-gray-300';
+                }
+            });
         }
 
         function validateCurrentSection() {
