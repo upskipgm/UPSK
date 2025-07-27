@@ -717,7 +717,7 @@
             doc.text("PENTAFSIRAN SKOR", 105, 20, { align: "center" });
             
             // Personality Interpretation Table
-            let currentY = 35;
+            let currentY = 30;
             
             // Table headers
             doc.setFontSize(10);
@@ -754,7 +754,7 @@
             doc.setFont("helvetica", "bold");
             doc.text("AGREEABLENESS (Kesetujuan)", 25, currentY);
             doc.setFont("helvetica", "normal");
-            doc.text("Individu yang akan menunjukkan ciri-ciri boleh dipercayai,", 25, currentY + 5);
+            doc.text("Individu yang menunjukkan ciri-ciri boleh dipercayai,", 25, currentY + 5);
             doc.text("bertoleransi, baik, dan bersikap kasih sayang.", 25, currentY + 10);
             doc.setFont("helvetica", "bold");
             doc.text(personalityScores.agreeableness.toString(), 105, currentY + 5, { align: "center" });
@@ -782,8 +782,8 @@
             doc.setFont("helvetica", "bold");
             doc.text("NEUROTICISM (Neurotisisme)", 25, currentY);
             doc.setFont("helvetica", "normal");
-            doc.text("Individu yang mudah terjerumus dengan kesedihan, dan keletakstabilan", 25, currentY + 5);
-            doc.text("emosi.", 25, currentY + 10);
+            doc.text("Individu yang mudah terjerumus dengan kesedihan, dan", 25, currentY + 5);
+            doc.text("ketidakstabilan emosi.", 25, currentY + 10);
             doc.setFont("helvetica", "bold");
             doc.text(personalityScores.neuroticism.toString(), 105, currentY + 5, { align: "center" });
             doc.text(personalityScores.neuroticism >= 70 ? 'TINGGI' : personalityScores.neuroticism >= 30 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
@@ -836,7 +836,22 @@
             doc.text(wellbeingScore.total.toString() + '/70', 105, currentY + 5, { align: "center" });
             doc.text(wellbeingLevel, 150, currentY + 5, { align: "center" });
             
-            currentY += 30;
+            // Page 2 Footer
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(100, 100, 100);
+            doc.text("2025 © Unit Psikologi & Kaunseling, IPGM", 105, 280, { align: "center" });
+            
+            // PAGE 3 - GUIDELINES AND RECOMMENDATIONS
+            doc.addPage();
+            
+            // Page 3 Title
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text("PANDUAN INTERPRETASI & CADANGAN", 105, 20, { align: "center" });
+            
+            currentY = 35;
             
             // Interpretation Guidelines
             doc.setFontSize(12);
@@ -873,6 +888,81 @@
             currentY += 6;
             doc.text("• RENDAH (0-49%): Mungkin memerlukan perhatian dan sokongan", 30, currentY);
             
+            currentY += 25;
+            
+            // Detailed Personality Descriptions
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(37, 99, 235); // Blue
+            doc.text("MAKNA SETIAP KONSTRUK PERSONALITI:", 25, currentY);
+            
+            currentY += 15;
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            
+            // Extraversion detailed description
+            doc.setFont("helvetica", "bold");
+            doc.text("EXTRAVERSION (Ekstraverti):", 25, currentY);
+            doc.setFont("helvetica", "normal");
+            currentY += 6;
+            doc.text("- Suka berinteraksi dan berkomunikasi dengan orang lain", 30, currentY);
+            currentY += 5;
+            doc.text("- Bertenaga dalam situasi sosial", 30, currentY);
+            currentY += 5;
+            doc.text("- Berani mengambil risiko dan mencari pengalaman baru", 30, currentY);
+            
+            currentY += 12;
+            
+            // Agreeableness detailed description
+            doc.setFont("helvetica", "bold");
+            doc.text("AGREEABLENESS (Kesetujuan):", 25, currentY);
+            doc.setFont("helvetica", "normal");
+            currentY += 6;
+            doc.text("- Mudah bekerjasama dan membantu orang lain", 30, currentY);
+            currentY += 5;
+            doc.text("- Bersikap penyayang dan penuh empati", 30, currentY);
+            currentY += 5;
+            doc.text("- Mudah mempercayai dan memaafkan orang lain", 30, currentY);
+            
+            currentY += 12;
+            
+            // Conscientiousness detailed description
+            doc.setFont("helvetica", "bold");
+            doc.text("CONSCIENTIOUSNESS (Ketelitian):", 25, currentY);
+            doc.setFont("helvetica", "normal");
+            currentY += 6;
+            doc.text("- Teratur, berdisiplin dan bertanggungjawab", 30, currentY);
+            currentY += 5;
+            doc.text("- Bekerja dengan teliti dan berfokus pada matlamat", 30, currentY);
+            currentY += 5;
+            doc.text("- Boleh dipercayai dan konsisten dalam tindakan", 30, currentY);
+            
+            currentY += 12;
+            
+            // Neuroticism detailed description
+            doc.setFont("helvetica", "bold");
+            doc.text("NEUROTICISM (Neurotisisme):", 25, currentY);
+            doc.setFont("helvetica", "normal");
+            currentY += 6;
+            doc.text("- Kecenderungan mengalami emosi negatif", 30, currentY);
+            currentY += 5;
+            doc.text("- Mudah merasa cemas, tertekan atau marah", 30, currentY);
+            currentY += 5;
+            doc.text("- Kurang stabil dari segi emosi dalam situasi tekanan", 30, currentY);
+            
+            currentY += 12;
+            
+            // Openness detailed description
+            doc.setFont("helvetica", "bold");
+            doc.text("OPENNESS (Keterbukaan):", 25, currentY);
+            doc.setFont("helvetica", "normal");
+            currentY += 6;
+            doc.text("- Kreatif, imaginatif dan suka mencuba perkara baru", 30, currentY);
+            currentY += 5;
+            doc.text("- Terbuka kepada idea dan pengalaman baru", 30, currentY);
+            currentY += 5;
+            doc.text("- Menghargai seni, budaya dan intelektual", 30, currentY);
+            
             currentY += 20;
             
             // Recommendation section
@@ -895,11 +985,11 @@
             currentY += 15;
             doc.text("COP RASMI: ......................................................................", 25, currentY);
             
-            // Add footer with copyright
+            // Page 3 Footer
             doc.setFontSize(8);
             doc.setFont("helvetica", "normal");
             doc.setTextColor(100, 100, 100);
-            doc.text("2025 © Unit Psikologi & Kaunseling, IPGM", 105, 285, { align: "center" });
+            doc.text("2025 © Unit Psikologi & Kaunseling, IPGM", 105, 280, { align: "center" });
             
             // Save the PDF
             const fileName = `Keputusan_PKPW_${demographics.name ? demographics.name.replace(/\s+/g, '_') : 'IPG'}_${new Date().toISOString().split('T')[0]}.pdf`;
