@@ -134,10 +134,10 @@
             'Mempunyai kosa kata yang luas.',
             'Tidak banyak bercakap.',
             'Berminat berurusan dengan orang lain.',
-            'Meninggalkan barang-barang saya merata-rata.',
+            'Suka meninggalkan barang merata-rata.',
             'Tenang pada kebanyakan masa.',
             'Sukar memahami idea-idea abstrak.',
-            'Berasa selesa di sekeliling orang.',
+            'Berasa selesa dikelilingi orang ramai.',
             'Menghina orang lain.',
             'Memberikan tumpuan kepada sesuatu perkara secara terperinci.',
             'Bimbang tentang sesuatu perkara.',
@@ -151,7 +151,7 @@
             'Tidak berminat dengan masalah orang lain.',
             'Menyelesaikan tugas dengan segera.',
             'Mudah terganggu.',
-            'Mempunyai idea-idea yang cemerlang.',
+            'Mempunyai idea-idea yang bernas.',
             'Kurang bercakap.',
             'Berhati lembut.',
             'Sering lupa meletakkan barang kembali ke tempat asal.',
@@ -322,7 +322,7 @@
 
         // --- DATA SUBMISSION ---
         async function sendToGoogleSheets(data) {
-            const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwvRmvasIBftLSqzzJcCAqan2sBaeqRmdgG0_YSFYl__Ym8S3NeNo-RPLsOTrXjV0m7/exec';
+            const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwAz_Xo_Yl5wExfgnIjnZfXBs6boWpOyKiEk_zECAfkZEF-kOLWUtE6TcC9AXeOCabA0A/exec';
             try {
                 await fetch(GOOGLE_SHEETS_URL, {
                     method: 'POST',
@@ -708,7 +708,7 @@
                 },
                 Neuroticism: {
                     Tinggi: 'Cenderung untuk berasa cemas, risau, dan tidak stabil dari segi emosi.',
-                    Sederhana: 'Responsif terhadap emosi tetapi secara amnya stabil.',
+                    Sederhana: 'Responsif terhadap emosi tetapi secara amnya stabil dan terkawal.',
                     Rendah: 'Tenang, stabil dari segi emosi, dan berdaya tahan.'
                 },
                 Openness: {
