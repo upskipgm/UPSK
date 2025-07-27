@@ -427,6 +427,28 @@
             };
         }
 
+        // Google Sheets Integration
+        async function sendToGoogleSheets(data) {
+            const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbx8zxeOAY-qm0vRcZIIBO1kGbvzZRXTVqaMA6NDe5Pj-a_xO0rJCgHEEHPtqZL3aHUU1A/exec';
+            
+            try {
+                const response = await fetch(GOOGLE_SHEETS_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                console.log('✅ Data sent to Google Sheets successfully');
+                return true;
+            } catch (error) {
+                console.error('❌ Error sending data to Google Sheets:', error);
+                return false;
+            }
+        }
+
         function showResults() {
             const validation = validateCurrentSection();
             if (!validation.isValid) {
@@ -440,10 +462,50 @@
                 state.submittedEmails.add(email.toLowerCase());
             }
             
-            // Log data for database integration
+            // Calculate scores
             const personalityScores = calculatePersonalityScores();
             const wellbeingScore = calculateWellbeingScore();
             
+            // Prepare data for Google Sheets
+            const sheetData = {
+                timestamp: new Date().toISOString(),
+                nama: state.responses.demographics.name || '',
+                mykad: state.responses.demographics.ic || '',
+                email: state.responses.demographics.email || '',
+                jantina: state.responses.demographics.gender || '',
+                bangsa: state.responses.demographics.race || '',
+                agama: state.responses.demographics.religion || '',
+                telefon: state.responses.demographics.phone || '',
+                ipgKampus: state.responses.demographics.ipgKampus || '',
+                jawatan: state.responses.demographics.jawatan || '',
+                gred: state.responses.demographics.gred || '',
+                
+                // Personality Scores
+                extraversion: personalityScores.extraversion || 0,
+                agreeableness: personalityScores.agreeableness || 0,
+                conscientiousness: personalityScores.conscientiousness || 0,
+                neuroticism: personalityScores.neuroticism || 0,
+                openness: personalityScores.openness || 0,
+                
+                // Individual personality responses (P1-P44)
+                ...Object.fromEntries(
+                    Array.from({length: 44}, (_, i) => [`p${i+1}`, state.responses.personality[i] || 0])
+                ),
+                
+                // Wellbeing data
+                wellbeingTotal: wellbeingScore.total || 0,
+                wellbeingPercentage: wellbeingScore.percentage || 0,
+                
+                // Individual wellbeing responses (W1-W14)
+                ...Object.fromEntries(
+                    Array.from({length: 14}, (_, i) => [`w${i+1}`, state.responses.wellbeing[i] || 0])
+                )
+            };
+            
+            // Send to Google Sheets
+            sendToGoogleSheets(sheetData);
+            
+            // Console log for debugging (formatted as before)
             const formattedData = [
                 new Date().toISOString(),
                 state.responses.demographics.name || '',
@@ -471,6 +533,7 @@
             console.log('👤 Demographics:', state.responses.demographics);
             console.log('🧠 Personality Scores:', personalityScores);
             console.log('❤️ Wellbeing Score:', wellbeingScore);
+            console.log('📡 Sent to Google Sheets:', sheetData);
             
             state.showResults = true;
             render();
@@ -723,8 +786,8 @@
             doc.rect(20, currentY - 5, 170, 8, 'F');
             doc.setTextColor(255, 255, 255);
             doc.text("KONSTRUK PERSONALITI", 25, currentY);
-            doc.text("SKOR", 105, currentY, { align: "center" });
-            doc.text("TAHAP", 150, currentY, { align: "center" });
+            doc.text("SKOR", 120, currentY, { align: "center" });
+            doc.text("TAHAP", 165, currentY, { align: "center" });
             
             currentY += 15;
             
@@ -738,8 +801,8 @@
             doc.text("Individu yang mempunyai kecenderungan untuk bersosialisasi dan", 25, currentY + 5);
             doc.text("berhubung dengan orang lain.", 25, currentY + 10);
             doc.setFont("helvetica", "bold");
-            doc.text(personalityScores.extraversion.toString(), 105, currentY + 5, { align: "center" });
-            doc.text(personalityScores.extraversion >= 70 ? 'TINGGI' : personalityScores.extraversion >= 30 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
+            doc.text(personalityScores.extraversion.toString(), 120, currentY + 5, { align: "center" });
+            doc.text(personalityScores.extraversion >= 70 ? 'TINGGI' : personalityScores.extraversion >= 30 ? 'SEDERHANA' : 'RENDAH', 165, currentY + 5, { align: "center" });
             
             currentY += 25;
             
@@ -752,8 +815,8 @@
             doc.text("Individu yang menunjukkan ciri-ciri boleh dipercayai,", 25, currentY + 5);
             doc.text("bertoleransi, baik, dan bersikap kasih sayang.", 25, currentY + 10);
             doc.setFont("helvetica", "bold");
-            doc.text(personalityScores.agreeableness.toString(), 105, currentY + 5, { align: "center" });
-            doc.text(personalityScores.agreeableness >= 70 ? 'TINGGI' : personalityScores.agreeableness >= 30 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
+            doc.text(personalityScores.agreeableness.toString(), 120, currentY + 5, { align: "center" });
+            doc.text(personalityScores.agreeableness >= 70 ? 'TINGGI' : personalityScores.agreeableness >= 30 ? 'SEDERHANA' : 'RENDAH', 165, currentY + 5, { align: "center" });
             
             currentY += 25;
             
@@ -766,8 +829,8 @@
             doc.text("Individu yang mempunyai kecenderungan untuk berfokus teliti,", 25, currentY + 5);
             doc.text("bersungguh, bermatlamat dan berpegang teguh pada cita tinggi.", 25, currentY + 10);
             doc.setFont("helvetica", "bold");
-            doc.text(personalityScores.conscientiousness.toString(), 105, currentY + 5, { align: "center" });
-            doc.text(personalityScores.conscientiousness >= 70 ? 'TINGGI' : personalityScores.conscientiousness >= 30 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
+            doc.text(personalityScores.conscientiousness.toString(), 120, currentY + 5, { align: "center" });
+            doc.text(personalityScores.conscientiousness >= 70 ? 'TINGGI' : personalityScores.conscientiousness >= 30 ? 'SEDERHANA' : 'RENDAH', 165, currentY + 5, { align: "center" });
             
             currentY += 25;
             
@@ -780,8 +843,8 @@
             doc.text("Individu yang mudah terjerumus dengan kesedihan, dan", 25, currentY + 5);
             doc.text("ketidakstabilan emosi.", 25, currentY + 10);
             doc.setFont("helvetica", "bold");
-            doc.text(personalityScores.neuroticism.toString(), 105, currentY + 5, { align: "center" });
-            doc.text(personalityScores.neuroticism >= 70 ? 'TINGGI' : personalityScores.neuroticism >= 30 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
+            doc.text(personalityScores.neuroticism.toString(), 120, currentY + 5, { align: "center" });
+            doc.text(personalityScores.neuroticism >= 70 ? 'TINGGI' : personalityScores.neuroticism >= 30 ? 'SEDERHANA' : 'RENDAH', 165, currentY + 5, { align: "center" });
             
             currentY += 25;
             
@@ -794,8 +857,8 @@
             doc.text("Individu yang mempunyai kemahiran berinteraksi dengan budaya,", 25, currentY + 5);
             doc.text("orang, idea dan pengalaman yang pelbagai.", 25, currentY + 10);
             doc.setFont("helvetica", "bold");
-            doc.text(personalityScores.openness.toString(), 105, currentY + 5, { align: "center" });
-            doc.text(personalityScores.openness >= 70 ? 'TINGGI' : personalityScores.openness >= 30 ? 'SEDERHANA' : 'RENDAH', 150, currentY + 5, { align: "center" });
+            doc.text(personalityScores.openness.toString(), 120, currentY + 5, { align: "center" });
+            doc.text(personalityScores.openness >= 70 ? 'TINGGI' : personalityScores.openness >= 30 ? 'SEDERHANA' : 'RENDAH', 165, currentY + 5, { align: "center" });
             
             currentY += 35;
             
@@ -828,8 +891,8 @@
             doc.text("Skala yang mengukur kesejahteraan mental dan emosi individu", 25, currentY);
             doc.text("dalam kehidupan seharian.", 25, currentY + 5);
             doc.setFont("helvetica", "bold");
-            doc.text(wellbeingScore.total.toString() + '/70', 105, currentY + 5, { align: "center" });
-            doc.text(wellbeingLevel, 150, currentY + 5, { align: "center" });
+            doc.text(wellbeingScore.total.toString() + '/70', 120, currentY + 5, { align: "center" });
+            doc.text(wellbeingLevel, 165, currentY + 5, { align: "center" });
             
             // Page 2 Footer
             doc.setFontSize(8);
@@ -1345,7 +1408,7 @@
                             <span>Muat Turun Laporan</span>
                         </button>
                         <button
-                            onclick="window.print()"
+                            onclick="generatePDF()"
                             class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition flex items-center justify-center space-x-2 shadow-md"
                         >
                             <span>🖨️</span>
