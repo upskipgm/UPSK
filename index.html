@@ -6,10 +6,12 @@
     <title>Profil Kesejahteraan dan Personaliti Warga</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { 
-            font-family: 'Inter', sans-serif; 
+        body {
+            font-family: 'Inter', sans-serif;
         }
         .fade-in {
             animation: fadeIn 0.5s ease-in;
@@ -18,14 +20,29 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .progress-bar {
-            transition: width 0.3s ease;
+        .progress-bar-animated {
+            transition: width 0.5s ease-in-out;
+        }
+        /* Custom styles for radio buttons to avoid full re-renders */
+        .radio-container label {
+            transition: all 0.2s ease-in-out;
+        }
+        .radio-container input:checked + label {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .welcome-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .welcome-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
         }
         @media print {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
-            body { 
-                font-size: 12px; 
+            body {
+                font-size: 12px;
                 line-height: 1.3;
                 margin: 0;
                 padding: 10px;
@@ -35,11 +52,11 @@
             .space-y-8 > * + * { margin-top: 12px !important; }
             .space-y-4 > * + * { margin-top: 8px !important; }
             .grid { display: block !important; }
-            .lg\\:grid-cols-2 > * { 
+            .lg\\:grid-cols-2 > * {
                 margin-bottom: 12px !important;
                 page-break-inside: avoid;
             }
-            table { 
+            table {
                 font-size: 11px;
                 margin-bottom: 12px;
             }
@@ -60,13 +77,13 @@
                 margin-top: 6px !important;
             }
             * { page-break-inside: avoid; }
-            .grid.lg\\:grid-cols-2 { 
-                display: flex !important; 
-                flex-direction: row !important;
+            .grid.lg\\:grid-cols-2 {
+                 display: flex !important;
+                 flex-direction: row !important;
                 gap: 12px !important;
             }
-            .grid.lg\\:grid-cols-2 > div { 
-                flex: 1 !important;
+            .grid.lg\\:grid-cols-2 > div {
+                 flex: 1 !important;
                 max-width: 48% !important;
             }
         }
@@ -74,8 +91,8 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
-    <div id="app" class="max-w-4xl mx-auto p-6 bg-white min-h-screen fade-in">
-        <!-- Loading state -->
+    <div id="app" class="max-w-4xl mx-auto p-4 sm:p-6 bg-white min-h-screen">
+        <!-- App content will be rendered here -->
         <div class="text-center py-20">
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
             <p class="mt-4 text-gray-600">Memuatkan soal selidik...</p>
@@ -83,268 +100,173 @@
     </div>
 
     <script>
-        // State management - using in-memory storage instead of localStorage
+        // --- STATE MANAGEMENT ---
         let state = {
-            currentSection: 0,
+            currentSection: -1, // -1 for welcome page, 0 for demo, 1 for personality, 2 for wellbeing
             showResults: false,
             responses: {
                 demographics: {},
                 personality: {},
                 wellbeing: {}
             },
-            submittedEmails: new Set() // Track submitted emails
+            submittedEmails: new Set() // In-memory set to track submitted emails for the session
         };
 
-        // Demographics questions
+        // --- QUESTIONNAIRE DATA ---
         const demographicsQuestions = [
             { id: 'name', label: 'Nama Penuh', type: 'text', required: true },
-            { id: 'ic', label: 'No. MyKad (Tanpa sempang)', type: 'text', required: true, maxLength: 12, pattern: '[0-9]*' },
+            { id: 'ic', label: 'No. MyKad (Tanpa sempang)', type: 'tel', required: true, maxLength: 12, pattern: '[0-9]*' },
             { id: 'email', label: 'Alamat Email', type: 'email', required: true },
             { id: 'gender', label: 'Jantina', type: 'select', options: ['Lelaki', 'Perempuan'], required: true },
             { id: 'race', label: 'Bangsa', type: 'select', options: ['Melayu', 'Cina', 'India', 'Bumiputera Sabah/Sarawak', 'Lain-lain'], required: true },
             { id: 'religion', label: 'Agama', type: 'select', options: ['Islam', 'Buddha', 'Kristian', 'Hindu', 'Lain-lain'], required: true },
-            { id: 'phone', label: 'No. Telefon (Bimbit)', type: 'text', required: true },
-            { 
-                id: 'ipgKampus', 
-                label: 'IPGM/IPGK', 
-                type: 'select', 
-                options: [
-                    'Institut Pendidikan Guru Malaysia (IPGM)',
-                    'IPG Kampus Bahasa Melayu',
-                    'IPG Kampus Bahasa Antarabangsa',
-                    'IPG Kampus Ilmu Khas',
-                    'IPG Kampus Pendidikan Islam',
-                    'IPG Kampus Pendidikan Teknik',
-                    'IPG Kampus Raja Melewar',
-                    'IPG Kampus Tun Hussein Onn',
-                    'IPG Kampus Temenggong Ibrahim',
-                    'IPG Kampus Perempuan Melayu Melaka',
-                    'IPG Kampus Ipoh',
-                    'IPG Kampus Pulau Pinang',
-                    'IPG Kampus Tuanku Bainun',
-                    'IPG Kampus Perlis',
-                    'IPG Kampus Darul Aman',
-                    'IPG Kampus Sultan Abdul Halim',
-                    'IPG Kampus Tengku Ampuan Afzan',
-                    'IPG Kampus Dato\' Razali Ismail',
-                    'IPG Kampus Sultan Mizan',
-                    'IPG Kampus Kota Bharu',
-                    'IPG Kampus Kent',
-                    'IPG Kampus Gaya',
-                    'IPG Kampus Keningau',
-                    'IPG Kampus Tawau',
-                    'IPG Kampus Batu Lintang',
-                    'IPG Kampus Sarawak',
-                    'IPG Kampus Rajang',
-                    'IPG Kampus Tun Abdul Razak',
-                    'English Language Teaching Centre (ELTC)'
-                ], 
-                required: true 
-            },
-            { 
-                id: 'jawatan', 
-                label: 'Jawatan', 
-                type: 'select', 
-                options: [
-                    'REKTOR',
-                    'TIMBALAN REKTOR KANAN',
-                    'TIMBALAN REKTOR',
-                    'KETUA PENOLONG PENGARAH',
-                    'PENOLONG PENGARAH',
-                    'PENGARAH',
-                    'TIMBALAN PENGARAH',
-                    'PENSYARAH',
-                    'KAUNSELOR',
-                    'PEGAWAI PENGURUSAN',
-                    'PEGAWAI GUNASAMA',
-                    'ANGGOTA KHIDMAT PENGURUSAN (AKP)'
-                ], 
-                required: true 
-            },
-            { 
-                id: 'gred', 
-                label: 'Gred', 
-                type: 'select', 
-                options: [
-                    'JUSA B',
-                    'JUSA C',
-                    'DG14',
-                    'DG13',
-                    'DG12',
-                    'DG10',
-                    'DG9',
-                    'F10',
-                    'F9',
-                    'S10',
-                    'S9',
-                    'N2',
-                    'N1'
-                ], 
-                required: true 
-            }
+            { id: 'phone', label: 'No. Telefon (Bimbit)', type: 'tel', required: true },
+            { id: 'ipgKampus', label: 'IPGM/IPGK', type: 'select', options: ['Institut Pendidikan Guru Malaysia (IPGM)', 'IPG Kampus Bahasa Melayu', 'IPG Kampus Bahasa Antarabangsa', 'IPG Kampus Ilmu Khas', 'IPG Kampus Pendidikan Islam', 'IPG Kampus Pendidikan Teknik', 'IPG Kampus Raja Melewar', 'IPG Kampus Tun Hussein Onn', 'IPG Kampus Temenggong Ibrahim', 'IPG Kampus Perempuan Melayu Melaka', 'IPG Kampus Ipoh', 'IPG Kampus Pulau Pinang', 'IPG Kampus Tuanku Bainun', 'IPG Kampus Perlis', 'IPG Kampus Darul Aman', 'IPG Kampus Sultan Abdul Halim', 'IPG Kampus Tengku Ampuan Afzan', 'IPG Kampus Dato\' Razali Ismail', 'IPG Kampus Sultan Mizan', 'IPG Kampus Kota Bharu', 'IPG Kampus Kent', 'IPG Kampus Gaya', 'IPG Kampus Keningau', 'IPG Kampus Tawau', 'IPG Kampus Batu Lintang', 'IPG Kampus Sarawak', 'IPG Kampus Rajang', 'IPG Kampus Tun Abdul Razak', 'English Language Teaching Centre (ELTC)'], required: true },
+            { id: 'jawatan', label: 'Jawatan', type: 'select', options: ['REKTOR', 'TIMBALAN REKTOR KANAN', 'TIMBALAN REKTOR', 'KETUA PENOLONG PENGARAH', 'PENOLONG PENGARAH', 'PENGARAH', 'TIMBALAN PENGARAH', 'PENSYARAH', 'KAUNSELOR', 'PEGAWAI PENGURUSAN', 'PEGAWAI GUNASAMA', 'ANGGOTA KHIDMAT PENGURUSAN (AKP)'], required: true },
+            { id: 'gred', label: 'Gred', type: 'select', options: ['JUSA B', 'JUSA C', 'DG14', 'DG13', 'DG12', 'DG10', 'DG9', 'F10', 'F9', 'S10', 'S9', 'N2', 'N1'], required: true }
         ];
 
-        // Personality questions (44 items) - Updated from Word document
         const personalityQuestions = [
-            'Saya melihat diri saya sebagai seorang yang bersikap terbuka',
-            'Saya melihat diri saya sebagai seorang yang pemalu',
-            'Saya melihat diri saya sebagai seorang yang penuh bertenaga',
-            'Saya melihat diri saya sebagai seorang yang suka bersendirian',
-            'Saya melihat diri saya sebagai seorang yang bercakap banyak',
-            'Saya melihat diri saya sebagai seorang yang pendiam',
-            'Saya melihat diri saya sebagai seorang yang berani',
-            'Saya melihat diri saya sebagai seorang yang suka berkumpul',
-            'Saya melihat diri saya sebagai seorang yang tidak mementingkan diri sendiri',
-            'Saya melihat diri saya sebagai seorang yang suka mencari kesalahan orang lain',
-            'Saya melihat diri saya sebagai seorang yang suka bergaduh',
-            'Saya melihat diri saya sebagai seorang yang memaafkan',
-            'Saya melihat diri saya sebagai seorang yang percaya kepada orang lain',
-            'Saya melihat diri saya sebagai seorang yang boleh menjadi dingin (tidak peduli)',
-            'Saya melihat diri saya sebagai seorang yang berhati mulia',
-            'Saya melihat diri saya sebagai seorang yang baik kepada orang lain',
-            'Saya melihat diri saya sebagai seorang yang suka bekerjasama',
-            'Saya melihat diri saya sebagai seorang yang melakukan kerja dengan teliti',
-            'Saya melihat diri saya sebagai seorang yang agak cuai',
-            'Saya melihat diri saya sebagai seorang yang boleh dipercayai',
-            'Saya melihat diri saya sebagai seorang yang tidak teratur',
-            'Saya melihat diri saya sebagai seorang yang berdisiplin diri',
-            'Saya melihat diri saya sebagai seorang yang suka menangguh kerja',
-            'Saya melihat diri saya sebagai seorang yang bekerja dengan cekap',
-            'Saya melihat diri saya sebagai seorang yang merancang dan mengikutinya',
-            'Saya melihat diri saya sebagai seorang yang mudah teralih perhatian',
-            'Saya melihat diri saya sebagai seorang yang dapat menangani tekanan',
-            'Saya melihat diri saya sebagai seorang yang mudah tertekan',
-            'Saya melihat diri saya sebagai seorang yang tidak mudah kecewa',
-            'Saya melihat diri saya sebagai seorang yang murung',
-            'Saya melihat diri saya sebagai seorang yang mudah risau',
-            'Saya melihat diri saya sebagai seorang yang kadang-kadang berasa tertekan',
-            'Saya melihat diri saya sebagai seorang yang mudah marah',
-            'Saya melihat diri saya sebagai seorang yang emosi stabil',
-            'Saya melihat diri saya sebagai seorang yang inventif (berdaya cipta)',
-            'Saya melihat diri saya sebagai seorang yang suka mencuba perkara baharu',
-            'Saya melihat diri saya sebagai seorang yang mempunyai imaginasi aktif',
-            'Saya melihat diri saya sebagai seorang yang suka bermain dengan idea',
-            'Saya melihat diri saya sebagai seorang yang artistik',
-            'Saya melihat diri saya sebagai seorang yang suka kerja rutin',
-            'Saya melihat diri saya sebagai seorang yang menghargai pengalaman artistik',
-            'Saya melihat diri saya sebagai seorang yang konvensional, tradisional',
-            'Saya melihat diri saya sebagai seorang yang kreatif',
-            'Saya melihat diri saya sebagai seorang yang ingin tahu tentang banyak perkara'
+            'Saya yang menceriakan suasana majlis.',
+            'Kurang mengambil berat tentang orang lain.',
+            'Sentiasa bersedia.',
+            'Mudah berasa tertekan.',
+            'Mempunyai kosa kata yang luas.',
+            'Tidak banyak bercakap.',
+            'Berminat berurusan dengan orang lain.',
+            'Meninggalkan barang-barang saya merata-rata.',
+            'Tenang pada kebanyakan masa.',
+            'Sukar memahami idea-idea abstrak.',
+            'Berasa selesa di sekeliling orang.',
+            'Menghina orang lain.',
+            'Memberikan tumpuan kepada sesuatu perkara secara terperinci.',
+            'Bimbang tentang sesuatu perkara.',
+            'Mempunyai imaginasi yang jelas.',
+            'Suka laksanakan tugas di belakang tabir.',
+            'Simpati dengan perasaan orang lain.',
+            'Membuat keadaan menjadi kucar-kacir.',
+            'Jarang berasa sedih.',
+            'Tidak berminat dengan idea-idea abstrak.',
+            'Memulakan perbualan dengan orang lain.',
+            'Tidak berminat dengan masalah orang lain.',
+            'Menyelesaikan tugas dengan segera.',
+            'Mudah terganggu.',
+            'Mempunyai idea-idea yang cemerlang.',
+            'Kurang bercakap.',
+            'Berhati lembut.',
+            'Sering lupa meletakkan barang kembali ke tempat asal.',
+            'Mudah berasa kecewa.',
+            'Tidak mempunyai imaginasi yang baik.',
+            'Berbual dengan ramai orang di majlis keramaian.',
+            'Tidak berminat berurusan dengan orang lain.',
+            'Suka kepada keteraturan.',
+            'Hati saya kerap berubah-ubah.',
+            'Cepat memahami sesuatu perkara.',
+            'Tidak suka memberi perhatian kepada diri sendiri.',
+            'Meluangkan masa untuk orang lain.',
+            'Mengelak daripada tanggungjawab.',
+            'Kerap mengalami perubahan emosi.',
+            'Menggunakan perkataan yang sukar.',
+            'Tidak kisah menjadi perhatian orang lain.',
+            'Memahami perasaan orang lain.',
+            'Mengikut jadual.',
+            'Mudah rasa terganggu.',
+            'Meluangkan masa merenung sesuatu perkara.',
+            'Diam apabila bersama orang yang tidak dikenali.',
+            'Membuat orang lain berasa selesa.',
+            'Teliti dalam kerja saya.',
+            'Sering berasa sedih.',
+            'Penuh dengan idea.'
         ];
+        
+        const wellbeingQuestions = ['Saya rasa optimistik mengenai masa depan', 'Saya rasa berguna', 'Saya rasa tenang', 'Saya menangani masalah dengan baik', 'Saya berfikir dengan jelas', 'Saya rasa dekat dengan orang lain', 'Saya boleh membuat keputusan sendiri', 'Saya rasa baik tentang diri saya', 'Saya berasa yakin', 'Saya dapat menikmati aktiviti harian saya', 'Saya boleh membuat keputusan terhadap sesuatu perkara', 'Saya rasa disayangi', 'Saya berminat dengan perkara baharu', 'Saya rasa ceria'];
 
-        // Wellbeing questions (14 items) - Updated from Word document
-        const wellbeingQuestions = [
-            'Saya rasa optimistik mengenai masa depan',
-            'Saya rasa berguna',
-            'Saya rasa tenang',
-            'Saya menangani masalah dengan baik',
-            'Saya berfikir dengan jelas',
-            'Saya rasa dekat dengan orang lain',
-            'Saya boleh membuat keputusan sendiri',
-            'Saya rasa baik tentang diri saya',
-            'Saya berasa yakin',
-            'Saya dapat menikmati aktiviti harian saya',
-            'Saya boleh membuat keputusan terhadap sesuatu perkara',
-            'Saya rasa disayangi',
-            'Saya berminat dengan perkara baharu',
-            'Saya rasa ceria'
-        ];
+        // --- EVENT HANDLERS & STATE UPDATERS ---
+        function startSurvey() {
+            state.currentSection = 0;
+            render();
+            window.scrollTo(0, 0);
+        }
 
-        // Event handlers
         function handleDemographicChange(id, value) {
-            if (id === 'ic') {
-                const digitsOnly = value.replace(/\D/g, '');
-                const limitedDigits = digitsOnly.slice(0, 12);
-                state.responses.demographics[id] = limitedDigits;
+            const inputElement = document.getElementById(id);
+            if (id === 'ic' || id === 'phone') {
+                let digitsOnly = value.replace(/\D/g, '');
+                
+                if (id === 'ic') {
+                    digitsOnly = digitsOnly.slice(0, 12);
+                    updateICCounter(digitsOnly);
+                }
+                
+                state.responses.demographics[id] = digitsOnly;
+                
+                // Directly update the input field's value to enforce numeric-only input
+                if (inputElement) {
+                    inputElement.value = digitsOnly;
+                }
+
             } else {
                 state.responses.demographics[id] = value;
             }
-            // Only update specific elements instead of full re-render for text inputs
-            if (id === 'ic') {
-                updateICCounter();
-            }
         }
 
-        function updateICCounter() {
+        function updateICCounter(icValue) {
             const counterElement = document.getElementById('ic-counter');
-            if (counterElement && state.responses.demographics.ic) {
-                const length = state.responses.demographics.ic.length;
-                counterElement.innerHTML = `<span class="${length === 12 ? 'text-green-600' : 'text-red-500'}">(${length}/12)</span>`;
+            if (counterElement) {
+                const length = icValue.length;
+                counterElement.innerHTML = `<span class="${length === 12 ? 'text-green-600' : 'text-red-500'} font-medium">(${length}/12)</span>`;
             }
         }
 
         function handlePersonalityChange(index, value) {
             state.responses.personality[index] = parseInt(value);
-            // Don't re-render, just update the visual state
             updateRadioButtonVisual('personality', index, value);
         }
 
         function handleWellbeingChange(index, value) {
             state.responses.wellbeing[index] = parseInt(value);
-            // Don't re-render, just update the visual state
             updateRadioButtonVisual('wellbeing', index, value);
         }
 
         function updateRadioButtonVisual(section, index, selectedValue) {
-            // Update the visual state of radio buttons without re-rendering
             const buttons = document.querySelectorAll(`input[name="${section}-${index}"]`);
             buttons.forEach(button => {
-                const container = button.nextElementSibling;
+                const label = button.nextElementSibling;
+                const baseClass = 'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 cursor-pointer';
+                let specificClass = 'bg-gray-200 text-gray-600 hover:bg-gray-300'; // Default
                 if (parseInt(button.value) === parseInt(selectedValue)) {
                     if (section === 'personality') {
-                        container.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 bg-blue-500 text-white shadow-lg transform scale-110';
+                        specificClass = 'bg-blue-500 text-white shadow-lg transform scale-110';
                     } else {
-                        container.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 bg-green-500 text-white shadow-lg transform scale-110';
+                        specificClass = 'bg-green-500 text-white shadow-lg transform scale-110';
                     }
-                } else {
-                    container.className = 'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 bg-gray-200 text-gray-600 hover:bg-gray-300';
                 }
+                label.className = `${baseClass} ${specificClass}`;
             });
         }
 
         function validateCurrentSection() {
             if (state.currentSection === 0) {
-                const requiredFields = ['name', 'ic', 'email', 'gender', 'race', 'religion', 'phone', 'ipgKampus', 'jawatan', 'gred'];
-                for (let field of requiredFields) {
-                    const value = state.responses.demographics[field];
-                    if (!value || value.toString().trim() === '') {
-                        const fieldNames = {
-                            name: 'Nama Penuh',
-                            ic: 'No. MyKad',
-                            email: 'Alamat Email',
-                            gender: 'Jantina',
-                            race: 'Bangsa',
-                            religion: 'Agama',
-                            phone: 'No. Telefon',
-                            ipgKampus: 'IPGM/IPGK',
-                            jawatan: 'Jawatan',
-                            gred: 'Gred'
-                        };
-                        return { isValid: false, message: `Sila lengkapkan maklumat ${fieldNames[field]}.` };
+                for (const field of demographicsQuestions) {
+                    if (field.required && !state.responses.demographics[field.id]) {
+                        return { isValid: false, message: `Sila lengkapkan maklumat: ${field.label}.` };
                     }
                 }
-                
                 const icNumber = state.responses.demographics.ic || '';
                 if (icNumber.length !== 12) {
-                    return { isValid: false, message: `No. MyKad mesti mengandungi tepat 12 digit nombor (semasa: ${icNumber.length} digit).` };
+                    return { isValid: false, message: `No. MyKad mesti mengandungi tepat 12 digit nombor.` };
                 }
-
-                // Check email uniqueness
                 const email = state.responses.demographics.email;
                 if (email && state.submittedEmails.has(email.toLowerCase())) {
-                    return { isValid: false, message: 'Email ini telah digunakan untuk mengisi borang. Setiap email hanya boleh digunakan sekali sahaja.' };
+                    return { isValid: false, message: 'Email ini telah digunakan. Setiap email hanya boleh digunakan sekali sahaja.' };
                 }
             } else if (state.currentSection === 1) {
-                for (let i = 0; i < personalityQuestions.length; i++) {
-                    if (!state.responses.personality[i]) {
-                        return { isValid: false, message: `Sila jawab semua soalan dalam Bahagian B. Soalan ${i + 1} belum dijawab.` };
-                    }
+                if (Object.keys(state.responses.personality).length < personalityQuestions.length) {
+                    return { isValid: false, message: 'Sila jawab semua soalan dalam Bahagian B.' };
                 }
             } else if (state.currentSection === 2) {
-                for (let i = 0; i < wellbeingQuestions.length; i++) {
-                    if (!state.responses.wellbeing[i]) {
-                        return { isValid: false, message: `Sila jawab semua soalan dalam Bahagian C. Soalan ${i + 1} belum dijawab.` };
-                    }
+                if (Object.keys(state.responses.wellbeing).length < wellbeingQuestions.length) {
+                    return { isValid: false, message: 'Sila jawab semua soalan dalam Bahagian C.' };
                 }
             }
             return { isValid: true };
@@ -353,122 +275,95 @@
         function handleNextSection() {
             const validation = validateCurrentSection();
             if (!validation.isValid) {
-                alert(validation.message);
+                showModal(validation.message);
                 return;
             }
             state.currentSection++;
             render();
+            window.scrollTo(0, 0);
         }
 
         function handlePrevSection() {
             state.currentSection = Math.max(0, state.currentSection - 1);
             render();
+            window.scrollTo(0, 0);
         }
 
+        // --- SCORE CALCULATIONS ---
         function calculatePersonalityScores() {
-            const { personality } = state.responses;
-            
-            // Big 5 scoring with proper reverse scoring for BFI-44
-            const extraversionItems = [0, 5, 10, 15, 20, 25, 30, 35];
-            const extraversionReverse = [5, 15, 25, 35];
-            let extraversion = 0;
-            extraversionItems.forEach(i => {
-                const score = personality[i] || 3;
-                extraversion += extraversionReverse.includes(i) ? (6 - score) : score;
-            });
+            const r = state.responses.personality;
+            const p = (index) => r[index - 1] || 3; // Adjust to 0-based index and default to 3
+            const R = (index) => 6 - p(index); // Helper for reverse scoring
 
-            const agreeablenessItems = [1, 6, 11, 16, 21, 26, 31, 36, 41];
-            const agreeablenessReverse = [6, 11, 26, 36];
-            let agreeableness = 0;
-            agreeablenessItems.forEach(i => {
-                const score = personality[i] || 3;
-                agreeableness += agreeablenessReverse.includes(i) ? (6 - score) : score;
-            });
+            const scores = {
+                extraversion: 20 + p(1) - p(6) + p(11) - p(16) + p(21) - p(26) + p(31) - p(36) + p(41) - p(46),
+                agreeableness: 14 - p(2) + p(7) - p(12) + p(17) - p(22) + p(27) - p(32) + p(37) + p(42) + p(47),
+                conscientiousness: 14 + p(3) - p(8) + p(13) - p(18) + p(23) - p(28) + p(33) - p(38) + p(43) + p(48),
+                neuroticism: 38 - p(4) + p(9) - p(14) + p(19) - p(24) - p(29) - p(34) - p(39) - p(44) - p(49),
+                openness: 8 + p(5) - p(10) + p(15) - p(20) + p(25) - p(30) + p(35) + p(40) + p(45) + p(50)
+            };
 
-            const conscientiousnessItems = [2, 7, 12, 17, 22, 27, 32, 37, 42];
-            const conscientiousnessReverse = [7, 17, 22, 42];
-            let conscientiousness = 0;
-            conscientiousnessItems.forEach(i => {
-                const score = personality[i] || 3;
-                conscientiousness += conscientiousnessReverse.includes(i) ? (6 - score) : score;
-            });
-
-            const neuroticismItems = [3, 8, 13, 18, 23, 28, 33, 38];
-            const neuroticismReverse = [3, 23, 28, 33];
-            let neuroticism = 0;
-            neuroticismItems.forEach(i => {
-                const score = personality[i] || 3;
-                neuroticism += neuroticismReverse.includes(i) ? (6 - score) : score;
-            });
-
-            const opennessItems = [4, 9, 14, 19, 24, 29, 34, 39, 40, 43];
-            const opennessReverse = [9, 24, 34, 39];
-            let openness = 0;
-            opennessItems.forEach(i => {
-                const score = personality[i] || 3;
-                openness += opennessReverse.includes(i) ? (6 - score) : score;
-            });
-
+            // Normalize 0-40 score to 0-100 for chart display
             return {
-                extraversion: Math.round((extraversion / (8 * 5)) * 100),
-                agreeableness: Math.round((agreeableness / (9 * 5)) * 100),
-                conscientiousness: Math.round((conscientiousness / (9 * 5)) * 100),
-                neuroticism: Math.round((neuroticism / (8 * 5)) * 100),
-                openness: Math.round((openness / (10 * 5)) * 100)
+                extraversion: Math.max(0, Math.min(100, Math.round((scores.extraversion / 40) * 100))),
+                agreeableness: Math.max(0, Math.min(100, Math.round((scores.agreeableness / 40) * 100))),
+                conscientiousness: Math.max(0, Math.min(100, Math.round((scores.conscientiousness / 40) * 100))),
+                neuroticism: Math.max(0, Math.min(100, Math.round((scores.neuroticism / 40) * 100))),
+                openness: Math.max(0, Math.min(100, Math.round((scores.openness / 40) * 100)))
             };
         }
 
         function calculateWellbeingScore() {
-            const { wellbeing } = state.responses;
-            const totalScore = Object.values(wellbeing).reduce((sum, score) => sum + (score || 1), 0);
+            const totalScore = Object.values(state.responses.wellbeing).reduce((sum, score) => sum + (score || 0), 0);
             return {
                 total: totalScore,
-                percentage: Math.round((totalScore / 70) * 100)
+                percentage: Math.round(((totalScore - 14) / (70 - 14)) * 100) // WEMWBS formula
             };
         }
 
-        // Google Sheets Integration
+        // --- DATA SUBMISSION ---
         async function sendToGoogleSheets(data) {
-            const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbx8zxeOAY-qm0vRcZIIBO1kGbvzZRXTVqaMA6NDe5Pj-a_xO0rJCgHEEHPtqZL3aHUU1A/exec';
-            
+            const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwvRmvasIBftLSqzzJcCAqan2sBaeqRmdgG0_YSFYl__Ym8S3NeNo-RPLsOTrXjV0m7/exec';
             try {
-                const response = await fetch(GOOGLE_SHEETS_URL, {
+                await fetch(GOOGLE_SHEETS_URL, {
                     method: 'POST',
                     mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                
-                console.log('✅ Data sent to Google Sheets successfully');
+                console.log('✅ Data submission attempted. Check Google Sheets for result.');
                 return true;
             } catch (error) {
                 console.error('❌ Error sending data to Google Sheets:', error);
+                showModal("Maaf, terdapat ralat semasa menghantar data anda. Sila cuba lagi.");
                 return false;
             }
         }
-
+        
         function showResults() {
             const validation = validateCurrentSection();
             if (!validation.isValid) {
-                alert(validation.message);
+                showModal(validation.message);
                 return;
             }
             
-            // Add email to submitted list
             const email = state.responses.demographics.email;
             if (email) {
                 state.submittedEmails.add(email.toLowerCase());
             }
-            
-            // Calculate scores
+
             const personalityScores = calculatePersonalityScores();
             const wellbeingScore = calculateWellbeingScore();
-            
-            // Prepare data for Google Sheets
+
+            const getTahap = (score) => {
+                if (score >= 67) return 'Tinggi';
+                if (score >= 34) return 'Sederhana';
+                return 'Rendah';
+            };
+            const tahapKesejahteraan = wellbeingScore.total >= 45 ? "Tinggi" : wellbeingScore.total >= 25 ? "Sederhana" : "Rendah";
+
             const sheetData = {
-                timestamp: new Date().toISOString(),
+                timestamp: new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kuala_Lumpur' }),
                 nama: state.responses.demographics.name || '',
                 mykad: state.responses.demographics.ic || '',
                 email: state.responses.demographics.email || '',
@@ -480,1159 +375,572 @@
                 jawatan: state.responses.demographics.jawatan || '',
                 gred: state.responses.demographics.gred || '',
                 
-                // Personality Scores
-                extraversion: personalityScores.extraversion || 0,
-                agreeableness: personalityScores.agreeableness || 0,
-                conscientiousness: personalityScores.conscientiousness || 0,
-                neuroticism: personalityScores.neuroticism || 0,
-                openness: personalityScores.openness || 0,
+                extraversion: personalityScores.extraversion,
+                tahap_extraversion: getTahap(personalityScores.extraversion),
+                agreeableness: personalityScores.agreeableness,
+                tahap_agreeableness: getTahap(personalityScores.agreeableness),
+                conscientiousness: personalityScores.conscientiousness,
+                tahap_conscientiousness: getTahap(personalityScores.conscientiousness),
+                neuroticism: personalityScores.neuroticism,
+                tahap_neuroticism: getTahap(personalityScores.neuroticism),
+                openness: personalityScores.openness,
+                tahap_openness: getTahap(personalityScores.openness),
+
+                ...Object.fromEntries(Array.from({length: 50}, (_, i) => [`p${i+1}`, state.responses.personality[i] || 0])),
                 
-                // Individual personality responses (P1-P44)
-                ...Object.fromEntries(
-                    Array.from({length: 44}, (_, i) => [`p${i+1}`, state.responses.personality[i] || 0])
-                ),
-                
-                // Wellbeing data
-                wellbeingTotal: wellbeingScore.total || 0,
-                wellbeingPercentage: wellbeingScore.percentage || 0,
-                
-                // Individual wellbeing responses (W1-W14)
-                ...Object.fromEntries(
-                    Array.from({length: 14}, (_, i) => [`w${i+1}`, state.responses.wellbeing[i] || 0])
-                )
+                wellbeingTotal: wellbeingScore.total,
+                wellbeingPercentage: wellbeingScore.percentage,
+                tahap_kesejahteraan: tahapKesejahteraan,
+
+                ...Object.fromEntries(Array.from({length: 14}, (_, i) => [`w${i+1}`, state.responses.wellbeing[i] || 0]))
             };
-            
-            // Send to Google Sheets
+
             sendToGoogleSheets(sheetData);
-            
-            // Console log for debugging (formatted as before)
-            const formattedData = [
-                new Date().toISOString(),
-                state.responses.demographics.name || '',
-                state.responses.demographics.ic || '',
-                state.responses.demographics.email || '',
-                state.responses.demographics.gender || '',
-                state.responses.demographics.race || '',
-                state.responses.demographics.religion || '',
-                state.responses.demographics.phone || '',
-                state.responses.demographics.ipgKampus || '',
-                state.responses.demographics.jawatan || '',
-                state.responses.demographics.gred || '',
-                personalityScores.extraversion || 0,
-                personalityScores.agreeableness || 0,
-                personalityScores.conscientiousness || 0,
-                personalityScores.neuroticism || 0,
-                personalityScores.openness || 0,
-                ...Array.from({length: 44}, (_, i) => state.responses.personality[i] || 0),
-                wellbeingScore.total || 0,
-                wellbeingScore.percentage || 0,
-                ...Array.from({length: 14}, (_, i) => state.responses.wellbeing[i] || 0)
-            ];
-            
-            console.log('📊 DATA FOR DATABASE:', formattedData);
-            console.log('👤 Demographics:', state.responses.demographics);
-            console.log('🧠 Personality Scores:', personalityScores);
-            console.log('❤️ Wellbeing Score:', wellbeingScore);
-            console.log('📡 Sent to Google Sheets:', sheetData);
             
             state.showResults = true;
             render();
+            window.scrollTo(0, 0);
         }
 
-        function generatePDF() {
-            const personalityScores = calculatePersonalityScores();
-            const wellbeingScore = calculateWellbeingScore();
+        // --- PDF GENERATION ---
+        async function generatePDF() {
+            const pdfButton = document.getElementById('pdf-button');
+            pdfButton.disabled = true;
+            pdfButton.innerHTML = `<div class="flex items-center justify-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Menjana PDF...</div>`;
+
             const { demographics } = state.responses;
-
-            // Initialize jsPDF
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
+            const doc = new jsPDF('p', 'pt', 'a4');
+            
+            const chartCanvas = document.getElementById('personalityChart');
+            const chartImage = await html2canvas(chartCanvas, { backgroundColor: null, scale: 3 });
+            const chartImageData = chartImage.toDataURL('image/png');
 
-            // Set font
-            doc.setFont("helvetica");
-            
-            // Title
-            doc.setFontSize(16);
-            doc.setFont("helvetica", "bold");
-            doc.text("PROFIL KESEJAHTERAAN DAN PERSONALITI WARGA", 105, 20, { align: "center" });
-            
-            // Institution
-            doc.setFontSize(10);
+            // --- PDF CONTENT ---
             doc.setFont("helvetica", "normal");
-            doc.text("Institut Pendidikan Guru Malaysia", 105, 28, { align: "center" });
-            doc.text("Unit Psikologi dan Kaunseling", 105, 35, { align: "center" });
-            
-            // Add warning notice about one submission per email
-            doc.setFontSize(8);
-            doc.setFont("helvetica", "italic");
-            doc.setTextColor(255, 0, 0); // Red
-            doc.text("PENTING: Setiap alamat email hanya dibenarkan satu kali pengisian sahaja", 105, 50, { align: "center" });
-            doc.setTextColor(0, 0, 0); // Reset to black
-            
-            // Demographics Section - Table format
-            doc.setFontSize(12);
+
+            // Header
+            doc.setFontSize(18);
             doc.setFont("helvetica", "bold");
-            doc.text("MAKLUMAT DIRI", 20, 50);
-            
-            // Table setup
-            const tableStartY = 60;
-            const rowHeight = 10;
-            const col1X = 20;
-            const col2X = 110;
-            const tableWidth = 170;
-            
-            // Table data - including date and new fields
-            const tableData = [
-                ['Nama:', demographics.name || 'Tidak dinyatakan', 'No. MyKad:', demographics.ic || 'Tidak dinyatakan'],
-                ['Email:', demographics.email || 'Tidak dinyatakan', 'Jantina:', demographics.gender || 'Tidak dinyatakan'],
-                ['Bangsa:', demographics.race || 'Tidak dinyatakan', 'Agama:', demographics.religion || 'Tidak dinyatakan'],
-                ['No. Telefon:', demographics.phone || 'Tidak dinyatakan', 'Jawatan:', demographics.jawatan || 'Tidak dinyatakan'],
-                ['Gred:', demographics.gred || 'Tidak dinyatakan', 'Tarikh:', new Date().toLocaleDateString('ms-MY')]
+            doc.text("PROFIL KESEJAHTERAAN DAN PERSONALITI", doc.internal.pageSize.getWidth() / 2, 40, { align: "center" });
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.text("Institut Pendidikan Guru Malaysia (IPGM)", doc.internal.pageSize.getWidth() / 2, 60, { align: "center" });
+
+            // Demographics
+            let yPos = 90;
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            doc.text("MAKLUMAT DIRI", 40, yPos);
+            doc.setLineWidth(0.5);
+            doc.line(40, yPos + 3, 555, yPos + 3);
+            yPos += 18;
+
+            doc.setFontSize(9);
+            const demoData = [
+                { label: 'Nama', value: demographics.name }, { label: 'No. MyKad', value: demographics.ic },
+                { label: 'Email', value: demographics.email }, { label: 'Jantina', value: demographics.gender },
+                { label: 'Bangsa', value: demographics.race }, { label: 'Agama', value: demographics.religion },
+                { label: 'No. Telefon', value: demographics.phone }, { label: 'Jawatan', value: demographics.jawatan },
+                { label: 'Gred', value: demographics.gred }, { label: 'Tarikh', value: new Date().toLocaleDateString('ms-MY') }
             ];
             
-            doc.setFontSize(10);
-            
-            // Draw table border
-            doc.setDrawColor(100, 100, 100);
-            doc.setLineWidth(0.5);
-            doc.rect(col1X, tableStartY - 5, tableWidth, (tableData.length + 1) * rowHeight);
-            
-            // Draw table rows
-            tableData.forEach((row, index) => {
-                const currentY = tableStartY + (index * rowHeight);
-                
-                // Draw horizontal lines
-                doc.setDrawColor(180, 180, 180);
-                doc.setLineWidth(0.3);
-                if (index > 0) {
-                    doc.line(col1X, currentY - 5, col1X + tableWidth, currentY - 5);
+            for (let i = 0; i < demoData.length; i += 2) {
+                doc.setFont("helvetica", "bold"); doc.text(demoData[i].label, 40, yPos);
+                doc.setFont("helvetica", "normal"); doc.text(`: ${demoData[i].value || '-'}`, 120, yPos);
+                if (demoData[i+1]) {
+                    doc.setFont("helvetica", "bold"); doc.text(demoData[i+1].label, 320, yPos);
+                    doc.setFont("helvetica", "normal"); doc.text(`: ${demoData[i+1].value || '-'}`, 390, yPos);
                 }
-                
-                // Draw vertical line in middle for all rows
-                doc.line(col2X, tableStartY - 5, col2X, tableStartY + (tableData.length * rowHeight) - 5);
-                
-                // Left column - Label
-                doc.setFont("helvetica", "bold");
-                doc.text(row[0], col1X + 3, currentY);
-                
-                // Left column - Value
-                doc.setFont("helvetica", "normal");
-                doc.text(row[1], col1X + 25, currentY);
-                
-                // Right column - Label
-                doc.setFont("helvetica", "bold");
-                doc.text(row[2], col2X + 3, currentY);
-                
-                // Right column - Value
-                doc.setFont("helvetica", "normal");
-                doc.text(row[3], col2X + 25, currentY);
-            });
-            
-            // IPG Kampus - Full width row
-            const ipgY = tableStartY + (tableData.length * rowHeight);
-            
-            // Draw horizontal line
-            doc.setDrawColor(180, 180, 180);
-            doc.line(col1X, ipgY - 5, col1X + tableWidth, ipgY - 5);
-            
-            // IPG Kampus text
-            doc.setFont("helvetica", "bold");
-            doc.text("IPG Kampus:", col1X + 3, ipgY);
-            doc.setFont("helvetica", "normal");
-            
-            // Handle long IPG Kampus text
-            const ipgText = demographics.ipgKampus || 'Tidak dinyatakan';
-            doc.text(ipgText, col1X + 25, ipgY);
-            
-            let yPos = ipgY + 15;
-            
-            // Side by side layout - LEFT SIDE: Personality
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(37, 99, 235); // Blue color
-            doc.text("Personaliti Big 5", 20, yPos);
-            
-            // RIGHT SIDE: Wellbeing title
-            doc.setTextColor(34, 197, 94); // Green color
-            doc.text("Kesejahteraan Mental", 115, yPos);
-            yPos += 15;
-            
-            // LEFT SIDE: Personality scores
-            doc.setFontSize(10);
-            doc.setTextColor(0, 0, 0); // Black
-            doc.setFont("helvetica", "normal");
-            
-            const traits = [
-                ['Extraversion', personalityScores.extraversion],
-                ['Agreeableness', personalityScores.agreeableness],
-                ['Conscientiousness', personalityScores.conscientiousness],
-                ['Neuroticism', personalityScores.neuroticism],
-                ['Openness', personalityScores.openness]
-            ];
-            
-            let leftYPos = yPos;
-            traits.forEach(([trait, score], index) => {
-                doc.text(`${trait}`, 22, leftYPos);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(37, 99, 235); // Blue
-                doc.text(`${score}%`, 75, leftYPos);
-                
-                // Draw progress bar
-                doc.setDrawColor(229, 231, 235);
-                doc.setLineWidth(0.5);
-                doc.rect(22, leftYPos + 2, 60, 4);
-                
-                // Fill progress bar
-                doc.setFillColor(59, 130, 246); // Blue color
-                doc.rect(22, leftYPos + 2, (score / 100) * 60, 4, 'F');
-                
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(0, 0, 0);
-                leftYPos += 15;
-            });
-            
-            // RIGHT SIDE: Wellbeing scores
-            let rightYPos = yPos;
-            
-            // Large wellbeing score
-            doc.setFontSize(36);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(34, 197, 94); // Green
-            doc.text(`${wellbeingScore.total}/70`, 140, rightYPos + 15, { align: "center" });
-            
-            doc.setFontSize(20);
-            doc.text(`${wellbeingScore.percentage}%`, 140, rightYPos + 30, { align: "center" });
-            
-            // Wellbeing progress bar
-            doc.setDrawColor(229, 231, 235);
-            doc.setLineWidth(0.5);
-            doc.rect(117, rightYPos + 35, 65, 8);
-            
-            // Fill wellbeing progress bar
-            doc.setFillColor(34, 197, 94); // Green color
-            doc.rect(117, rightYPos + 35, (wellbeingScore.percentage / 100) * 65, 8, 'F');
-            
-            rightYPos += 50;
-            
-            // Status
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(34, 197, 94);
-            doc.text("Status Kesejahteraan:", 117, rightYPos);
-            rightYPos += 8;
-            
-            const status = wellbeingScore.percentage >= 70 ? '✓ Tahap kesejahteraan yang baik' :
-                          wellbeingScore.percentage >= 50 ? '⚠ Tahap kesejahteraan sederhana' :
-                          '! Mungkin memerlukan perhatian lebih';
-            
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(0, 0, 0);
-            doc.text(status, 117, rightYPos);
-            rightYPos += 10;
-            
-            doc.setFontSize(8);
-            doc.setTextColor(100, 100, 100);
-            doc.text(`Skor minimum: 14 | Skor maksimum: 70`, 117, rightYPos);
-            doc.text(`Skor anda: ${wellbeingScore.total} (${wellbeingScore.percentage}%)`, 117, rightYPos + 6);
-            
-            // Personality Interpretation (bottom section)
-            let interpretationYPos = leftYPos + 10;
-            
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(37, 99, 235);
-            doc.text("Interpretasi Personaliti:", 20, interpretationYPos);
-            interpretationYPos += 10;
-            
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(0, 0, 0);
-            
-            traits.forEach(([trait, score]) => {
-                const level = score >= 70 ? 'Tinggi' : score >= 30 ? 'Sederhana' : 'Rendah';
-                doc.setTextColor(37, 99, 235);
-                doc.setFont("helvetica", "bold");
-                doc.text(`${trait}:`, 22, interpretationYPos);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(0, 0, 0);
-                doc.text(`${level}`, 55, interpretationYPos);
-                interpretationYPos += 8;
-            });
-            
-            // Footer
-            doc.setFontSize(8);
-            doc.setFont("helvetica", "italic");
-            doc.setTextColor(100, 100, 100);
-            doc.text("Laporan ini dijana secara automatik oleh Sistem Profil Kesejahteraan dan Personaliti Warga IPG", 105, 280, { align: "center" });
-            
-            // PAGE 2 - INTERPRETATION (LANDSCAPE)
-            doc.addPage('a4', 'landscape');
-            
-            // Page 2 Title
-            doc.setFontSize(16);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 0, 0);
-            doc.text("PENTAFSIRAN SKOR", 148, 20, { align: "center" }); // Centered for landscape
-            
-            // Personality Interpretation Table
-            let currentY = 35;
-            
-            // Table headers - wider layout for landscape
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            
-            // Draw header background for personality section
-            doc.setFillColor(100, 149, 237); // Blue
-            doc.rect(20, currentY - 5, 256, 10, 'F'); // Wider for landscape
-            doc.setTextColor(255, 255, 255);
-            doc.text("KONSTRUK PERSONALITI", 30, currentY);
-            doc.text("SKOR", 180, currentY, { align: "center" });
-            doc.text("TAHAP", 230, currentY, { align: "center" });
-            
-            currentY += 18;
-            
-            // Extraversion
-            doc.setFillColor(135, 206, 235); // Light blue
-            doc.rect(20, currentY - 5, 256, 18, 'F');
-            doc.setTextColor(0, 0, 0);
-            doc.setFont("helvetica", "bold");
-            doc.text("EXTRAVERSION (Ekstraverti)", 30, currentY);
-            doc.setFont("helvetica", "normal");
-            doc.text("Individu yang mempunyai kecenderungan untuk bersosialisasi dan berhubung dengan orang lain.", 30, currentY + 6);
-            doc.setFont("helvetica", "bold");
-            doc.text(personalityScores.extraversion.toString(), 180, currentY + 6, { align: "center" });
-            doc.text(personalityScores.extraversion >= 70 ? 'TINGGI' : personalityScores.extraversion >= 30 ? 'SEDERHANA' : 'RENDAH', 230, currentY + 6, { align: "center" });
-            
-            currentY += 28;
-            
-            // Agreeableness
-            doc.setFillColor(255, 255, 224); // Light yellow
-            doc.rect(20, currentY - 5, 256, 18, 'F');
-            doc.setFont("helvetica", "bold");
-            doc.text("AGREEABLENESS (Kesetujuan)", 30, currentY);
-            doc.setFont("helvetica", "normal");
-            doc.text("Individu yang menunjukkan ciri-ciri boleh dipercayai, bertoleransi, baik, dan bersikap kasih sayang.", 30, currentY + 6);
-            doc.setFont("helvetica", "bold");
-            doc.text(personalityScores.agreeableness.toString(), 180, currentY + 6, { align: "center" });
-            doc.text(personalityScores.agreeableness >= 70 ? 'TINGGI' : personalityScores.agreeableness >= 30 ? 'SEDERHANA' : 'RENDAH', 230, currentY + 6, { align: "center" });
-            
-            currentY += 28;
-            
-            // Conscientiousness
-            doc.setFillColor(255, 182, 193); // Light pink
-            doc.rect(20, currentY - 5, 256, 18, 'F');
-            doc.setFont("helvetica", "bold");
-            doc.text("CONSCIENTIOUSNESS (Ketelitian)", 30, currentY);
-            doc.setFont("helvetica", "normal");
-            doc.text("Individu yang mempunyai kecenderungan untuk berfokus teliti, bersungguh, bermatlamat dan", 30, currentY + 6);
-            doc.text("berpegang teguh pada cita tinggi.", 30, currentY + 12);
-            doc.setFont("helvetica", "bold");
-            doc.text(personalityScores.conscientiousness.toString(), 180, currentY + 6, { align: "center" });
-            doc.text(personalityScores.conscientiousness >= 70 ? 'TINGGI' : personalityScores.conscientiousness >= 30 ? 'SEDERHANA' : 'RENDAH', 230, currentY + 6, { align: "center" });
-            
-            currentY += 28;
-            
-            // Neuroticism
-            doc.setFillColor(255, 160, 160); // Light red
-            doc.rect(20, currentY - 5, 256, 18, 'F');
-            doc.setFont("helvetica", "bold");
-            doc.text("NEUROTICISM (Neurotisisme)", 30, currentY);
-            doc.setFont("helvetica", "normal");
-            doc.text("Individu yang mudah terjerumus dengan kesedihan, dan ketidakstabilan emosi.", 30, currentY + 6);
-            doc.setFont("helvetica", "bold");
-            doc.text(personalityScores.neuroticism.toString(), 180, currentY + 6, { align: "center" });
-            doc.text(personalityScores.neuroticism >= 70 ? 'TINGGI' : personalityScores.neuroticism >= 30 ? 'SEDERHANA' : 'RENDAH', 230, currentY + 6, { align: "center" });
-            
-            currentY += 28;
-            
-            // Openness
-            doc.setFillColor(144, 238, 144); // Light green
-            doc.rect(20, currentY - 5, 256, 18, 'F');
-            doc.setFont("helvetica", "bold");
-            doc.text("OPENNESS (Keterbukaan)", 30, currentY);
-            doc.setFont("helvetica", "normal");
-            doc.text("Individu yang mempunyai kemahiran berinteraksi dengan budaya, orang, idea dan pengalaman", 30, currentY + 6);
-            doc.text("yang pelbagai.", 30, currentY + 12);
-            doc.setFont("helvetica", "bold");
-            doc.text(personalityScores.openness.toString(), 180, currentY + 6, { align: "center" });
-            doc.text(personalityScores.openness >= 70 ? 'TINGGI' : personalityScores.openness >= 30 ? 'SEDERHANA' : 'RENDAH', 230, currentY + 6, { align: "center" });
-            
-            currentY += 35;
-            
-            // Wellbeing Section
-            doc.setFillColor(34, 197, 94); // Green
-            doc.rect(20, currentY - 5, 256, 10, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFont("helvetica", "bold");
-            doc.text("SKALA KESEJAHTERAAN PSIKOLOGI", 30, currentY);
-            
-            currentY += 18;
-            
-            // Determine wellbeing color based on level
-            let wellbeingColor, wellbeingLevel;
-            if (wellbeingScore.percentage >= 70) {
-                wellbeingColor = [144, 238, 144]; // Light green
-                wellbeingLevel = 'TINGGI';
-            } else if (wellbeingScore.percentage >= 50) {
-                wellbeingColor = [255, 255, 224]; // Light yellow  
-                wellbeingLevel = 'SEDERHANA';
-            } else {
-                wellbeingColor = [255, 182, 193]; // Light red
-                wellbeingLevel = 'RENDAH';
+                yPos += 14;
             }
-            
-            doc.setFillColor(wellbeingColor[0], wellbeingColor[1], wellbeingColor[2]);
-            doc.rect(20, currentY - 5, 256, 15, 'F');
-            doc.setTextColor(0, 0, 0);
-            doc.setFont("helvetica", "normal");
-            doc.text("Skala yang mengukur kesejahteraan mental dan emosi individu dalam kehidupan seharian.", 30, currentY + 5);
+            doc.setFont("helvetica", "bold"); doc.text('IPG Kampus', 40, yPos);
+            doc.setFont("helvetica", "normal"); 
+            const ipgText = doc.splitTextToSize(`: ${demographics.ipgKampus || '-'}`, 435);
+            doc.text(ipgText, 120, yPos);
+            yPos += (ipgText.length * 12) + 15;
+
+            // Results Section
+            doc.setFontSize(11);
             doc.setFont("helvetica", "bold");
-            doc.text(wellbeingScore.total.toString() + '/70', 180, currentY + 5, { align: "center" });
-            doc.text(wellbeingLevel, 230, currentY + 5, { align: "center" });
+            doc.text("KEPUTUSAN PROFIL", 40, yPos);
+            doc.line(40, yPos + 3, 555, yPos + 3);
+            yPos += 20;
+
+            // Two-column layout for results
+            const col1X = 40;
+            const col2X = 320;
+
+            // Column 1: Wellbeing
+            const wellbeingScore = calculateWellbeingScore();
+            const wellbeingStatus = wellbeingScore.total >= 45 ? "Tinggi" : wellbeingScore.total >= 25 ? "Sederhana" : "Rendah";
+            const wellbeingColors = {
+                Tinggi: { bg: [236, 253, 245], text: [22, 101, 52], border: [110, 231, 183] },
+                Sederhana: { bg: [254, 252, 232], text: [133, 77, 14], border: [252, 211, 77] },
+                Rendah: { bg: [254, 242, 242], text: [153, 27, 27], border: [252, 165, 165] }
+            };
+            const wColor = wellbeingColors[wellbeingStatus];
             
-            // Page 2 Footer
-            doc.setFontSize(8);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(100, 100, 100);
-            doc.text("2025 © Unit Psikologi & Kaunseling, IPGM", 148, 200, { align: "center" });
-            
-            // PAGE 3 - GUIDELINES AND RECOMMENDATIONS (LANDSCAPE)
-            doc.addPage('a4', 'landscape');
-            
-            // Page 3 Title
-            doc.setFontSize(16);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 0, 0);
-            doc.text("PANDUAN INTERPRETASI & CADANGAN", 148, 20, { align: "center" });
-            
-            currentY = 35;
-            
-            // Two-column layout for landscape
-            const leftColumnX = 25;
-            const rightColumnX = 155;
-            
-            // Left Column - Interpretation Guidelines
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 0, 0);
-            doc.text("PANDUAN INTERPRETASI:", leftColumnX, currentY);
-            
-            currentY += 15;
+            doc.setFillColor(...wColor.bg);
+            doc.setDrawColor(...wColor.border);
+            doc.roundedRect(col1X, yPos, 255, 120, 8, 8, 'FD');
             
             doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
-            
-            // Personality interpretation guidelines
             doc.setFont("helvetica", "bold");
-            doc.text("PERSONALITI:", leftColumnX, currentY);
-            doc.setFont("helvetica", "normal");
-            currentY += 8;
-            doc.text("• TINGGI (70-100): Ciri personaliti yang sangat menonjol", leftColumnX + 5, currentY);
-            currentY += 6;
-            doc.text("• SEDERHANA (30-69): Ciri personaliti yang seimbang", leftColumnX + 5, currentY);
-            currentY += 6;
-            doc.text("• RENDAH (0-29): Ciri personaliti yang kurang menonjol", leftColumnX + 5, currentY);
+            doc.setTextColor(...wColor.text);
+            doc.text("TAHAP KESEJAHTERAAN PSIKOLOGI", col1X + 127.5, yPos + 18, { align: 'center' });
             
-            currentY += 15;
-            
-            // Wellbeing interpretation guidelines
+            doc.setFontSize(32);
             doc.setFont("helvetica", "bold");
-            doc.text("KESEJAHTERAAN PSIKOLOGI:", leftColumnX, currentY);
-            doc.setFont("helvetica", "normal");
-            currentY += 8;
-            doc.text("• TINGGI (70-100%): Tahap kesejahteraan yang sangat baik", leftColumnX + 5, currentY);
-            currentY += 6;
-            doc.text("• SEDERHANA (50-69%): Tahap kesejahteraan yang sederhana", leftColumnX + 5, currentY);
-            currentY += 6;
-            doc.text("• RENDAH (0-49%): Mungkin memerlukan perhatian dan sokongan", leftColumnX + 5, currentY);
-            
-            // Right Column - Personality Descriptions
-            let rightCurrentY = 50;
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(37, 99, 235); // Blue
-            doc.text("MAKNA SETIAP KONSTRUK PERSONALITI:", rightColumnX, rightCurrentY);
-            
-            rightCurrentY += 15;
+            doc.text(`${wellbeingScore.total}`, col1X + 127.5, yPos + 55, { align: 'center' });
             doc.setFontSize(9);
-            doc.setTextColor(0, 0, 0);
-            
-            // Extraversion detailed description
+            doc.setFont("helvetica", "normal");
+            doc.text("SKOR / 70", col1X + 127.5, yPos + 70, { align: 'center' });
+
+            doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
-            doc.text("EXTRAVERSION (Ekstraverti):", rightColumnX, rightCurrentY);
-            doc.setFont("helvetica", "normal");
-            rightCurrentY += 6;
-            doc.text("- Suka berinteraksi dan berkomunikasi dengan orang lain", rightColumnX + 5, rightCurrentY);
-            rightCurrentY += 5;
-            doc.text("- Bertenaga dalam situasi sosial", rightColumnX + 5, rightCurrentY);
-            rightCurrentY += 5;
-            doc.text("- Berani mengambil risiko dan mencari pengalaman baru", rightColumnX + 5, rightCurrentY);
+            doc.text(`Tahap: ${wellbeingStatus}`, col1X + 127.5, yPos + 95, { align: 'center' });
+            doc.setTextColor(0,0,0);
+
+            // Column 2: Personality Chart
+            doc.addImage(chartImageData, 'PNG', col2X, yPos - 5, 235, 235);
             
-            rightCurrentY += 10;
-            
-            // Agreeableness detailed description
+            let resultsSectionEndY = yPos + 235;
+
+            // Personality Descriptions
+            let descY = resultsSectionEndY - 50;
+            doc.setFontSize(11);
             doc.setFont("helvetica", "bold");
-            doc.text("AGREEABLENESS (Kesetujuan):", rightColumnX, rightCurrentY);
-            doc.setFont("helvetica", "normal");
-            rightCurrentY += 6;
-            doc.text("- Mudah bekerjasama dan membantu orang lain", rightColumnX + 5, rightCurrentY);
-            rightCurrentY += 5;
-            doc.text("- Bersikap penyayang dan penuh empati", rightColumnX + 5, rightCurrentY);
-            rightCurrentY += 5;
-            doc.text("- Mudah mempercayai dan memaafkan orang lain", rightColumnX + 5, rightCurrentY);
+            doc.text("DESKRIPSI PERSONALITI DIRI", 40, descY);
+            doc.line(40, descY + 3, 555, descY + 3);
+            descY += 20;
+
+            const personalityScores = calculatePersonalityScores();
+            const traits = [
+                { label: 'Extraversion', score: personalityScores.extraversion, desc: 'Tahap keselesaan dengan interaksi sosial. Skor tinggi menandakan anda seorang yang suka bergaul, berkeyakinan dan mesra.' },
+                { label: 'Agreeableness', score: personalityScores.agreeableness, desc: 'Kecenderungan untuk bersimpati dan bekerjasama. Skor tinggi menandakan anda seorang yang mudah percaya, suka menolong dan pemaaf.' },
+                { label: 'Conscientiousness', score: personalityScores.conscientiousness, desc: 'Tahap kebolehpercayaan dan disiplin diri. Skor tinggi menandakan anda seorang yang teratur, bertanggungjawab dan berhati-hati.' },
+                { label: 'Neuroticism', score: personalityScores.neuroticism, desc: 'Kecenderungan mengalami emosi negatif. Skor tinggi menandakan anda mungkin mudah cemas, tertekan atau tidak stabil dari segi emosi.' },
+                { label: 'Openness', score: personalityScores.openness, desc: 'Keterbukaan kepada pengalaman baharu. Skor tinggi menandakan anda seorang yang kreatif, ingin tahu dan mempunyai imaginasi yang luas.' }
+            ];
+
+            traits.forEach(({label, score, desc}) => {
+                doc.setFontSize(9);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(37, 99, 235);
+                doc.text(`${label}: ${score}%`, 40, descY);
+                doc.setTextColor(0,0,0);
+                doc.setFont("helvetica", "normal");
+                const descLines = doc.splitTextToSize(desc, 515);
+                doc.text(descLines, 40, descY + 12);
+                descY += (descLines.length * 10) + 18;
+            });
             
-            rightCurrentY += 10;
-            
-            // Conscientiousness detailed description
-            doc.setFont("helvetica", "bold");
-            doc.text("CONSCIENTIOUSNESS (Ketelitian):", rightColumnX, rightCurrentY);
-            doc.setFont("helvetica", "normal");
-            rightCurrentY += 6;
-            doc.text("- Teratur, berdisiplin dan bertanggungjawab", rightColumnX + 5, rightCurrentY);
-            rightCurrentY += 5;
-            doc.text("- Bekerja dengan teliti dan berfokus pada matlamat", rightColumnX + 5, rightCurrentY);
-            rightCurrentY += 5;
-            doc.text("- Boleh dipercayai dan konsisten dalam tindakan", rightColumnX + 5, rightCurrentY);
-            
-            rightCurrentY += 10;
-            
-            // Neuroticism detailed description
-            doc.setFont("helvetica", "bold");
-            doc.text("NEUROTICISM (Neurotisisme):", rightColumnX, rightCurrentY);
-            doc.setFont("helvetica", "normal");
-            rightCurrentY += 6;
-            doc.text("- Kecenderungan mengalami emosi negatif", rightColumnX + 5, rightCurrentY);
-            rightCurrentY += 5;
-            doc.text("- Mudah merasa cemas, tertekan atau marah", rightColumnX + 5, rightCurrentY);
-            rightCurrentY += 5;
-            doc.text("- Kurang stabil dari segi emosi dalam situasi tekanan", rightColumnX + 5, rightCurrentY);
-            
-            rightCurrentY += 10;
-            
-            // Openness detailed description
-            doc.setFont("helvetica", "bold");
-            doc.text("OPENNESS (Keterbukaan):", rightColumnX, rightCurrentY);
-            doc.setFont("helvetica", "normal");
-            rightCurrentY += 6;
-            doc.text("- Kreatif, imaginatif dan suka mencuba perkara baru", rightColumnX + 5, rightCurrentY);
-            rightCurrentY += 5;
-            doc.text("- Terbuka kepada idea dan pengalaman baru", rightColumnX + 5, rightCurrentY);
-            rightCurrentY += 5;
-            doc.text("- Menghargai seni, budaya dan intelektual", rightColumnX + 5, rightCurrentY);
-            
-            // Bottom section - recommendations (full width)
-            currentY = Math.max(currentY + 25, rightCurrentY + 15);
-            
-            // Recommendation section
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(255, 0, 0); // Red
-            doc.text("Sila dapatkan perundingan Kaunselor Pendidikan terdekat bagi sebarang urusan (yang berkaitan sahaja / jika perlu)", leftColumnX, currentY);
-            
-            currentY += 15;
-            
-            // Counselor info section
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 0, 0);
-            doc.text("TANDATANGAN KAUNSELOR:", leftColumnX, currentY);
-            
-            currentY += 15;
-            doc.setFont("helvetica", "normal");
-            doc.text("NAMA KAUNSELOR: ......................................................................", leftColumnX, currentY);
-            
-            currentY += 10;
-            doc.text("COP RASMI: ......................................................................", leftColumnX, currentY);
-            
-            // Page 3 Footer
-            doc.setFontSize(8);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(100, 100, 100);
-            doc.text("2025 © Unit Psikologi & Kaunseling, IPGM", 148, 200, { align: "center" });            currentY += 15;
+            // NEW: Add counselor note and signature
+            descY += 10;
+            doc.setFillColor(240, 240, 240); // Soft grey background
+            doc.roundedRect(40, descY - 10, 515, 35, 5, 5, 'F');
             doc.setFontSize(9);
-            doc.setTextColor(0, 0, 0);
-            
-            // Extraversion detailed description
             doc.setFont("helvetica", "bold");
-            doc.text("EXTRAVERSION (Ekstraverti):", 25, currentY);
+            const noteLines = doc.splitTextToSize("Untuk interpretasi yang lebih mendalam, sila berjumpa Kaunselor Pendidikan Institut di kampus anda.", 500);
+            doc.text(noteLines, 45, descY);
+            
+            descY += (noteLines.length * 10) + 50;
+
+            doc.line(350, descY, 555, descY); 
+            descY += 12;
             doc.setFont("helvetica", "normal");
-            currentY += 6;
-            doc.text("- Suka berinteraksi dan berkomunikasi dengan orang lain", 30, currentY);
-            currentY += 5;
-            doc.text("- Bertenaga dalam situasi sosial", 30, currentY);
-            currentY += 5;
-            doc.text("- Berani mengambil risiko dan mencari pengalaman baru", 30, currentY);
-            
-            currentY += 10;
-            
-            // Agreeableness detailed description
-            doc.setFont("helvetica", "bold");
-            doc.text("AGREEABLENESS (Kesetujuan):", 25, currentY);
-            doc.setFont("helvetica", "normal");
-            currentY += 6;
-            doc.text("- Mudah bekerjasama dan membantu orang lain", 30, currentY);
-            currentY += 5;
-            doc.text("- Bersikap penyayang dan penuh empati", 30, currentY);
-            currentY += 5;
-            doc.text("- Mudah mempercayai dan memaafkan orang lain", 30, currentY);
-            
-            currentY += 10;
-            
-            // Conscientiousness detailed description
-            doc.setFont("helvetica", "bold");
-            doc.text("CONSCIENTIOUSNESS (Ketelitian):", 25, currentY);
-            doc.setFont("helvetica", "normal");
-            currentY += 6;
-            doc.text("- Teratur, berdisiplin dan bertanggungjawab", 30, currentY);
-            currentY += 5;
-            doc.text("- Bekerja dengan teliti dan berfokus pada matlamat", 30, currentY);
-            currentY += 5;
-            doc.text("- Boleh dipercayai dan konsisten dalam tindakan", 30, currentY);
-            
-            currentY += 10;
-            
-            // Neuroticism detailed description
-            doc.setFont("helvetica", "bold");
-            doc.text("NEUROTICISM (Neurotisisme):", 25, currentY);
-            doc.setFont("helvetica", "normal");
-            currentY += 6;
-            doc.text("- Kecenderungan mengalami emosi negatif", 30, currentY);
-            currentY += 5;
-            doc.text("- Mudah merasa cemas, tertekan atau marah", 30, currentY);
-            currentY += 5;
-            doc.text("- Kurang stabil dari segi emosi dalam situasi tekanan", 30, currentY);
-            
-            currentY += 10;
-            
-            // Openness detailed description
-            doc.setFont("helvetica", "bold");
-            doc.text("OPENNESS (Keterbukaan):", 25, currentY);
-            doc.setFont("helvetica", "normal");
-            currentY += 6;
-            doc.text("- Kreatif, imaginatif dan suka mencuba perkara baru", 30, currentY);
-            currentY += 5;
-            doc.text("- Terbuka kepada idea dan pengalaman baru", 30, currentY);
-            currentY += 5;
-            doc.text("- Menghargai seni, budaya dan intelektual", 30, currentY);
-            
-            currentY += 20;
-            
-            // Recommendation section
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(255, 0, 0); // Red
-            doc.text("Sila dapatkan perundingan Kaunselor Pendidikan terdekat bagi sebarang urusan", 25, currentY);
-            doc.text("(yang berkaitan sahaja / jika perlu)", 25, currentY + 7);
-            
-            currentY += 25;
-            
-            // Counselor info section
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(0, 0, 0);
-            doc.text("TANDATANGAN KAUNSELOR:", 25, currentY);
-            
-            currentY += 20;
-            doc.setFont("helvetica", "normal");
-            doc.text("NAMA KAUNSELOR: ......................................................................", 25, currentY);
-            
-            currentY += 15;
-            doc.text("COP RASMI: ......................................................................", 25, currentY);
-            
-            // Page 3 Footer
             doc.setFontSize(8);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(100, 100, 100);
-            doc.text("2025 © Unit Psikologi & Kaunseling, IPGM", 105, 280, { align: "center" });
+            doc.text("Tandatangan & Cop Kaunselor", 390, descY);
+
+
+            // Footer
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(`© Unit Psikologi & Kaunseling, IPGM`, doc.internal.pageSize.getWidth() / 2, pageHeight - 30, { align: 'center' });
+            doc.text(`Halaman 1 dari 1`, doc.internal.pageSize.getWidth() / 2, pageHeight - 15, { align: 'center' });
+
+            doc.save(`Profil_Kesejahteraan_${demographics.name.replace(/ /g, '_')}.pdf`);
+            pdfButton.disabled = false;
+            pdfButton.innerHTML = 'Muat Turun Laporan PDF';
+        }
+        
+        // --- UI RENDERING ---
+        function render() {
+            const app = document.getElementById('app');
+            app.className = "max-w-4xl mx-auto p-4 sm:p-6 bg-white min-h-screen shadow-lg rounded-lg border border-gray-200 fade-in";
             
-            // Save the PDF
-            const fileName = `Keputusan_PKPW_${demographics.name ? demographics.name.replace(/\s+/g, '_') : 'IPG'}_${new Date().toISOString().split('T')[0]}.pdf`;
-            doc.save(fileName);
+            if (state.currentSection === -1) {
+                app.innerHTML = renderWelcomePage();
+            } else if (state.showResults) {
+                app.innerHTML = renderResults();
+                // Use a short timeout to ensure the canvas element is in the DOM before rendering the chart
+                setTimeout(renderSpiderChart, 100);
+            } else {
+                const totalSections = 3;
+                const progress = ((state.currentSection + 1) / totalSections) * 100;
+                let content = '';
+                if (state.currentSection === 0) content = renderDemographics();
+                else if (state.currentSection === 1) content = renderPersonality();
+                else if (state.currentSection === 2) content = renderWellbeing();
+
+                app.innerHTML = `
+                    <div class="mb-6">
+                        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 text-center">Profil Kesejahteraan dan Personaliti Warga IPG</h1>
+                        <p class="text-center text-gray-500 mt-2">Unit Psikologi dan Kaunseling, IPGM</p>
+                        <div class="mt-6">
+                            <div class="bg-gray-200 rounded-full h-2.5">
+                                <div class="bg-blue-600 h-2.5 rounded-full progress-bar-animated" style="width: ${progress}%"></div>
+                            </div>
+                            <p class="text-sm text-right text-gray-600 mt-1">Bahagian ${state.currentSection + 1} dari ${totalSections}</p>
+                        </div>
+                    </div>
+                    ${content}
+                `;
+            }
+            attachListeners();
         }
 
-        // Render functions
-        function renderHeader() {
+        function renderWelcomePage() {
             return `
-                <div class="mb-8 fade-in">
-                    <h1 class="text-3xl font-bold text-center text-blue-800 mb-2">
-                        Profil Kesejahteraan dan Personaliti Warga
-                    </h1>
-                    <h2 class="text-xl font-semibold text-center text-blue-700 mb-4">
-                        Institut Pendidikan Guru Malaysia
-                    </h2>
-                    <div class="bg-blue-50 p-4 rounded-lg mb-6">
-                        <h3 class="font-bold text-blue-800 mb-2">Pengenalan:</h3>
-                        <p class="text-sm text-gray-700 mb-2">
-                            Profil Kesejahteraan dan Personaliti Warga terdiri dari tiga bahagian iaitu:
-                        </p>
-                        <ul class="text-sm text-gray-700 space-y-1 ml-4">
-                            <li>• Bahagian A: Maklumat Diri</li>
-                            <li>• Bahagian B: Ujian Personaliti (44 ITEM)</li>
-                            <li>• Bahagian C: Skala Kesejahteraan Psikologi (14 ITEM)</li>
-                        </ul>
-                        <p class="text-sm text-gray-700 mt-2">
-                            <strong>Komitmen Masa:</strong> Masa yang diambil untuk menjawab inventori ini adalah antara 20 minit.
-                        </p>
-                    </div>
-
-                    <div class="flex justify-center mb-8">
-                        <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                            <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6">
-                                ${['Maklumat Diri', 'Ujian Personaliti', 'Kesejahteraan Psikologi'].map((title, index) => `
-                                    <div class="flex flex-col items-center px-4 sm:px-6 py-4 rounded-lg transition-all duration-200 ${
-                                        state.currentSection === index
-                                            ? 'bg-blue-600 text-white shadow-lg'
-                                            : state.currentSection > index
-                                            ? 'bg-green-500 text-white'
-                                            : 'bg-gray-100 text-gray-600'
-                                    }">
-                                        <div class="text-2xl mb-2">
-                                            ${index === 0 ? '👤' : index === 1 ? '🧠' : '❤️'}
-                                        </div>
-                                        <div class="text-center">
-                                            <div class="text-sm font-semibold">Bahagian ${String.fromCharCode(65 + index)}</div>
-                                            <div class="text-xs font-medium">${title}</div>
-                                        </div>
-                                    </div>
-                                `).join('')}
+                <div class="text-center py-10 px-4 fade-in">
+                    <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">Selamat Datang</h1>
+                    <p class="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">Profil Kesejahteraan dan Personaliti Warga (PKPW) adalah ujian bagi mengenalpasti tahap kesejahteraan psikologi dan tret personaliti warga kerja di IPGKPM.</p>
+                    <p class="mt-2 text-lg text-gray-600 max-w-2xl mx-auto font-bold">Komitmen masa untuk menjawab adalah 20 minit</p>
+                    
+                    <div class="mt-12">
+                        <h2 class="text-2xl font-semibold text-gray-700 mb-8">Tinjauan Soal Selidik</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                            <!-- Card 1 -->
+                            <div class="welcome-card bg-white p-6 rounded-lg border border-gray-200 shadow-md">
+                                <div class="flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 text-blue-600 mx-auto mb-4">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-800">Bahagian A</h3>
+                                <p class="text-gray-600 font-semibold">Maklumat Diri</p>
+                                <p class="mt-2 text-sm text-gray-500">Beberapa soalan asas demografi untuk tujuan statistik.</p>
+                            </div>
+                            <!-- Card 2 -->
+                            <div class="welcome-card bg-white p-6 rounded-lg border border-gray-200 shadow-md">
+                                <div class="flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 text-purple-600 mx-auto mb-4">
+                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.871 4A1.928 1.928 0 003 5.871V18.13A1.928 1.928 0 004.871 20H19.13A1.928 1.928 0 0021 18.129V5.87A1.928 1.928 0 0019.129 4H4.87Z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15a3 3 0 100-6 3 3 0 000 6Z"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-800">Bahagian B</h3>
+                                <p class="text-gray-600 font-semibold">Personaliti Diri</p>
+                                <p class="mt-2 text-sm text-gray-500">50 item untuk meneroka 5 dimensi utama personaliti anda.</p>
+                            </div>
+                            <!-- Card 3 -->
+                            <div class="welcome-card bg-white p-6 rounded-lg border border-gray-200 shadow-md">
+                                <div class="flex items-center justify-center h-12 w-12 rounded-full bg-green-100 text-green-600 mx-auto mb-4">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-800">Bahagian C</h3>
+                                <p class="text-gray-600 font-semibold">Kesejahteraan Psikologi</p>
+                                <p class="mt-2 text-sm text-gray-500">14 item untuk mengukur tahap kesejahteraan psikologi anda.</p>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="mt-12">
+                        <button onclick="startSurvey()" class="bg-blue-600 text-white font-bold py-3 px-10 rounded-lg hover:bg-blue-700 transition-colors text-lg shadow-lg hover:shadow-xl">
+                            Mula Soal Selidik
+                        </button>
                     </div>
                 </div>
             `;
         }
 
         function renderDemographics() {
+            const fieldsHtml = demographicsQuestions.map(q => {
+                const value = state.responses.demographics[q.id] || '';
+                let inputHtml = '';
+                switch (q.type) {
+                    case 'select':
+                        inputHtml = `
+                            <select id="${q.id}" name="${q.id}" onchange="handleDemographicChange('${q.id}', this.value)" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm" ${q.required ? 'required' : ''}>
+                                <option value="" disabled ${!value ? 'selected' : ''}>Sila pilih...</option>
+                                ${q.options.map(opt => `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                            </select>`;
+                        break;
+                    case 'text':
+                    case 'email':
+                    case 'tel':
+                         const isIC = q.id === 'ic';
+                         inputHtml = `
+                            <div class="relative rounded-md shadow-sm">
+                                <input type="${q.type}" id="${q.id}" name="${q.id}" value="${value}" oninput="handleDemographicChange('${q.id}', this.value)"
+                                       class="block w-full pl-3 pr-10 py-2 border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                       ${q.required ? 'required' : ''} ${q.maxLength ? `maxlength="${q.maxLength}"` : ''} ${q.pattern ? `pattern="${q.pattern}"` : ''}>
+                                ${isIC ? `<div id="ic-counter" class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-gray-500 pointer-events-none"></div>` : ''}
+                            </div>`;
+                        break;
+                }
+                return `
+                    <div>
+                        <label for="${q.id}" class="block text-sm font-medium text-gray-700 mb-1">
+                            ${q.label}
+                        </label>
+                        ${inputHtml}
+                    </div>
+                `;
+            }).join('');
+        
             return `
-                <div class="space-y-6 fade-in">
-                    <h2 class="text-2xl font-bold text-blue-800">Bahagian A: Maklumat Diri</h2>
-                    <p class="text-gray-600 text-sm">Sila isi maklumat peribadi anda dengan lengkap dan tepat.</p>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${demographicsQuestions.map(q => `
-                            <div class="space-y-2 ${q.id === 'ipgKampus' ? 'md:col-span-2' : ''}">
-                                <label class="block text-sm font-medium text-gray-700">
-                                    ${q.label} ${q.required ? '<span class="text-red-500">*</span>' : ''}
-                                    ${q.id === 'ic' ? `
-                                        <div class="text-xs text-gray-500 mt-1">
-                                            <span id="ic-counter" class="${state.responses.demographics.ic && state.responses.demographics.ic.length === 12 ? 'text-green-600' : 'text-red-500'}">
-                                                ${state.responses.demographics.ic ? `(${state.responses.demographics.ic.length}/12)` : '(0/12)'}
-                                            </span>
-                                        </div>
-                                    ` : ''}
-                                </label>
-                                ${q.type === 'select' ? `
-                                    <select 
-                                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                        onchange="handleDemographicChange('${q.id}', this.value)"
-                                    >
-                                        <option value="">${q.id === 'gender' ? 'Pilih jantina' : q.id === 'race' ? 'Pilih bangsa' : q.id === 'religion' ? 'Pilih agama' : q.id === 'ipgKampus' ? 'Pilih IPGM/IPGK' : q.id === 'jawatan' ? 'Pilih jawatan' : q.id === 'gred' ? 'Pilih gred' : 'Sila pilih...'}</option>
-                                        ${q.options.map(option => `
-                                            <option value="${option}" ${state.responses.demographics[q.id] === option ? 'selected' : ''}>${option}</option>
-                                        `).join('')}
-                                    </select>
-                                ` : `
-                                    <input 
-                                        type="${q.type}"
-                                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                        value="${state.responses.demographics[q.id] || ''}"
-                                        placeholder="${q.id === 'ic' ? 'Contoh: 901201081234' : q.id === 'name' ? 'Sila isi nama penuh anda' : q.id === 'email' ? 'Contoh: nama@ipgm.edu.my' : q.id === 'phone' ? 'Contoh: 0123456789' : 'Sila isi...'}"
-                                        maxlength="${q.maxLength || ''}"
-                                        oninput="handleDemographicChange('${q.id}', this.value)"
-                                    />
-                                `}
-                            </div>
-                        `).join('')}
+                <div class="space-y-6">
+                    <div class="p-5 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h2 class="text-xl font-semibold text-gray-800">Bahagian A: Maklumat Diri</h2>
+                        <p class="text-gray-600 mt-1">Sila lengkapkan semua maklumat di bawah.</p>
+                    </div>
+                    <div class="px-4 py-5 sm:p-6">
+                        <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                            ${demographicsQuestions.map(q => {
+                                const value = state.responses.demographics[q.id] || '';
+                                let inputHtml = '';
+                                const colSpan = ['name', 'email', 'ipgKampus'].includes(q.id) ? 'sm:col-span-6' : 'sm:col-span-3';
+                                switch (q.type) {
+                                    case 'select':
+                                        inputHtml = `<select id="${q.id}" name="${q.id}" onchange="handleDemographicChange('${q.id}', this.value)" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm" ${q.required ? 'required' : ''}>
+                                            <option value="" disabled ${!value ? 'selected' : ''}>Sila pilih...</option>
+                                            ${q.options.map(opt => `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                                        </select>`;
+                                        break;
+                                    case 'text':
+                                    case 'email':
+                                    case 'tel':
+                                        const isIC = q.id === 'ic';
+                                        inputHtml = `<div class="relative rounded-md shadow-sm">
+                                            <input type="${q.type}" id="${q.id}" name="${q.id}" value="${value}" oninput="handleDemographicChange('${q.id}', this.value)"
+                                                   class="block w-full pl-3 pr-12 py-2 border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                   ${q.required ? 'required' : ''} ${q.maxLength ? `maxlength="${q.maxLength}"` : ''} ${q.pattern ? `pattern="${q.pattern}"` : ''}>
+                                            ${isIC ? `<div id="ic-counter" class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-gray-500 pointer-events-none"></div>` : ''}
+                                        </div>`;
+                                        break;
+                                }
+                                return `<div class="${colSpan}">
+                                    <label for="${q.id}" class="block text-sm font-medium text-gray-700">${q.label}</label>
+                                    ${inputHtml}
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                    <div class="flex justify-end pt-4 px-4 sm:px-6">
+                        <button onclick="handleNextSection()" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors">Seterusnya</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderQuestionnaire(title, questions, responses, sectionName, colorClass) {
+            const questionsHtml = questions.map((q, index) => {
+                const selectedValue = responses[index];
+                const radioButtons = [1, 2, 3, 4, 5].map(v => {
+                    let specificClass = 'bg-gray-200 text-gray-600 hover:bg-gray-300';
+                    if (v === selectedValue) {
+                        specificClass = `${colorClass.bg} text-white shadow-lg transform scale-110`;
+                    }
+                    return `
+                        <div class="radio-container">
+                            <input type="radio" id="${sectionName}-${index}-${v}" name="${sectionName}-${index}" value="${v}" class="sr-only" onchange="handle${sectionName.charAt(0).toUpperCase() + sectionName.slice(1)}Change(${index}, this.value)" ${v === selectedValue ? 'checked' : ''}>
+                            <label for="${sectionName}-${index}-${v}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 cursor-pointer ${specificClass}">
+                                ${v}
+                            </label>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="p-4 rounded-lg border ${selectedValue ? colorClass.border : 'border-gray-200'} bg-white shadow-sm">
+                        <p class="text-gray-800 mb-3">${index + 1}. ${q}</p>
+                        <div class="flex justify-between items-center space-x-2 sm:space-x-3">
+                            <span class="text-xs text-gray-500 text-center hidden sm:block">Sangat<br>Tidak Setuju</span>
+                            ${radioButtons}
+                            <span class="text-xs text-gray-500 text-center hidden sm:block">Sangat<br>Setuju</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const headerColor = colorClass.bg.replace('bg-', '');
+            return `
+                <div class="space-y-6">
+                    <div class="p-5 bg-${headerColor}-50 border border-${headerColor}-200 rounded-lg">
+                        <h2 class="text-xl font-semibold text-gray-800">${title}</h2>
+                        <p class="text-gray-600 mt-1">Pilih jawapan yang paling menggambarkan diri anda.</p>
+                        <div class="flex justify-between text-xs text-gray-600 mt-4 px-2 sm:hidden">
+                            <span>1 = Sangat Tidak Setuju</span>
+                            <span>5 = Sangat Setuju</span>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        ${questionsHtml}
+                    </div>
+                    <div class="flex justify-between pt-4">
+                        <button onclick="handlePrevSection()" class="bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg hover:bg-gray-400 transition-colors">Kembali</button>
+                        ${sectionName === 'wellbeing' ?
+                            `<button onclick="showResults()" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition-colors">Hantar & Lihat Keputusan</button>` :
+                            `<button onclick="handleNextSection()" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors">Seterusnya</button>`
+                        }
                     </div>
                 </div>
             `;
         }
 
         function renderPersonality() {
-            return `
-                <div class="space-y-6 fade-in">
-                    <h2 class="text-2xl font-bold text-blue-800">Bahagian B: Ujian Personaliti (44 Item)</h2>
-                    <p class="text-gray-600">Nyatakan sejauh mana anda bersetuju dengan setiap kenyataan berikut:</p>
-                    
-                    <div class="bg-blue-50 p-4 rounded-lg">
-                        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 text-xs text-gray-700">
-                            <span class="text-center">1 = Sangat Tidak Setuju</span>
-                            <span class="text-center">2 = Tidak Setuju</span>
-                            <span class="text-center">3 = Neutral</span>
-                            <span class="text-center">4 = Setuju</span>
-                            <span class="text-center">5 = Sangat Setuju</span>
-                        </div>
-                    </div>
-
-                    <div class="space-y-4">
-                        ${personalityQuestions.map((question, index) => `
-                            <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                                <p class="text-sm text-gray-800 mb-3 leading-relaxed">${index + 1}. ${question}</p>
-                                <div class="flex justify-center space-x-3">
-                                    ${[1, 2, 3, 4, 5].map(value => `
-                                        <label class="cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="personality-${index}"
-                                                value="${value}"
-                                                ${state.responses.personality[index] === value ? 'checked' : ''}
-                                                onchange="handlePersonalityChange(${index}, ${value})"
-                                                class="sr-only"
-                                            />
-                                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 ${
-                                                state.responses.personality[index] === value 
-                                                    ? 'bg-blue-500 text-white shadow-lg transform scale-110' 
-                                                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                            }">
-                                                ${value}
-                                            </div>
-                                        </label>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
+            return renderQuestionnaire('Bahagian B: Personaliti Diri', personalityQuestions, state.responses.personality, 'personality', { bg: 'bg-blue-500', border: 'border-blue-300' });
         }
 
         function renderWellbeing() {
-            return `
-                <div class="space-y-6 fade-in">
-                    <h2 class="text-2xl font-bold text-blue-800">Bahagian C: Kesejahteraan Psikologi (14 Item)</h2>
-                    <p class="text-gray-600">Fikirkan pengalaman anda dalam <strong>2 minggu yang lalu</strong>. Nyatakan sejauh mana setiap kenyataan menggambarkan pengalaman anda:</p>
-                    
-                    <div class="bg-green-50 p-4 rounded-lg">
-                        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2 text-xs text-gray-700">
-                            <span class="text-center">1 = Tiada Masa</span>
-                            <span class="text-center">2 = Jarang</span>
-                            <span class="text-center">3 = Sesetengah Masa</span>
-                            <span class="text-center">4 = Kerap</span>
-                            <span class="text-center">5 = Sepanjang Masa</span>
-                        </div>
-                    </div>
-
-                    <div class="space-y-4">
-                        ${wellbeingQuestions.map((question, index) => `
-                            <div class="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                                <p class="text-sm text-gray-800 mb-3 leading-relaxed">${index + 1}. ${question}</p>
-                                <div class="flex justify-center space-x-3">
-                                    ${[1, 2, 3, 4, 5].map(value => `
-                                        <label class="cursor-pointer">
-                                            <input
-                                                type="radio"
-                                                name="wellbeing-${index}"
-                                                value="${value}"
-                                                ${state.responses.wellbeing[index] === value ? 'checked' : ''}
-                                                onchange="handleWellbeingChange(${index}, ${value})"
-                                                class="sr-only"
-                                            />
-                                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 ${
-                                                state.responses.wellbeing[index] === value 
-                                                    ? 'bg-green-500 text-white shadow-lg transform scale-110' 
-                                                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                                            }">
-                                                ${value}
-                                            </div>
-                                        </label>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
+            return renderQuestionnaire('Bahagian C: Kesejahteraan Diri', wellbeingQuestions, state.responses.wellbeing, 'wellbeing', { bg: 'bg-green-500', border: 'border-green-300' });
         }
 
         function renderResults() {
-            const personalityScores = calculatePersonalityScores();
+            const { name } = state.responses.demographics;
             const wellbeingScore = calculateWellbeingScore();
 
-            return `
-                <div class="space-y-8 fade-in">
-                    <div class="text-center">
-                        <h2 class="text-3xl font-bold text-blue-800 mb-2">Keputusan Anda</h2>
-                        <p class="text-gray-600">Profil Kesejahteraan dan Personaliti</p>
-                        <p class="text-sm text-gray-500 mt-1">Tarikh: ${new Date().toLocaleDateString('ms-MY')}</p>
-                    </div>
-
-                    <!-- Demographics Table -->
-                    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                        <div class="bg-blue-600 text-white px-6 py-3">
-                            <h3 class="text-lg font-bold">Maklumat Diri</h3>
-                        </div>
-                        <div class="p-6">
-                            <table class="w-full table-auto">
-                                <tbody>
-                                    <tr class="border-b border-gray-100">
-                                        <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50 w-1/3">Nama Penuh</td>
-                                        <td class="py-3 px-3 text-gray-900">${state.responses.demographics.name || 'Tidak dinyatakan'}</td>
-                                    </tr>
-                                    <tr class="border-b border-gray-100">
-                                        <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50">No. MyKad</td>
-                                        <td class="py-3 px-3 text-gray-900">${state.responses.demographics.ic || 'Tidak dinyatakan'}</td>
-                                    </tr>
-                                    <tr class="border-b border-gray-100">
-                                        <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50">Email</td>
-                                        <td class="py-3 px-3 text-gray-900">${state.responses.demographics.email || 'Tidak dinyatakan'}</td>
-                                    </tr>
-                                    <tr class="border-b border-gray-100">
-                                        <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50">Jantina</td>
-                                        <td class="py-3 px-3 text-gray-900">${state.responses.demographics.gender || 'Tidak dinyatakan'}</td>
-                                    </tr>
-                                    <tr class="border-b border-gray-100">
-                                        <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50">Bangsa</td>
-                                        <td class="py-3 px-3 text-gray-900">${state.responses.demographics.race || 'Tidak dinyatakan'}</td>
-                                    </tr>
-                                    <tr class="border-b border-gray-100">
-                                        <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50">Agama</td>
-                                        <td class="py-3 px-3 text-gray-900">${state.responses.demographics.religion || 'Tidak dinyatakan'}</td>
-                                    </tr>
-                                    <tr class="border-b border-gray-100">
-                                        <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50">No. Telefon</td>
-                                        <td class="py-3 px-3 text-gray-900">${state.responses.demographics.phone || 'Tidak dinyatakan'}</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50">IPG Kampus</td>
-                                        <td class="py-3 px-3 text-gray-900">${state.responses.demographics.ipgKampus || 'Tidak dinyatakan'}</td>
-                                    </tr>
-                                    <tr class="border-b border-gray-100">
-                                        <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50">Jawatan</td>
-                                        <td class="py-3 px-3 text-gray-900">${state.responses.demographics.jawatan || 'Tidak dinyatakan'}</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50">Gred</td>
-                                        <td class="py-3 px-3 text-gray-900">${state.responses.demographics.gred || 'Tidak dinyatakan'}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="grid lg:grid-cols-2 gap-8">
-                        <!-- Big 5 Results -->
-                        <div class="bg-blue-50 p-6 rounded-lg shadow-sm">
-                            <h3 class="text-xl font-bold text-blue-800 mb-6 text-center">Personaliti Big 5</h3>
-                            <div class="space-y-4">
-                                ${Object.entries(personalityScores).map(([trait, score]) => `
-                                    <div class="space-y-2">
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-sm font-medium capitalize text-gray-700">${trait}</span>
-                                            <span class="text-sm font-bold text-blue-600">${score}%</span>
-                                        </div>
-                                        <div class="w-full bg-gray-200 rounded-full h-3">
-                                            <div class="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-1000 progress-bar" style="width: ${score}%"></div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                            
-                            <div class="mt-6 p-4 bg-blue-100 rounded-lg">
-                                <h4 class="font-semibold text-blue-800 mb-2">Interpretasi Personaliti:</h4>
-                                <div class="text-sm text-blue-700 space-y-1">
-                                    ${Object.entries(personalityScores).map(([trait, score]) => `
-                                        <div><strong>${trait}:</strong> ${score >= 70 ? 'Tinggi' : score >= 30 ? 'Sederhana' : 'Rendah'}</div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Mental Wellbeing -->
-                        <div class="p-6 rounded-lg shadow-sm ${
-                            wellbeingScore.percentage >= 70 ? 'bg-green-50' :
-                            wellbeingScore.percentage >= 50 ? 'bg-yellow-50' :
-                            'bg-red-50'
-                        }">
-                            <h3 class="text-xl font-bold mb-4 ${
-                                wellbeingScore.percentage >= 70 ? 'text-green-800' :
-                                wellbeingScore.percentage >= 50 ? 'text-yellow-800' :
-                                'text-red-800'
-                            }">Kesejahteraan Mental</h3>
-                            <div class="text-center mb-6">
-                                <div class="text-5xl font-bold mb-2 ${
-                                    wellbeingScore.percentage >= 70 ? 'text-green-600' :
-                                    wellbeingScore.percentage >= 50 ? 'text-yellow-600' :
-                                    'text-red-600'
-                                }">${wellbeingScore.total}/70</div>
-                                <div class="text-2xl text-gray-600 mb-4">${wellbeingScore.percentage}%</div>
-                                <div class="w-full bg-gray-200 rounded-full h-4 mb-4">
-                                    <div class="h-4 rounded-full transition-all duration-1000 progress-bar ${
-                                        wellbeingScore.percentage >= 70 ? 'bg-gradient-to-r from-green-500 to-green-600' :
-                                        wellbeingScore.percentage >= 50 ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
-                                        'bg-gradient-to-r from-red-500 to-red-600'
-                                    }" style="width: ${wellbeingScore.percentage}%"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="p-4 rounded-lg ${
-                                wellbeingScore.percentage >= 70 ? 'bg-green-100' :
-                                wellbeingScore.percentage >= 50 ? 'bg-yellow-100' :
-                                'bg-red-100'
-                            }">
-                                <h4 class="font-semibold mb-2 ${
-                                    wellbeingScore.percentage >= 70 ? 'text-green-800' :
-                                    wellbeingScore.percentage >= 50 ? 'text-yellow-800' :
-                                    'text-red-800'
-                                }">Status Kesejahteraan:</h4>
-                                <p class="text-sm font-medium ${
-                                    wellbeingScore.percentage >= 70 ? 'text-green-700' :
-                                    wellbeingScore.percentage >= 50 ? 'text-yellow-700' :
-                                    'text-red-700'
-                                }">
-                                    ${wellbeingScore.percentage >= 70 ? '✅ Tahap kesejahteraan yang baik' :
-                                      wellbeingScore.percentage >= 50 ? '⚠️ Tahap kesejahteraan sederhana' :
-                                      '❗ Anda dinasihatkan untuk berjumpa kaunselor pendidikan di IPG anda'}
-                                </p>
-                                <div class="mt-3 text-xs ${
-                                    wellbeingScore.percentage >= 70 ? 'text-green-600' :
-                                    wellbeingScore.percentage >= 50 ? 'text-yellow-600' :
-                                    'text-red-600'
-                                }">
-                                    <div>Skor minimum: 14 | Skor maksimum: 70</div>
-                                    <div>Skor anda: ${wellbeingScore.total} (${wellbeingScore.percentage}%)</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 no-print">
-                        <button
-                            onclick="generatePDF()"
-                            class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center space-x-2 shadow-md"
-                        >
-                            <span>📥</span>
-                            <span>Muat Turun Laporan</span>
-                        </button>
-                        <button
-                            onclick="generatePDF()"
-                            class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition flex items-center justify-center space-x-2 shadow-md"
-                        >
-                            <span>🖨️</span>
-                            <span>Cetak</span>
-                        </button>
-                        <button
-                            onclick="location.reload()"
-                            class="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition flex items-center justify-center space-x-2 shadow-md"
-                        >
-                            <span>🔄</span>
-                            <span>Mulakan Semula</span>
-                        </button>
-                    </div>
-
-                    <!-- Print-only content -->
-                    <div class="print-only mt-8">
-                        <div class="text-center border-t-2 border-gray-300 pt-4">
-                            <p class="text-sm text-gray-600">Institut Pendidikan Guru Malaysia</p>
-                            <p class="text-xs text-gray-500">Profil Kesejahteraan dan Personaliti Warga</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderFooter() {
-            return `
-                <div class="mt-12 pt-6 border-t border-gray-200">
-                    <p class="text-center text-sm text-gray-500">
-                        2025 © Unit Psikologi & Kaunseling, IPGM
-                    </p>
-                </div>
-            `;
-        }
-
-        function renderNavigation() {
-            if (state.showResults) return '';
-            
-            return `
-                <div class="flex flex-col sm:flex-row justify-between items-center mt-8 space-y-4 sm:space-y-0">
-                    <button
-                        onclick="handlePrevSection()"
-                        ${state.currentSection === 0 ? 'disabled' : ''}
-                        class="flex items-center space-x-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md w-full sm:w-auto justify-center"
-                    >
-                        <span>←</span>
-                        <span>Sebelumnya</span>
-                    </button>
-
-                    <div class="text-sm text-gray-500 text-center">
-                        Bahagian ${state.currentSection + 1} daripada 3
-                    </div>
-
-                    ${state.currentSection < 2 ? `
-                        <button
-                            onclick="handleNextSection()"
-                            class="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-md w-full sm:w-auto justify-center"
-                        >
-                            <span>Seterusnya</span>
-                            <span>→</span>
-                        </button>
-                    ` : `
-                        <button
-                            onclick="showResults()"
-                            class="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition shadow-md w-full sm:w-auto justify-center"
-                        >
-                            <span>Lihat Keputusan</span>
-                            <span>🎯</span>
-                        </button>
-                    `}
-                </div>
-            `;
-        }
-
-        function render() {
-            let content = '';
-            
-            if (state.showResults) {
-                content = renderResults();
-            } else {
-                content = renderHeader();
-                
-                switch (state.currentSection) {
-                    case 0:
-                        content += renderDemographics();
-                        break;
-                    case 1:
-                        content += renderPersonality();
-                        break;
-                    case 2:
-                        content += renderWellbeing();
-                        break;
+            const wellbeingStatus = wellbeingScore.total >= 45 ? "Tinggi" : wellbeingScore.total >= 25 ? "Sederhana" : "Rendah";
+            const wellbeingDesc = {
+                "Tinggi": "Anda menunjukkan tahap kesejahteraan psikologi yang sangat baik. Anda berkemungkinan besar berasa gembira, berfungsi dengan baik dan dapat menangani cabaran hidup.",
+                "Sederhana": "Anda mempunyai tahap kesejahteraan psikologi yang sederhana. Terdapat ruang untuk penambahbaikan dalam beberapa aspek kehidupan anda untuk meningkatkan lagi kebahagiaan dan daya tahan anda.",
+                "Rendah": "Skor anda menunjukkan tahap kesejahteraan psikologi yang rendah. Anda mungkin sedang menghadapi kesukaran. Pertimbangkan untuk mendapatkan sokongan daripada kaunselor atau profesional kesihatan mental."
+            };
+            const wellbeingColors = {
+                Tinggi: {
+                    text: 'text-green-700', title: 'text-green-800', score: 'text-green-600',
+                    bg: 'bg-green-50', border: 'border-green-200', innerBg: 'bg-green-100'
+                },
+                Sederhana: {
+                    text: 'text-yellow-700', title: 'text-yellow-800', score: 'text-yellow-600',
+                    bg: 'bg-yellow-50', border: 'border-yellow-300', innerBg: 'bg-yellow-100'
+                },
+                Rendah: {
+                    text: 'text-red-700', title: 'text-red-800', score: 'text-red-600',
+                    bg: 'bg-red-50', border: 'border-red-200', innerBg: 'bg-red-100'
                 }
-                
-                content += renderNavigation();
-            }
+            };
+            const wColor = wellbeingColors[wellbeingStatus];
             
-            // Add footer to every page
-            content += renderFooter();
-            
-            document.getElementById('app').innerHTML = content;
-            
-            // Scroll to top smoothly
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return `
+                <div class="text-center p-6 bg-white rounded-lg">
+                    <h1 class="text-3xl font-bold text-gray-800">Keputusan Profil Anda</h1>
+                    <p class="text-lg text-gray-600 mt-2">Terima kasih, ${name || 'Warga IPG'}, kerana melengkapkan soal selidik ini.</p>
+                    <div class="my-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p class="text-blue-800"><strong>Penting:</strong> Keputusan ini adalah berdasarkan maklum balas anda. Ia bertujuan untuk memberi gambaran umum dan kesedaran diri, bukan diagnosis klinikal.</p>
+                    </div>
+
+                    <div class="grid lg:grid-cols-5 gap-8 mt-8">
+                        <!-- Personality Section -->
+                        <div class="lg:col-span-3 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                            <h2 class="text-2xl font-bold text-blue-700 mb-4 text-left">Profil Personaliti Diri</h2>
+                            <div class="w-full max-w-md mx-auto">
+                                <canvas id="personalityChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Wellbeing Section -->
+                        <div class="lg:col-span-2 p-6 ${wColor.bg} ${wColor.border} rounded-lg flex flex-col justify-center items-center text-center">
+                            <h2 class="text-2xl font-bold ${wColor.title} mb-4">Tahap Kesejahteraan Psikologi</h2>
+                            <p class="${wColor.text} text-sm">Berdasarkan Skala WEMWBS</p>
+                            <div class="my-6">
+                                <p class="text-5xl font-bold ${wColor.score}">${wellbeingScore.total}<span class="text-2xl text-gray-500">/70</span></p>
+                                <p class="text-2xl font-semibold ${wColor.title} mt-2">Tahap: ${wellbeingStatus}</p>
+                            </div>
+                            <div class="${wColor.innerBg} p-4 rounded-lg">
+                                <p class="${wColor.text} text-sm">${wellbeingDesc[wellbeingStatus]}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-10 no-print">
+                        <p class="text-gray-600 mb-4">Simpan salinan keputusan anda dalam format PDF.</p>
+                        <button id="pdf-button" onclick="generatePDF()" class="bg-gray-800 text-white font-bold py-3 px-8 rounded-lg hover:bg-gray-900 transition-colors text-lg disabled:bg-gray-400 disabled:cursor-not-allowed">
+                            Muat Turun Laporan PDF
+                        </button>
+                    </div>
+                </div>
+            `;
         }
 
-        // Initialize app
-        document.addEventListener('DOMContentLoaded', function() {
-            render();
+        function renderSpiderChart() {
+            const ctx = document.getElementById('personalityChart');
+            if (!ctx) return;
+            const personalityScores = calculatePersonalityScores();
             
-            // Add keyboard shortcuts
-            document.addEventListener('keydown', function(e) {
-                if (state.showResults) return;
-                
-                if (e.ctrlKey || e.metaKey) {
-                    switch(e.key) {
-                        case 'ArrowLeft':
-                            e.preventDefault();
-                            if (state.currentSection > 0) handlePrevSection();
-                            break;
-                        case 'ArrowRight':
-                            e.preventDefault();
-                            if (state.currentSection < 2) {
-                                handleNextSection();
-                            } else {
-                                showResults();
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Extraversion', 'Agreeableness', 'Conscientiousness', 'Neuroticism', 'Openness'],
+                    datasets: [{
+                        label: 'Skor Personaliti (%)',
+                        data: [
+                            personalityScores.extraversion,
+                            personalityScores.agreeableness,
+                            personalityScores.conscientiousness,
+                            personalityScores.neuroticism,
+                            personalityScores.openness
+                        ],
+                        fill: true,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        pointBackgroundColor: 'rgb(59, 130, 246)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(59, 130, 246)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                            pointLabels: {
+                                font: { size: 12, weight: 'bold' },
+                                color: '#333'
+                            },
+                            ticks: {
+                                beginAtZero: true, max: 100, stepSize: 20,
+                                backdropColor: 'rgba(255, 255, 255, 0.75)',
+                                color: '#666'
                             }
-                            break;
-                    }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
                 }
             });
-        });
+        }
+        
+        function showModal(message) {
+            const existingModal = document.getElementById('alert-modal');
+            if (existingModal) existingModal.remove();
+            const modalHTML = `
+                <div id="alert-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 fade-in">
+                    <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
+                        <h3 class="text-lg font-bold text-red-600 mb-4">Perhatian!</h3>
+                        <p class="text-gray-700 mb-6">${message}</p>
+                        <button onclick="closeModal()" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors">OK</button>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('alert-modal');
+            if (modal) modal.remove();
+        }
+
+        // --- INITIALIZATION ---
+        function attachListeners() {
+            const icInput = document.getElementById('ic');
+            if (icInput) {
+                updateICCounter(icInput.value);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', render);
+
     </script>
 </body>
 </html>
