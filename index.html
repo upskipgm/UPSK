@@ -1280,18 +1280,42 @@
                         </div>
 
                         <!-- Mental Wellbeing -->
-                        <div class="bg-green-50 p-6 rounded-lg shadow-sm">
-                            <h3 class="text-xl font-bold text-green-800 mb-4">Kesejahteraan Mental</h3>
+                        <div class="p-6 rounded-lg shadow-sm ${
+                            wellbeingScore.percentage >= 70 ? 'bg-green-50' :
+                            wellbeingScore.percentage >= 50 ? 'bg-yellow-50' :
+                            'bg-red-50'
+                        }">
+                            <h3 class="text-xl font-bold mb-4 ${
+                                wellbeingScore.percentage >= 70 ? 'text-green-800' :
+                                wellbeingScore.percentage >= 50 ? 'text-yellow-800' :
+                                'text-red-800'
+                            }">Kesejahteraan Mental</h3>
                             <div class="text-center mb-6">
-                                <div class="text-5xl font-bold text-green-600 mb-2">${wellbeingScore.total}/70</div>
+                                <div class="text-5xl font-bold mb-2 ${
+                                    wellbeingScore.percentage >= 70 ? 'text-green-600' :
+                                    wellbeingScore.percentage >= 50 ? 'text-yellow-600' :
+                                    'text-red-600'
+                                }">${wellbeingScore.total}/70</div>
                                 <div class="text-2xl text-gray-600 mb-4">${wellbeingScore.percentage}%</div>
                                 <div class="w-full bg-gray-200 rounded-full h-4 mb-4">
-                                    <div class="bg-gradient-to-r from-green-500 to-green-600 h-4 rounded-full transition-all duration-1000 progress-bar" style="width: ${wellbeingScore.percentage}%"></div>
+                                    <div class="h-4 rounded-full transition-all duration-1000 progress-bar ${
+                                        wellbeingScore.percentage >= 70 ? 'bg-gradient-to-r from-green-500 to-green-600' :
+                                        wellbeingScore.percentage >= 50 ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
+                                        'bg-gradient-to-r from-red-500 to-red-600'
+                                    }" style="width: ${wellbeingScore.percentage}%"></div>
                                 </div>
                             </div>
                             
-                            <div class="p-4 bg-green-100 rounded-lg">
-                                <h4 class="font-semibold text-green-800 mb-2">Status Kesejahteraan:</h4>
+                            <div class="p-4 rounded-lg ${
+                                wellbeingScore.percentage >= 70 ? 'bg-green-100' :
+                                wellbeingScore.percentage >= 50 ? 'bg-yellow-100' :
+                                'bg-red-100'
+                            }">
+                                <h4 class="font-semibold mb-2 ${
+                                    wellbeingScore.percentage >= 70 ? 'text-green-800' :
+                                    wellbeingScore.percentage >= 50 ? 'text-yellow-800' :
+                                    'text-red-800'
+                                }">Status Kesejahteraan:</h4>
                                 <p class="text-sm font-medium ${
                                     wellbeingScore.percentage >= 70 ? 'text-green-700' :
                                     wellbeingScore.percentage >= 50 ? 'text-yellow-700' :
@@ -1299,9 +1323,13 @@
                                 }">
                                     ${wellbeingScore.percentage >= 70 ? '✅ Tahap kesejahteraan yang baik' :
                                       wellbeingScore.percentage >= 50 ? '⚠️ Tahap kesejahteraan sederhana' :
-                                      '❗ Mungkin memerlukan perhatian lebih'}
+                                      '❗ Anda dinasihatkan untuk berjumpa kaunselor pendidikan di IPG anda'}
                                 </p>
-                                <div class="mt-3 text-xs text-green-600">
+                                <div class="mt-3 text-xs ${
+                                    wellbeingScore.percentage >= 70 ? 'text-green-600' :
+                                    wellbeingScore.percentage >= 50 ? 'text-yellow-600' :
+                                    'text-red-600'
+                                }">
                                     <div>Skor minimum: 14 | Skor maksimum: 70</div>
                                     <div>Skor anda: ${wellbeingScore.total} (${wellbeingScore.percentage}%)</div>
                                 </div>
