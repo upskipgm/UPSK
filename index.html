@@ -232,7 +232,7 @@
             buttons.forEach(button => {
                 const label = button.nextElementSibling;
                 const baseClass = 'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 cursor-pointer';
-                let specificClass = 'bg-gray-200 text-gray-600 hover:bg-gray-300';
+                let specificClass = 'bg-gray-200 text-gray-600 hover:bg-gray-300'; // Default
                 if (parseInt(button.value) === parseInt(selectedValue)) {
                     if (section === 'personality') {
                         specificClass = 'bg-blue-500 text-white shadow-lg transform scale-110';
@@ -421,13 +421,11 @@
             const doc = new jsPDF('p', 'pt', 'a4');
 
             const resultsContent = document.getElementById('results-content');
-            // Temporarily remove the download button from the content to be captured
             const downloadButtonContainer = resultsContent.querySelector('.no-print');
             downloadButtonContainer.style.display = 'none';
 
             const canvas = await html2canvas(resultsContent, { scale: 2 });
             
-            // Restore the download button
             downloadButtonContainer.style.display = 'block';
 
             const imgData = canvas.toDataURL('image/png');
