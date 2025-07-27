@@ -291,8 +291,6 @@
 
         // --- SCORE CALCULATIONS ---
         function calculatePersonalityScores() {
-            // Scoring based on the formula from the Big Five Personality Test PDF
-            // This formula calculates a raw score between 0-40.
             const r = state.responses.personality;
             const p = (index) => r[index - 1] || 3; // Adjust to 0-based index and default to 3
 
@@ -304,11 +302,8 @@
                 openness: 8 + p(5) - p(10) + p(15) - p(20) + p(25) - p(30) + p(35) + p(40) + p(45) + p(50)
             };
             
-            // The formula for Neuroticism in the PDF calculates Emotional Stability. 
-            // To get Neuroticism (where high score = high neuroticism), we subtract from 40.
             scores.neuroticism = 40 - scores.neuroticism;
 
-            // Normalize 0-40 score to 0-100 for chart display
             return {
                 extraversion: Math.max(0, Math.min(100, Math.round((scores.extraversion / 40) * 100))),
                 agreeableness: Math.max(0, Math.min(100, Math.round((scores.agreeableness / 40) * 100))),
@@ -322,7 +317,7 @@
             const totalScore = Object.values(state.responses.wellbeing).reduce((sum, score) => sum + (score || 0), 0);
             return {
                 total: totalScore,
-                percentage: Math.round(((totalScore - 14) / (70 - 14)) * 100) // WEMWBS formula
+                percentage: Math.round(((totalScore - 14) / (70 - 14)) * 100)
             };
         }
 
@@ -416,156 +411,21 @@
             const { demographics } = state.responses;
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'pt', 'a4');
+
+            const resultsContent = document.getElementById('results-content');
+            const canvas = await html2canvas(resultsContent, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
             
-            const chartCanvas = document.getElementById('personalityChart');
-            const chartImage = await html2canvas(chartCanvas, { backgroundColor: null, scale: 3 });
-            const chartImageData = chartImage.toDataURL('image/png');
+            const pdfWidth = doc.internal.pageSize.getWidth();
+            const pdfHeight = doc.internal.pageSize.getHeight();
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const ratio = imgWidth / imgHeight;
+            const newImgWidth = pdfWidth - 80; // with margin
+            const newImgHeight = newImgWidth / ratio;
 
-            // --- PDF CONTENT ---
-            doc.setFont("helvetica", "normal");
-
-            // Header
-            doc.setFontSize(18);
-            doc.setFont("helvetica", "bold");
-            doc.text("PROFIL KESEJAHTERAAN DAN PERSONALITI", doc.internal.pageSize.getWidth() / 2, 40, { align: "center" });
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.text("Institut Pendidikan Guru Malaysia (IPGM)", doc.internal.pageSize.getWidth() / 2, 60, { align: "center" });
-
-            // Demographics
-            let yPos = 90;
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "bold");
-            doc.text("MAKLUMAT DIRI", 40, yPos);
-            doc.setLineWidth(0.5);
-            doc.line(40, yPos + 3, 555, yPos + 3);
-            yPos += 18;
-
-            doc.setFontSize(9);
-            const demoData = [
-                { label: 'Nama', value: demographics.name }, { label: 'No. MyKad', value: demographics.ic },
-                { label: 'Email', value: demographics.email }, { label: 'Jantina', value: demographics.gender },
-                { label: 'Bangsa', value: demographics.race }, { label: 'Agama', value: demographics.religion },
-                { label: 'No. Telefon', value: demographics.phone }, { label: 'Jawatan', value: demographics.jawatan },
-                { label: 'Gred', value: demographics.gred }, { label: 'Tarikh', value: new Date().toLocaleDateString('ms-MY') }
-            ];
+            doc.addImage(imgData, 'PNG', 40, 40, newImgWidth, newImgHeight);
             
-            for (let i = 0; i < demoData.length; i += 2) {
-                doc.setFont("helvetica", "bold"); doc.text(demoData[i].label, 40, yPos);
-                doc.setFont("helvetica", "normal"); doc.text(`: ${demoData[i].value || '-'}`, 120, yPos);
-                if (demoData[i+1]) {
-                    doc.setFont("helvetica", "bold"); doc.text(demoData[i+1].label, 320, yPos);
-                    doc.setFont("helvetica", "normal"); doc.text(`: ${demoData[i+1].value || '-'}`, 390, yPos);
-                }
-                yPos += 14;
-            }
-            doc.setFont("helvetica", "bold"); doc.text('IPG Kampus', 40, yPos);
-            doc.setFont("helvetica", "normal"); 
-            const ipgText = doc.splitTextToSize(`: ${demographics.ipgKampus || '-'}`, 435);
-            doc.text(ipgText, 120, yPos);
-            yPos += (ipgText.length * 12) + 15;
-
-            // Results Section
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "bold");
-            doc.text("KEPUTUSAN PROFIL", 40, yPos);
-            doc.line(40, yPos + 3, 555, yPos + 3);
-            yPos += 20;
-
-            // Two-column layout for results
-            const col1X = 40;
-            const col2X = 320;
-
-            // Column 1: Wellbeing
-            const wellbeingScore = calculateWellbeingScore();
-            const wellbeingStatus = wellbeingScore.total >= 45 ? "Tinggi" : wellbeingScore.total >= 25 ? "Sederhana" : "Rendah";
-            const wellbeingColors = {
-                Tinggi: { bg: [236, 253, 245], text: [22, 101, 52], border: [110, 231, 183] },
-                Sederhana: { bg: [254, 252, 232], text: [133, 77, 14], border: [252, 211, 77] },
-                Rendah: { bg: [254, 242, 242], text: [153, 27, 27], border: [252, 165, 165] }
-            };
-            const wColor = wellbeingColors[wellbeingStatus];
-            
-            doc.setFillColor(...wColor.bg);
-            doc.setDrawColor(...wColor.border);
-            doc.roundedRect(col1X, yPos, 255, 120, 8, 8, 'FD');
-            
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(...wColor.text);
-            doc.text("TAHAP KESEJAHTERAAN PSIKOLOGI", col1X + 127.5, yPos + 18, { align: 'center' });
-            
-            doc.setFontSize(32);
-            doc.setFont("helvetica", "bold");
-            doc.text(`${wellbeingScore.total}`, col1X + 127.5, yPos + 55, { align: 'center' });
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "normal");
-            doc.text("SKOR / 70", col1X + 127.5, yPos + 70, { align: 'center' });
-
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.text(`Tahap: ${wellbeingStatus}`, col1X + 127.5, yPos + 95, { align: 'center' });
-            doc.setTextColor(0,0,0);
-
-            // Column 2: Personality Chart
-            doc.addImage(chartImageData, 'PNG', col2X, yPos - 5, 235, 235);
-            
-            let resultsSectionEndY = yPos + 235;
-
-            // Personality Descriptions
-            let descY = resultsSectionEndY - 50;
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "bold");
-            doc.text("DESKRIPSI PERSONALITI DIRI", 40, descY);
-            doc.line(40, descY + 3, 555, descY + 3);
-            descY += 20;
-
-            const personalityScores = calculatePersonalityScores();
-            const traits = [
-                { label: 'Extraversion', score: personalityScores.extraversion, desc: 'Tahap keselesaan dengan interaksi sosial. Skor tinggi menandakan anda seorang yang suka bergaul, berkeyakinan dan mesra.' },
-                { label: 'Agreeableness', score: personalityScores.agreeableness, desc: 'Kecenderungan untuk bersimpati dan bekerjasama. Skor tinggi menandakan anda seorang yang mudah percaya, suka menolong dan pemaaf.' },
-                { label: 'Conscientiousness', score: personalityScores.conscientiousness, desc: 'Tahap kebolehpercayaan dan disiplin diri. Skor tinggi menandakan anda seorang yang teratur, bertanggungjawab dan berhati-hati.' },
-                { label: 'Neuroticism', score: personalityScores.neuroticism, desc: 'Kecenderungan mengalami emosi negatif. Skor tinggi menandakan anda mungkin mudah cemas, tertekan atau tidak stabil dari segi emosi.' },
-                { label: 'Openness', score: personalityScores.openness, desc: 'Keterbukaan kepada pengalaman baharu. Skor tinggi menandakan anda seorang yang kreatif, ingin tahu dan mempunyai imaginasi yang luas.' }
-            ];
-
-            traits.forEach(({label, score, desc}) => {
-                doc.setFontSize(9);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(37, 99, 235);
-                doc.text(`${label}: ${score}%`, 40, descY);
-                doc.setTextColor(0,0,0);
-                doc.setFont("helvetica", "normal");
-                const descLines = doc.splitTextToSize(desc, 515);
-                doc.text(descLines, 40, descY + 12);
-                descY += (descLines.length * 10) + 18;
-            });
-            
-            // NEW: Add counselor note and signature
-            descY += 10;
-            doc.setFillColor(240, 240, 240); // Soft grey background
-            doc.roundedRect(40, descY - 10, 515, 35, 5, 5, 'F');
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "bold");
-            const noteLines = doc.splitTextToSize("Untuk interpretasi yang lebih mendalam, sila berjumpa Kaunselor Pendidikan Institut di kampus anda.", 500);
-            doc.text(noteLines, 45, descY);
-            
-            descY += (noteLines.length * 10) + 50;
-
-            doc.line(350, descY, 555, descY); 
-            descY += 12;
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(8);
-            doc.text("Tandatangan & Cop Kaunselor", 390, descY);
-
-
-            // Footer
-            const pageHeight = doc.internal.pageSize.height;
-            doc.setFontSize(8);
-            doc.setTextColor(150);
-            doc.text(`© Unit Psikologi & Kaunseling, IPGM`, doc.internal.pageSize.getWidth() / 2, pageHeight - 30, { align: 'center' });
-            doc.text(`Halaman 1 dari 1`, doc.internal.pageSize.getWidth() / 2, pageHeight - 15, { align: 'center' });
-
             doc.save(`Profil_Kesejahteraan_${demographics.name.replace(/ /g, '_')}.pdf`);
             pdfButton.disabled = false;
             pdfButton.innerHTML = 'Muat Turun Laporan PDF';
@@ -580,7 +440,6 @@
                 app.innerHTML = renderWelcomePage();
             } else if (state.showResults) {
                 app.innerHTML = renderResults();
-                // Use a short timeout to ensure the canvas element is in the DOM before rendering the chart
                 setTimeout(renderSpiderChart, 100);
             } else {
                 const totalSections = 3;
@@ -802,6 +661,48 @@
         function renderResults() {
             const { name } = state.responses.demographics;
             const wellbeingScore = calculateWellbeingScore();
+            const personalityScores = calculatePersonalityScores();
+            const getTahap = (score) => {
+                if (score >= 67) return 'Tinggi';
+                if (score >= 34) return 'Sederhana';
+                return 'Rendah';
+            };
+
+            const interpretations = {
+                Extraversion: {
+                    Tinggi: 'Suka bergaul, bertenaga, dan selesa dalam kumpulan.',
+                    Sederhana: 'Seimbang antara sosial dan bersendirian.',
+                    Rendah: 'Lebih suka bersendirian, pendiam, dan pemalu.'
+                },
+                Agreeableness: {
+                    Tinggi: 'Suka bekerjasama, mudah mempercayai, dan baik hati.',
+                    Sederhana: 'Seimbang antara bekerjasama dan kepentingan diri.',
+                    Rendah: 'Lebih skeptikal, suka bertanding, dan berterus-terang.'
+                },
+                Conscientiousness: {
+                    Tinggi: 'Sangat berdisiplin, teratur, dan bertanggungjawab.',
+                    Sederhana: 'Gabungan antara teratur dan fleksibel.',
+                    Rendah: 'Lebih fleksibel, spontan, dan kurang teratur.'
+                },
+                Neuroticism: {
+                    Tinggi: 'Cenderung untuk berasa cemas, risau, dan tidak stabil dari segi emosi.',
+                    Sederhana: 'Responsif terhadap emosi tetapi secara amnya stabil.',
+                    Rendah: 'Tenang, stabil dari segi emosi, dan berdaya tahan.'
+                },
+                Openness: {
+                    Tinggi: 'Sangat kreatif, imaginatif, dan ingin tahu.',
+                    Sederhana: 'Keseimbangan antara kreativiti dan praktikaliti.',
+                    Rendah: 'Lebih praktikal, konvensional, dan suka kepada rutin.'
+                }
+            };
+
+            const personalityData = [
+                { label: 'Extraversion', score: personalityScores.extraversion, color: 'text-red-600' },
+                { label: 'Agreeableness', score: personalityScores.agreeableness, color: 'text-yellow-600' },
+                { label: 'Conscientiousness', score: personalityScores.conscientiousness, color: 'text-green-600' },
+                { label: 'Neuroticism', score: personalityScores.neuroticism, color: 'text-purple-600' },
+                { label: 'Openness', score: personalityScores.openness, color: 'text-blue-600' }
+            ];
 
             const wellbeingStatus = wellbeingScore.total >= 45 ? "Tinggi" : wellbeingScore.total >= 25 ? "Sederhana" : "Rendah";
             const wellbeingDesc = {
@@ -826,11 +727,13 @@
             const wColor = wellbeingColors[wellbeingStatus];
             
             return `
-                <div class="text-center p-6 bg-white rounded-lg">
-                    <h1 class="text-3xl font-bold text-gray-800">Keputusan Profil Anda</h1>
-                    <p class="text-lg text-gray-600 mt-2">Terima kasih, ${name || 'Warga IPG'}, kerana melengkapkan soal selidik ini.</p>
-                    <div class="my-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p class="text-blue-800"><strong>Penting:</strong> Keputusan ini adalah berdasarkan maklum balas anda. Ia bertujuan untuk memberi gambaran umum dan kesedaran diri, bukan diagnosis klinikal.</p>
+                <div id="results-content" class="p-6 bg-white rounded-lg">
+                    <div class="text-center">
+                        <h1 class="text-3xl font-bold text-gray-800">Keputusan Profil Anda</h1>
+                        <p class="text-lg text-gray-600 mt-2">Terima kasih, ${name || 'Warga IPG'}, kerana melengkapkan soal selidik ini.</p>
+                        <div class="my-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p class="text-blue-800"><strong>Penting:</strong> Keputusan ini adalah berdasarkan maklum balas anda. Ia bertujuan untuk memberi gambaran umum dan kesedaran diri, bukan diagnosis klinikal.</p>
+                        </div>
                     </div>
 
                     <div class="grid lg:grid-cols-5 gap-8 mt-8">
@@ -856,7 +759,32 @@
                         </div>
                     </div>
 
-                    <div class="mt-10 no-print">
+                    <!-- Interpretation Table -->
+                    <div class="mt-10">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Interpretasi Personaliti Diri</h2>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white border border-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dimensi</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tahap Anda</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interpretasi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    ${personalityData.map(trait => `
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap font-bold ${trait.color}">${trait.label}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap font-semibold">${getTahap(trait.score)}</td>
+                                            <td class="px-6 py-4 text-sm text-gray-600">${interpretations[trait.label][getTahap(trait.score)]}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="mt-10 text-center no-print">
                         <p class="text-gray-600 mb-4">Simpan salinan keputusan anda dalam format PDF.</p>
                         <button id="pdf-button" onclick="generatePDF()" class="bg-gray-800 text-white font-bold py-3 px-8 rounded-lg hover:bg-gray-900 transition-colors text-lg disabled:bg-gray-400 disabled:cursor-not-allowed">
                             Muat Turun Laporan PDF
