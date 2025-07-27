@@ -138,6 +138,47 @@
                     'English Language Teaching Centre (ELTC)'
                 ], 
                 required: true 
+            },
+            { 
+                id: 'jawatan', 
+                label: 'Jawatan', 
+                type: 'select', 
+                options: [
+                    'REKTOR',
+                    'TIMBALAN REKTOR KANAN',
+                    'TIMBALAN REKTOR',
+                    'KETUA PENOLONG PENGARAH',
+                    'PENOLONG PENGARAH',
+                    'PENGARAH',
+                    'TIMBALAN PENGARAH',
+                    'PENSYARAH',
+                    'KAUNSELOR',
+                    'PEGAWAI PENGURUSAN',
+                    'PEGAWAI GUNASAMA',
+                    'ANGGOTA KHIDMAT PENGURUSAN (AKP)'
+                ], 
+                required: true 
+            },
+            { 
+                id: 'gred', 
+                label: 'Gred', 
+                type: 'select', 
+                options: [
+                    'JUSA B',
+                    'JUSA C',
+                    'DG14',
+                    'DG13',
+                    'DG12',
+                    'DG10',
+                    'DG9',
+                    'F10',
+                    'F9',
+                    'S10',
+                    'S9',
+                    'N2',
+                    'N1'
+                ], 
+                required: true 
             }
         ];
 
@@ -261,7 +302,7 @@
 
         function validateCurrentSection() {
             if (state.currentSection === 0) {
-                const requiredFields = ['name', 'ic', 'gender', 'race', 'religion', 'phone', 'ipgKampus'];
+                const requiredFields = ['name', 'ic', 'gender', 'race', 'religion', 'phone', 'ipgKampus', 'jawatan', 'gred'];
                 for (let field of requiredFields) {
                     const value = state.responses.demographics[field];
                     if (!value || value.toString().trim() === '') {
@@ -272,7 +313,9 @@
                             race: 'Bangsa',
                             religion: 'Agama',
                             phone: 'No. Telefon',
-                            ipgKampus: 'IPGM/IPGK'
+                            ipgKampus: 'IPGM/IPGK',
+                            jawatan: 'Jawatan',
+                            gred: 'Gred'
                         };
                         return { isValid: false, message: `Sila lengkapkan maklumat ${fieldNames[field]}.` };
                     }
@@ -395,6 +438,8 @@
                 state.responses.demographics.religion || '',
                 state.responses.demographics.phone || '',
                 state.responses.demographics.ipgKampus || '',
+                state.responses.demographics.jawatan || '',
+                state.responses.demographics.gred || '',
                 personalityScores.extraversion || 0,
                 personalityScores.agreeableness || 0,
                 personalityScores.conscientiousness || 0,
@@ -450,11 +495,12 @@
             const col2X = 110;
             const tableWidth = 170;
             
-            // Table data - including date
+            // Table data - including date and new fields
             const tableData = [
                 ['Nama:', demographics.name || 'Tidak dinyatakan', 'No. MyKad:', demographics.ic || 'Tidak dinyatakan'],
                 ['Jantina:', demographics.gender || 'Tidak dinyatakan', 'Bangsa:', demographics.race || 'Tidak dinyatakan'],
                 ['Agama:', demographics.religion || 'Tidak dinyatakan', 'No. Telefon:', demographics.phone || 'Tidak dinyatakan'],
+                ['Jawatan:', demographics.jawatan || 'Tidak dinyatakan', 'Gred:', demographics.gred || 'Tidak dinyatakan'],
                 ['Tarikh:', new Date().toLocaleDateString('ms-MY'), '', '']
             ];
             
@@ -477,8 +523,8 @@
                 }
                 
                 // Draw vertical line in middle (except for date row)
-                if (index < 3) {
-                    doc.line(col2X, tableStartY - 5, col2X, tableStartY + (3 * rowHeight) - 5);
+                if (index < 4) {
+                    doc.line(col2X, tableStartY - 5, col2X, tableStartY + (4 * rowHeight) - 5);
                 }
                 
                 // Left column - Label
@@ -487,7 +533,7 @@
                 
                 // Left column - Value
                 doc.setFont("helvetica", "normal");
-                if (index === 3) { // Date row - full width
+                if (index === 4) { // Date row - full width
                     doc.text(row[1], col1X + 18, currentY);
                 } else {
                     doc.text(row[1], col1X + 18, currentY);
@@ -849,6 +895,12 @@
             currentY += 15;
             doc.text("COP RASMI: ......................................................................", 25, currentY);
             
+            // Add footer with copyright
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(100, 100, 100);
+            doc.text("2025 © Unit Psikologi & Kaunseling, IPGM", 105, 285, { align: "center" });
+            
             // Save the PDF
             const fileName = `Keputusan_PKPW_${demographics.name ? demographics.name.replace(/\s+/g, '_') : 'IPG'}_${new Date().toISOString().split('T')[0]}.pdf`;
             doc.save(fileName);
@@ -930,7 +982,7 @@
                                         class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                         onchange="handleDemographicChange('${q.id}', this.value)"
                                     >
-                                        <option value="">${q.id === 'gender' ? 'Pilih jantina' : q.id === 'race' ? 'Pilih bangsa' : q.id === 'religion' ? 'Pilih agama' : q.id === 'ipgKampus' ? 'Pilih IPGM/IPGK' : 'Sila pilih...'}</option>
+                                        <option value="">${q.id === 'gender' ? 'Pilih jantina' : q.id === 'race' ? 'Pilih bangsa' : q.id === 'religion' ? 'Pilih agama' : q.id === 'ipgKampus' ? 'Pilih IPGM/IPGK' : q.id === 'jawatan' ? 'Pilih jawatan' : q.id === 'gred' ? 'Pilih gred' : 'Sila pilih...'}</option>
                                         ${q.options.map(option => `
                                             <option value="${option}" ${state.responses.demographics[q.id] === option ? 'selected' : ''}>${option}</option>
                                         `).join('')}
@@ -1096,6 +1148,14 @@
                                         <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50">IPG Kampus</td>
                                         <td class="py-3 px-3 text-gray-900">${state.responses.demographics.ipgKampus || 'Tidak dinyatakan'}</td>
                                     </tr>
+                                    <tr class="border-b border-gray-100">
+                                        <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50">Jawatan</td>
+                                        <td class="py-3 px-3 text-gray-900">${state.responses.demographics.jawatan || 'Tidak dinyatakan'}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-3 px-3 font-medium text-gray-700 bg-gray-50">Gred</td>
+                                        <td class="py-3 px-3 text-gray-900">${state.responses.demographics.gred || 'Tidak dinyatakan'}</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1142,7 +1202,11 @@
                             
                             <div class="p-4 bg-green-100 rounded-lg">
                                 <h4 class="font-semibold text-green-800 mb-2">Status Kesejahteraan:</h4>
-                                <p class="text-sm text-green-700 font-medium">
+                                <p class="text-sm font-medium ${
+                                    wellbeingScore.percentage >= 70 ? 'text-green-700' :
+                                    wellbeingScore.percentage >= 50 ? 'text-yellow-700' :
+                                    'text-red-700'
+                                }">
                                     ${wellbeingScore.percentage >= 70 ? '✅ Tahap kesejahteraan yang baik' :
                                       wellbeingScore.percentage >= 50 ? '⚠️ Tahap kesejahteraan sederhana' :
                                       '❗ Mungkin memerlukan perhatian lebih'}
@@ -1194,7 +1258,7 @@
             return `
                 <div class="mt-12 pt-6 border-t border-gray-200">
                     <p class="text-center text-sm text-gray-500">
-                        © Unit Psikologi & Kaunseling, IPGM
+                        2025 © Unit Psikologi & Kaunseling, IPGM
                     </p>
                 </div>
             `;
