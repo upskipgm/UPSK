@@ -200,7 +200,6 @@
                 
                 state.responses.demographics[id] = digitsOnly;
                 
-                // Directly update the input field's value to enforce numeric-only input
                 if (inputElement) {
                     inputElement.value = digitsOnly;
                 }
@@ -233,7 +232,7 @@
             buttons.forEach(button => {
                 const label = button.nextElementSibling;
                 const baseClass = 'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 cursor-pointer';
-                let specificClass = 'bg-gray-200 text-gray-600 hover:bg-gray-300'; // Default
+                let specificClass = 'bg-gray-200 text-gray-600 hover:bg-gray-300';
                 if (parseInt(button.value) === parseInt(selectedValue)) {
                     if (section === 'personality') {
                         specificClass = 'bg-blue-500 text-white shadow-lg transform scale-110';
@@ -292,7 +291,7 @@
         // --- SCORE CALCULATIONS ---
         function calculatePersonalityScores() {
             const r = state.responses.personality;
-            const p = (index) => r[index - 1] || 3; // Adjust to 0-based index and default to 3
+            const p = (index) => r[index - 1] || 3;
 
             const scores = {
                 extraversion: 20 + p(1) - p(6) + p(11) - p(16) + p(21) - p(26) + p(31) - p(36) + p(41) - p(46),
@@ -362,6 +361,11 @@
             };
             const tahapKesejahteraan = wellbeingScore.total >= 45 ? "Tinggi" : wellbeingScore.total >= 25 ? "Sederhana" : "Rendah";
 
+            const personalityRanked = Object.entries(personalityScores)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 3)
+                .map(([key]) => key.charAt(0).toUpperCase() + key.slice(1));
+
             const sheetData = {
                 timestamp: new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kuala_Lumpur' }),
                 nama: state.responses.demographics.name || '',
@@ -385,6 +389,10 @@
                 tahap_neuroticism: getTahap(personalityScores.neuroticism),
                 openness: personalityScores.openness,
                 tahap_openness: getTahap(personalityScores.openness),
+                
+                domain_1: personalityRanked[0] || '',
+                domain_2: personalityRanked[1] || '',
+                domain_3: personalityRanked[2] || '',
 
                 ...Object.fromEntries(Array.from({length: 50}, (_, i) => [`p${i+1}`, state.responses.personality[i] || 0])),
                 
@@ -413,7 +421,15 @@
             const doc = new jsPDF('p', 'pt', 'a4');
 
             const resultsContent = document.getElementById('results-content');
+            // Temporarily remove the download button from the content to be captured
+            const downloadButtonContainer = resultsContent.querySelector('.no-print');
+            downloadButtonContainer.style.display = 'none';
+
             const canvas = await html2canvas(resultsContent, { scale: 2 });
+            
+            // Restore the download button
+            downloadButtonContainer.style.display = 'block';
+
             const imgData = canvas.toDataURL('image/png');
             
             const pdfWidth = doc.internal.pageSize.getWidth();
@@ -421,10 +437,18 @@
             const imgWidth = canvas.width;
             const imgHeight = canvas.height;
             const ratio = imgWidth / imgHeight;
-            const newImgWidth = pdfWidth - 80; // with margin
-            const newImgHeight = newImgWidth / ratio;
+            let newImgWidth = pdfWidth;
+            let newImgHeight = newImgWidth / ratio;
 
-            doc.addImage(imgData, 'PNG', 40, 40, newImgWidth, newImgHeight);
+            if (newImgHeight > pdfHeight) {
+                newImgHeight = pdfHeight;
+                newImgWidth = newImgHeight * ratio;
+            }
+
+            const xOffset = (pdfWidth - newImgWidth) / 2;
+            const yOffset = (pdfHeight - newImgHeight) / 2;
+
+            doc.addImage(imgData, 'PNG', xOffset, yOffset, newImgWidth, newImgHeight);
             
             doc.save(`Profil_Kesejahteraan_${demographics.name.replace(/ /g, '_')}.pdf`);
             pdfButton.disabled = false;
