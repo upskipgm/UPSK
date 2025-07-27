@@ -545,10 +545,8 @@
                     doc.line(col1X, currentY - 5, col1X + tableWidth, currentY - 5);
                 }
                 
-                // Draw vertical line in middle (except for last row)
-                if (index < 4) {
-                    doc.line(col2X, tableStartY - 5, col2X, tableStartY + (4 * rowHeight) - 5);
-                }
+                // Draw vertical line in middle for all rows
+                doc.line(col2X, tableStartY - 5, col2X, tableStartY + (tableData.length * rowHeight) - 5);
                 
                 // Left column - Label
                 doc.setFont("helvetica", "bold");
@@ -556,7 +554,7 @@
                 
                 // Left column - Value
                 doc.setFont("helvetica", "normal");
-                doc.text(row[1], col1X + 18, currentY);
+                doc.text(row[1], col1X + 25, currentY);
                 
                 // Right column - Label
                 doc.setFont("helvetica", "bold");
@@ -564,7 +562,7 @@
                 
                 // Right column - Value
                 doc.setFont("helvetica", "normal");
-                doc.text(row[3], col2X + 23, currentY);
+                doc.text(row[3], col2X + 25, currentY);
             });
             
             // IPG Kampus - Full width row
@@ -581,29 +579,7 @@
             
             // Handle long IPG Kampus text
             const ipgText = demographics.ipgKampus || 'Tidak dinyatakan';
-            if (ipgText.length > 45) {
-                // Split long text into two lines if needed
-                const words = ipgText.split(' ');
-                let line1 = '';
-                let line2 = '';
-                let currentLine = 1;
-                
-                words.forEach(word => {
-                    if (currentLine === 1 && (line1 + word).length < 35) {
-                        line1 += (line1 ? ' ' : '') + word;
-                    } else {
-                        if (currentLine === 1) currentLine = 2;
-                        line2 += (line2 ? ' ' : '') + word;
-                    }
-                });
-                
-                doc.text(line1, col1X + 25, ipgY);
-                if (line2) {
-                    doc.text(line2, col1X + 25, ipgY + 5);
-                }
-            } else {
-                doc.text(ipgText, col1X + 25, ipgY);
-            }
+            doc.text(ipgText, col1X + 25, ipgY);
             
             let yPos = ipgY + 15;
             
@@ -916,7 +892,7 @@
             doc.text("MAKNA SETIAP KONSTRUK PERSONALITI:", 25, currentY);
             
             currentY += 15;
-            doc.setFontSize(10);
+            doc.setFontSize(9);
             doc.setTextColor(0, 0, 0);
             
             // Extraversion detailed description
@@ -930,7 +906,7 @@
             currentY += 5;
             doc.text("- Berani mengambil risiko dan mencari pengalaman baru", 30, currentY);
             
-            currentY += 12;
+            currentY += 10;
             
             // Agreeableness detailed description
             doc.setFont("helvetica", "bold");
@@ -943,7 +919,7 @@
             currentY += 5;
             doc.text("- Mudah mempercayai dan memaafkan orang lain", 30, currentY);
             
-            currentY += 12;
+            currentY += 10;
             
             // Conscientiousness detailed description
             doc.setFont("helvetica", "bold");
@@ -956,7 +932,7 @@
             currentY += 5;
             doc.text("- Boleh dipercayai dan konsisten dalam tindakan", 30, currentY);
             
-            currentY += 12;
+            currentY += 10;
             
             // Neuroticism detailed description
             doc.setFont("helvetica", "bold");
@@ -969,7 +945,7 @@
             currentY += 5;
             doc.text("- Kurang stabil dari segi emosi dalam situasi tekanan", 30, currentY);
             
-            currentY += 12;
+            currentY += 10;
             
             // Openness detailed description
             doc.setFont("helvetica", "bold");
