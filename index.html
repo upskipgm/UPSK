@@ -98,6 +98,9 @@
             <p class="mt-4 text-gray-600">Memuatkan soal selidik...</p>
         </div>
     </div>
+    <footer class="text-center py-4 text-sm text-gray-500 bg-white">
+        2025@Unit Psikologi dan Kaunseling, IPGM
+    </footer>
 
     <script>
         // --- STATE MANAGEMENT ---
@@ -134,10 +137,10 @@
             'Mempunyai kosa kata yang luas.',
             'Tidak banyak bercakap.',
             'Berminat berurusan dengan orang lain.',
-            'Suka meninggalkan barang merata-rata.',
+            'Sering meninggalkan barang di merata tempat.',
             'Tenang pada kebanyakan masa.',
             'Sukar memahami idea-idea abstrak.',
-            'Berasa selesa dikelilingi orang ramai.',
+            'Berasa selesa di kelilingi orang ramai.',
             'Menghina orang lain.',
             'Memberikan tumpuan kepada sesuatu perkara secara terperinci.',
             'Bimbang tentang sesuatu perkara.',
@@ -151,7 +154,7 @@
             'Tidak berminat dengan masalah orang lain.',
             'Menyelesaikan tugas dengan segera.',
             'Mudah terganggu.',
-            'Mempunyai idea-idea yang bernas.',
+            'Mempunyai idea-idea yang cemerlang.',
             'Kurang bercakap.',
             'Berhati lembut.',
             'Sering lupa meletakkan barang kembali ke tempat asal.',
@@ -448,6 +451,11 @@
 
             doc.addImage(imgData, 'PNG', xOffset, yOffset, newImgWidth, newImgHeight);
             
+            // Add footer with copyright
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(`2025@Unit Psikologi dan Kaunseling, IPGM`, doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() - 20, { align: 'center' });
+
             doc.save(`Profil_Kesejahteraan_${demographics.name.replace(/ /g, '_')}.pdf`);
             pdfButton.disabled = false;
             pdfButton.innerHTML = 'Muat Turun Laporan PDF';
@@ -803,6 +811,9 @@
                                     `).join('')}
                                 </tbody>
                             </table>
+                        </div>
+                        <div class="mt-6 p-4 bg-gray-100 rounded-lg text-center text-sm text-gray-700">
+                            <p><strong>Untuk mendapatkan penerangan yang lebih terperinci tentang Keputusan PKPW, sila berjumpa Kaunselor Pendidikan Institut.</strong></p>
                         </div>
                     </div>
 
