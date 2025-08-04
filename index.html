@@ -619,15 +619,15 @@
         }
 
         function renderPersonality() {
-            return renderQuestionnaireSection('Bahagian B: Personaliti Diri (Big Five Inventory)', personalityQuestions, 'handlePersonalityChange', 'personality', { 1: 'Sangat Tidak Setuju', 2: 'Tidak Setuju', 3: 'Neutral', 4: 'Setuju', 5: 'Sangat Setuju' }, 'Sila tandakan pada skala yang paling sesuai untuk menggambarkan diri anda.');
+            return renderQuestionnaireSection('Bahagian B: Personaliti Diri (Big Five Inventory)', personalityQuestions, 'handlePersonalityChange', 'personality', { min: 'Sangat Tidak Setuju', max: 'Sangat Setuju' }, 'Sila tandakan pada skala yang paling sesuai untuk menggambarkan diri anda.');
         }
 
         function renderWellbeing() {
-            return renderQuestionnaireSection('Bahagian C: Kesejahteraan Psikologi (WEMWBS)', wellbeingQuestions, 'handleWellbeingChange', 'wellbeing', { 1: 'Tidak Pernah', 2: 'Jarang', 3: 'Kadang-kadang', 4: 'Kerap', 5: 'Sangat Kerap' }, 'Berikut adalah kenyataan mengenai perasaan dan pemikiran anda. Sila tandakan jawapan yang paling menggambarkan pengalaman anda sepanjang 2 minggu yang lalu.');
+            return renderQuestionnaireSection('Bahagian C: Kesejahteraan Psikologi (WEMWBS)', wellbeingQuestions, 'handleWellbeingChange', 'wellbeing', { min: 'Sangat Jarang / Tidak Pernah', max: 'Sangat Kerap / Sentiasa' }, 'Berikut adalah kenyataan mengenai perasaan dan pemikiran anda. Sila tandakan jawapan yang paling menggambarkan pengalaman anda sepanjang 2 minggu yang lalu.');
         }
 
         function renderResilience() {
-            return renderQuestionnaireSection('Bahagian D: Daya Tahan', resilienceQuestions, 'handleResilienceChange', 'resilience', { 1: 'Sangat Tidak Setuju', 2: 'Tidak Setuju', 3: 'Neutral', 4: 'Setuju', 5: 'Sangat Setuju' }, 'Sila tandakan pada nombor yang disediakan mengikut kecenderungan anda. Secara jujurnya, bagaimana penilaian terhadap diri anda kepada situasi tekanan tersebut?');
+            return renderQuestionnaireSection('Bahagian D: Daya Tahan', resilienceQuestions, 'handleResilienceChange', 'resilience', { 1: 'Sangat Tidak Setuju', 2:'Tidak Setuju', 3:'Neutral', 4:'Setuju', 5:'Sangat Setuju' }, 'Sila tandakan pada nombor yang disediakan mengikut kecenderungan anda. Secara jujurnya, bagaimana penilaian terhadap diri anda kepada situasi tekanan tersebut?');
         }
 
         function renderResults() {
