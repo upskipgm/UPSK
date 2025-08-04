@@ -627,7 +627,7 @@
         }
 
         function renderResilience() {
-            return renderQuestionnaireSection('Bahagian D: Daya Tahan', resilienceQuestions, 'handleResilienceChange', 'resilience', { 1: 'Sangat Tidak Setuju', 2:'Tidak Setuju', 3:'Neutral', 4:'Setuju', 5:'Sangat Setuju' }, 'Sila tandakan pada nombor yang disediakan mengikut kecenderungan anda. Secara jujurnya, bagaimana penilaian terhadap diri anda kepada situasi tekanan tersebut?');
+            return renderQuestionnaireSection('Bahagian D: Daya Tahan', resilienceQuestions, 'handleResilienceChange', 'resilience', { min: 'Sangat Tidak Setuju', max: 'Sangat Setuju' }, 'Sila tandakan pada nombor yang disediakan mengikut kecenderungan anda. Secara jujurnya, bagaimana penilaian terhadap diri anda kepada situasi tekanan tersebut?');
         }
 
         function renderResults() {
