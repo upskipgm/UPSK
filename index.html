@@ -603,8 +603,11 @@
                         <p class="font-semibold">Arahan:</p>
                         <p>${scaleDescription}</p>
                         <div class="flex justify-between text-xs sm:text-sm font-medium mt-2 px-1">
-                            <span>1: ${scaleLabels.min}</span>
-                            <span>5: ${scaleLabels.max}</span>
+                            <span>1: ${scaleLabels['1']}</span>
+                            <span>2: ${scaleLabels['2']}</span>
+                            <span>3: ${scaleLabels['3']}</span>
+                            <span>4: ${scaleLabels['4']}</span>
+                            <span>5: ${scaleLabels['5']}</span>
                         </div>
                     </div>
                     <div class="space-y-4">${questionsHtml}</div>
@@ -619,15 +622,33 @@
         }
 
         function renderPersonality() {
-            return renderQuestionnaireSection('Bahagian B: Personaliti Diri (Big Five Inventory)', personalityQuestions, 'handlePersonalityChange', 'personality', { min: 'Sangat Tidak Setuju', max: 'Sangat Setuju' }, 'Sila tandakan pada skala yang paling sesuai untuk menggambarkan diri anda.');
+            return renderQuestionnaireSection('Bahagian B: Personaliti Diri (Big Five Inventory)', personalityQuestions, 'handlePersonalityChange', 'personality', {
+                '1': 'Sangat Tidak Setuju',
+                '2': 'Tidak Setuju',
+                '3': 'Sederhana',
+                '4': 'Setuju',
+                '5': 'Sangat Setuju'
+            }, 'Sila tandakan pada skala yang paling sesuai untuk menggambarkan diri anda.');
         }
 
         function renderWellbeing() {
-            return renderQuestionnaireSection('Bahagian C: Kesejahteraan Psikologi (WEMWBS)', wellbeingQuestions, 'handleWellbeingChange', 'wellbeing', { min: 'Sangat Jarang / Tidak Pernah', max: 'Sangat Kerap / Sentiasa' }, 'Berikut adalah kenyataan mengenai perasaan dan pemikiran anda. Sila tandakan jawapan yang paling menggambarkan pengalaman anda sepanjang 2 minggu yang lalu.');
+            return renderQuestionnaireSection('Bahagian C: Kesejahteraan Psikologi (WEMWBS)', wellbeingQuestions, 'handleWellbeingChange', 'wellbeing', {
+                '1': 'Sangat Jarang / Tidak Pernah',
+                '2': 'Jarang',
+                '3': 'Kadang-kadang',
+                '4': 'Kerap',
+                '5': 'Sangat Kerap / Sentiasa'
+            }, 'Berikut adalah kenyataan mengenai perasaan dan pemikiran anda. Sila tandakan jawapan yang paling menggambarkan pengalaman anda sepanjang 2 minggu yang lalu.');
         }
 
         function renderResilience() {
-            return renderQuestionnaireSection('Bahagian D: Daya Tahan', resilienceQuestions, 'handleResilienceChange', 'resilience', { min: 'Sangat Tidak Setuju', max: 'Sangat Setuju' }, 'Sila tandakan pada nombor yang disediakan mengikut kecenderungan anda. Secara jujurnya, bagaimana penilaian terhadap diri anda kepada situasi tekanan tersebut?');
+            return renderQuestionnaireSection('Bahagian D: Daya Tahan', resilienceQuestions, 'handleResilienceChange', 'resilience', {
+                '1': 'Sangat Tidak Setuju',
+                '2': 'Tidak Setuju',
+                '3': 'Sederhana',
+                '4': 'Setuju',
+                '5': 'Sangat Setuju'
+            }, 'Sila tandakan pada nombor yang disediakan mengikut kecenderungan anda. Secara jujurnya, bagaimana penilaian terhadap diri anda kepada situasi tekanan tersebut?');
         }
 
         function renderResults() {
