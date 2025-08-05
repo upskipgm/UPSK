@@ -53,6 +53,8 @@
 
     <script>
         // --- STATE MANAGEMENT ---
+        // Menguruskan keadaan aplikasi seperti bahagian semasa, sama ada keputusan dipaparkan,
+        // dan respons pengguna.
         let state = {
             currentSection: -1, // -1:welcome, 0:demo, 1:personality, 2:wellbeing, 3:resilience
             showResults: false,
@@ -62,10 +64,11 @@
                 wellbeing: {},
                 resilience: {}
             },
-            submittedEmails: new Set() // In-memory set to track submitted emails for the session
+            submittedEmails: new Set() // Set dalam memori untuk menjejaki e-mel yang telah diserahkan dalam sesi ini
         };
 
         // --- QUESTIONNAIRE DATA ---
+        // Data soalan untuk setiap bahagian soal selidik.
         const demographicsQuestions = [
             { id: 'name', label: 'Nama Penuh', type: 'text', required: true },
             { id: 'ic', label: 'No. MyKad (Tanpa sempang)', type: 'tel', required: true, maxLength: 12, pattern: '[0-9]*' },
@@ -95,53 +98,62 @@
         ];
 
         // --- EVENT HANDLERS & STATE UPDATERS ---
+        // Fungsi untuk memulakan soal selidik, menetapkan bahagian semasa kepada 0 (demografi).
         window.startSurvey = function() {
             state.currentSection = 0;
-            render();
-            window.scrollTo(0, 0);
+            render(); // Memaparkan UI yang dikemas kini
+            window.scrollTo(0, 0); // Tatal ke atas halaman
         }
 
+        // Mengendalikan perubahan input dalam borang demografi.
         window.handleDemographicChange = function(id, value) {
             const inputElement = document.getElementById(id);
             if (id === 'ic' || id === 'phone') {
+                // Hanya benarkan digit untuk MyKad dan nombor telefon
                 let digitsOnly = value.replace(/\D/g, '');
                 if (id === 'ic') {
-                    digitsOnly = digitsOnly.slice(0, 12);
-                    updateICCounter(digitsOnly);
+                    digitsOnly = digitsOnly.slice(0, 12); // Hadkan kepada 12 digit untuk MyKad
+                    updateICCounter(digitsOnly); // Kemas kini kiraan digit MyKad
                 }
                 state.responses.demographics[id] = digitsOnly;
                 if (inputElement) {
-                    inputElement.value = digitsOnly;
+                    inputElement.value = digitsOnly; // Kemas kini nilai input untuk membuang bukan digit
                 }
             } else {
                 state.responses.demographics[id] = value;
             }
         }
 
+        // Mengemas kini paparan kaunter digit MyKad.
         function updateICCounter(icValue) {
             const counterElement = document.getElementById('ic-counter');
             if (counterElement) {
                 const length = icValue.length;
                 counterElement.textContent = `(${length}/12)`;
+                // Ubah warna kaunter berdasarkan sama ada 12 digit telah dimasukkan
                 counterElement.className = `absolute inset-y-0 right-0 pr-3 flex items-center text-sm pointer-events-none font-medium ${length === 12 ? 'text-green-600' : 'text-red-500'}`;
             }
         }
 
+        // Mengendalikan perubahan dalam soalan personaliti.
         window.handlePersonalityChange = function(index, value) {
-            state.responses.personality[index] = parseInt(value);
-            updateRadioButtonVisual('personality', index, value);
+            state.responses.personality[index] = parseInt(value); // Simpan nilai sebagai integer
+            updateRadioButtonVisual('personality', index, value); // Kemas kini visual butang radio
         }
 
+        // Mengendalikan perubahan dalam soalan kesejahteraan.
         window.handleWellbeingChange = function(index, value) {
             state.responses.wellbeing[index] = parseInt(value);
             updateRadioButtonVisual('wellbeing', index, value);
         }
 
+        // Mengendalikan perubahan dalam soalan daya tahan.
         window.handleResilienceChange = function(index, value) {
             state.responses.resilience[index] = parseInt(value);
             updateRadioButtonVisual('resilience', index, value);
         }
 
+        // Mengemas kini gaya butang radio yang dipilih.
         function updateRadioButtonVisual(section, index, selectedValue) {
             const buttons = document.querySelectorAll(`input[name="${section}-${index}"]`);
             buttons.forEach(button => {
@@ -149,7 +161,8 @@
                 const baseClass = 'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 cursor-pointer';
                 let specificClass = 'bg-gray-200 text-gray-600 hover:bg-gray-300';
                 if (parseInt(button.value) === parseInt(selectedValue)) {
-                    let colorClass = 'bg-blue-500'; // Default for personality
+                    // Tentukan warna berdasarkan bahagian soal selidik
+                    let colorClass = 'bg-blue-500'; 
                     if (section === 'wellbeing') colorClass = 'bg-green-500';
                     if (section === 'resilience') colorClass = 'bg-indigo-500';
                     specificClass = `${colorClass} text-white shadow-lg transform scale-110`;
@@ -158,59 +171,72 @@
             });
         }
 
+        // Mengesahkan input dalam bahagian semasa sebelum meneruskan.
         function validateCurrentSection() {
             if (state.currentSection === 0) {
+                // Sahkan semua medan demografi yang diperlukan.
                 for (const field of demographicsQuestions) {
                     if (field.required && !state.responses.demographics[field.id]) {
                         return { isValid: false, message: `Sila lengkapkan maklumat: ${field.label}.` };
                     }
                 }
+                // Sahkan panjang MyKad.
                 if ((state.responses.demographics.ic || '').length !== 12) {
                     return { isValid: false, message: `No. MyKad mesti mengandungi tepat 12 digit nombor.` };
                 }
+                // Sahkan e-mel belum digunakan.
                 const email = state.responses.demographics.email;
                 if (email && state.submittedEmails.has(email.toLowerCase())) {
                     return { isValid: false, message: 'Alamat emel ini telah digunakan untuk menjawab soal selidik. Setiap emel hanya boleh digunakan sekali sahaja.' };
                 }
             } else if (state.currentSection === 1) {
+                // Sahkan semua soalan personaliti telah dijawab.
                 if (Object.keys(state.responses.personality).length < personalityQuestions.length) {
                     return { isValid: false, message: 'Sila jawab semua soalan dalam Bahagian B.' };
                 }
             } else if (state.currentSection === 2) {
+                // Sahkan semua soalan kesejahteraan telah dijawab.
                 if (Object.keys(state.responses.wellbeing).length < wellbeingQuestions.length) {
                     return { isValid: false, message: 'Sila jawab semua soalan dalam Bahagian C.' };
                 }
             } else if (state.currentSection === 3) {
+                // Sahkan semua soalan daya tahan telah dijawab.
                 if (Object.keys(state.responses.resilience).length < resilienceQuestions.length) {
                     return { isValid: false, message: 'Sila jawab semua soalan dalam Bahagian D.' };
                 }
             }
-            return { isValid: true };
+            return { isValid: true }; // Semua sah
         }
 
+        // Mengendalikan navigasi ke bahagian seterusnya.
         window.handleNextSection = function() {
             const validation = validateCurrentSection();
             if (!validation.isValid) {
-                showModal(validation.message);
+                showModal(validation.message); // Paparkan modal ralat jika tidak sah
                 return;
             }
-            state.currentSection++;
-            render();
-            window.scrollTo(0, 0);
+            state.currentSection++; // Maju ke bahagian seterusnya
+            render(); // Paparkan UI yang dikemas kini
+            window.scrollTo(0, 0); // Tatal ke atas halaman
         }
 
+        // Mengendalikan navigasi ke bahagian sebelumnya.
         window.handlePrevSection = function() {
-            state.currentSection = Math.max(0, state.currentSection - 1);
-            render();
-            window.scrollTo(0, 0);
+            state.currentSection = Math.max(0, state.currentSection - 1); // Kembali ke bahagian sebelumnya, tidak kurang dari 0
+            render(); // Paparkan UI yang dikemas kini
+            window.scrollTo(0, 0); // Tatal ke atas halaman
         }
 
         // --- SCORE CALCULATIONS ---
+        // Mengira skor personaliti Big Five.
         function calculatePersonalityScores() {
             const r = state.responses.personality;
-            const p = (index) => r[index - 1] || 3; // Get 1-based index item
+            // Fungsi pembantu untuk mendapatkan nilai respons (atau 3 jika tiada)
+            const p = (index) => r[index - 1] || 3; // Dapatkan item indeks berasaskan 1
+            // Fungsi pembantu untuk skor terbalik
             const reverse = (score) => 6 - score;
 
+            // Pengiraan skor untuk setiap domain personaliti
             const scores = {
                 extraversion: p(1) + reverse(p(6)) + p(11) + reverse(p(16)) + p(21) + reverse(p(26)) + p(31) + reverse(p(36)) + p(41) + reverse(p(46)),
                 agreeableness: reverse(p(2)) + p(7) + reverse(p(12)) + p(17) + reverse(p(22)) + p(27) + reverse(p(32)) + p(37) + p(42) + p(47),
@@ -219,6 +245,7 @@
                 openness: p(5) + reverse(p(10)) + p(15) + reverse(p(20)) + p(25) + reverse(p(30)) + p(35) + p(40) + p(45) + p(50)
             };
             
+            // Tukar skor mentah kepada peratusan (skala 10-50, tukar kepada 0-100%)
             const toPercent = (score) => Math.round(((score - 10) / 40) * 100);
 
             return {
@@ -230,23 +257,28 @@
             };
         }
 
+        // Mengira skor kesejahteraan psikologi (WEMWBS).
         function calculateWellbeingScore() {
             const totalScore = Object.values(state.responses.wellbeing).reduce((sum, score) => sum + (score || 0), 0);
             return { total: totalScore };
         }
 
+        // Mengira skor daya tahan (BRS).
         function calculateResilienceScore() {
             const r = state.responses.resilience;
-            const reverseScore = (score) => 6 - score;
+            const reverseScore = (score) => 6 - score; // Fungsi untuk skor terbalik
+            // Skor untuk soalan daya tahan, dengan soalan terbalik yang sesuai
             const scores = [
                 r[0], reverseScore(r[1]), r[2], reverseScore(r[3]), r[4], reverseScore(r[5])
             ];
+            // Kira jumlah skor dan purata
             const totalScore = scores.reduce((sum, score) => sum + (score || 3), 0);
             const meanScore = totalScore / resilienceQuestions.length;
-            return { mean: parseFloat(meanScore.toFixed(2)) };
+            return { mean: parseFloat(meanScore.toFixed(2)) }; // Pulangkan purata dengan 2 tempat perpuluhan
         }
 
         // --- DATA SUBMISSION ---
+        // Menghantar data soal selidik ke Google Sheets melalui Google Apps Script.
         async function sendToGoogleSheets(data) {
             const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzbutt0Oeg7211Bl8oXspkQlxUZBhcaH5Xpg5tJ9WWp8XV2y5UuSEr4bjoAu_laiBmYnA/exec';
             try {
@@ -261,6 +293,7 @@
             }
         }
         
+        // Memaparkan hasil soal selidik setelah selesai.
         window.showResults = function() {
             const validation = validateCurrentSection();
             if (!validation.isValid) {
@@ -268,23 +301,31 @@
                 return;
             }
 
+            // Tambah e-mel yang diserahkan ke set untuk mengelakkan penyerahan berganda
             const email = state.responses.demographics.email;
             if (email) {
                 state.submittedEmails.add(email.toLowerCase());
             }
 
+            // Kira semua skor yang diperlukan
             const personalityScores = calculatePersonalityScores();
             const wellbeingScore = calculateWellbeingScore();
             const resilienceScore = calculateResilienceScore();
+
+            // Fungsi pembantu untuk menentukan tahap berdasarkan skor peratusan
             const getTahap = (score) => (score >= 67 ? 'Tinggi' : score >= 34 ? 'Sederhana' : 'Rendah');
+            // Fungsi pembantu untuk menentukan tahap kesejahteraan
             const tahapKesejahteraan = wellbeingScore.total >= 45 ? "Tinggi" : wellbeingScore.total >= 25 ? "Sederhana" : "Rendah";
+            // Fungsi pembantu untuk menentukan tahap daya tahan
             const tahapDayaTahan = resilienceScore.mean > 4.3 ? 'Tinggi' : resilienceScore.mean >= 3 ? 'Normal' : 'Rendah';
+            // Susun personaliti mengikut skor tertinggi
             const personalityRanked = Object.entries(personalityScores).sort(([, a], [, b]) => b - a).map(([key]) => key);
 
+            // Sediakan data untuk dihantar ke Google Sheets
             const sheetData = {
                 timestamp: new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kuala_Lumpur' }),
                 ...state.responses.demographics,
-                mykad: `'${state.responses.demographics.ic || ''}`,
+                mykad: `'${state.responses.demographics.ic || ''}`, // Tambah petikan untuk mengelakkan pemformatan nombor di Sheets
                 ...personalityScores,
                 tahap_extraversion: getTahap(personalityScores.extraversion),
                 tahap_agreeableness: getTahap(personalityScores.agreeableness),
@@ -292,45 +333,53 @@
                 tahap_neuroticism: getTahap(personalityScores.neuroticism),
                 tahap_openness: getTahap(personalityScores.openness),
                 domain_1: personalityRanked[0] || '', domain_2: personalityRanked[1] || '', domain_3: personalityRanked[2] || '',
+                // Tambah semua respons personaliti individu
                 ...Object.fromEntries(Array.from({length: 50}, (_, i) => [`p${i+1}`, state.responses.personality[i] || 0])),
                 wellbeingTotal: wellbeingScore.total,
                 tahap_kesejahteraan: tahapKesejahteraan,
+                // Tambah semua respons kesejahteraan individu
                 ...Object.fromEntries(Array.from({length: 14}, (_, i) => [`w${i+1}`, state.responses.wellbeing[i] || 0])),
                 resilienceMean: resilienceScore.mean,
                 tahap_daya_tahan: tahapDayaTahan,
+                // Tambah semua respons daya tahan individu
                 ...Object.fromEntries(Array.from({length: 6}, (_, i) => [`d${i+1}`, state.responses.resilience[i] || 0]))
             };
 
-            sendToGoogleSheets(sheetData);
-            
-            state.showResults = true;
-            render();
-            window.scrollTo(0, 0);
+            sendToGoogleSheets(sheetData); // Hantar data
+
+            state.showResults = true; // Tetapkan untuk memaparkan hasil
+            render(); // Paparkan UI hasil
+            window.scrollTo(0, 0); // Tatal ke atas halaman
         }
 
         // --- PDF GENERATION ---
+        // Menjana laporan PDF berdasarkan hasil soal selidik.
         window.generatePDF = async function() {
             const pdfButton = document.getElementById('pdf-button');
-            pdfButton.disabled = true;
+            pdfButton.disabled = true; // Lumpuhkan butang semasa penjanaan
             pdfButton.innerHTML = `<div class="flex items-center justify-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Menjana PDF...</div>`;
 
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+            const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' }); // Inisialisasi dokumen PDF
+            
+            // Dapatkan skor dan data demografi
             const personalityScores = calculatePersonalityScores();
             const wellbeingScore = calculateWellbeingScore();
             const resilienceScore = calculateResilienceScore();
             const demographics = state.responses.demographics;
             
+            // Fungsi pembantu untuk menentukan tahap dan gaya warna
             const getTahap = (score) => (score >= 67 ? 'Tinggi' : score >= 34 ? 'Sederhana' : 'Rendah');
             const getWellbeingTahap = (total) => (total >= 45 ? "Tinggi" : total >= 25 ? "Sederhana" : "Rendah");
             const getResilienceTahap = (mean) => (mean > 4.3 ? 'Tinggi' : mean >= 3.0 ? 'Normal' : 'Rendah');
 
             const getTahapStyle = (tahap) => {
-                if (tahap === 'Tinggi') return { color: [0, 150, 0] };
-                if (tahap === 'Sederhana' || tahap === 'Normal') return { color: [255, 165, 0] };
-                return { color: [255, 0, 0] };
+                if (tahap === 'Tinggi') return { color: [0, 150, 0] }; // Hijau
+                if (tahap === 'Sederhana' || tahap === 'Normal') return { color: [255, 165, 0] }; // Jingga
+                return { color: [255, 0, 0] }; // Merah
             };
             
+            // Interpretasi teks untuk setiap domain
             const interpretations = {
                 wellbeing: {
                     Tinggi: "Tahap kesejahteraan yang tinggi menunjukkan anda mempunyai pandangan hidup yang positif, berasa yakin, dan mempunyai hubungan yang baik dengan orang lain. Anda berkemungkinan besar dapat menangani tekanan hidup seharian dengan berkesan.",
@@ -351,14 +400,16 @@
                 }
             };
 
-            const margin = 40;
-            const pageWidth = doc.internal.pageSize.getWidth();
-            let y = margin;
+            const margin = 40; // Margin halaman
+            const pageWidth = doc.internal.pageSize.getWidth(); // Lebar halaman
+            let y = margin; // Koordinat Y semasa
 
             // --- PAGE 1 ---
+            // Tajuk laporan
             doc.setFont('helvetica', 'bold').setFontSize(18).text('Laporan Profil Individu', pageWidth / 2, y, { align: 'center' });
             y += 25;
             
+            // Maklumat Demografi
             doc.setFont('helvetica', 'bold').setFontSize(12).text('Maklumat Demografi', margin, y);
             y += 15;
             doc.setFont('helvetica', 'normal').setFontSize(10);
@@ -375,44 +426,56 @@
             doc.text(`Gred: ${demographics.gred || ''}`, margin + 250, y);
             y += 30;
 
+            // Kotak skor Kesejahteraan dan Daya Tahan
             const boxWidth = (pageWidth - margin * 2 - 20) / 2;
             const boxHeight = 80;
             
             const wellbeingTahapText = getWellbeingTahap(wellbeingScore.total);
             const resilienceTahapText = getResilienceTahap(resilienceScore.mean);
 
+            // Kotak Kesejahteraan Psikologi
             doc.setFillColor(249, 250, 251).roundedRect(margin, y, boxWidth, boxHeight, 10, 10, 'F');
             doc.setFontSize(12).setFont('helvetica', 'bold').text('Kesejahteraan Psikologi', margin + boxWidth/2, y + 20, { align: 'center' });
             doc.setFontSize(24).setFont('helvetica', 'bold').setTextColor(...getTahapStyle(wellbeingTahapText).color).text(String(wellbeingScore.total), margin + boxWidth/2, y + 50, { align: 'center' });
             doc.setFontSize(10).setFont('helvetica', 'normal').setTextColor(0,0,0).text(`Tahap: ${wellbeingTahapText}`, margin + boxWidth/2, y + 65, { align: 'center' });
 
+            // Kotak Daya Tahan
             doc.setFillColor(249, 250, 251).roundedRect(margin + boxWidth + 20, y, boxWidth, boxHeight, 10, 10, 'F');
             doc.setFontSize(12).setFont('helvetica', 'bold').text('Daya Tahan (Resilience)', margin + boxWidth + 20 + boxWidth/2, y + 20, { align: 'center' });
             doc.setFontSize(24).setFont('helvetica', 'bold').setTextColor(...getTahapStyle(resilienceTahapText).color).text(String(resilienceScore.mean), margin + boxWidth + 20 + boxWidth/2, y + 50, { align: 'center' });
             doc.setFontSize(10).setFont('helvetica', 'normal').setTextColor(0,0,0).text(`Tahap: ${resilienceTahapText}`, margin + boxWidth + 20 + boxWidth/2, y + 65, { align: 'center' });
             y += boxHeight + 25;
 
+            // Tambah carta bar sebagai imej
             const chartCanvas = document.getElementById('personalityChart');
-            const chartImage = chartCanvas.toDataURL('image/png', 1.0);
-            const chartWidth = 280;
-            doc.addImage(chartImage, 'PNG', (pageWidth - chartWidth) / 2, y, chartWidth, chartWidth);
+            // Pastikan canvas wujud dan mempunyai konteks
+            if (chartCanvas && chartCanvas.getContext) {
+                const chartImage = chartCanvas.toDataURL('image/png', 1.0); // Dapatkan imej dari kanvas
+                const chartWidth = 400; // Lebar imej carta dalam PDF
+                const chartHeight = 250; // Ketinggian imej carta dalam PDF
+                doc.addImage(chartImage, 'PNG', (pageWidth - chartWidth) / 2, y, chartWidth, chartHeight);
+                y += chartHeight + 25;
+            } else {
+                console.error("Canvas element or its context is not available for PDF generation.");
+            }
             
             // --- PAGE 2 ---
-            doc.addPage();
-            y = margin;
+            doc.addPage(); // Tambah halaman baru
+            y = margin; // Reset koordinat Y
 
             doc.setFontSize(14).setFont('helvetica', 'bold').text('Skor & Interpretasi', margin, y);
             y += 25;
 
-            // Wellbeing Interpretation
+            // Interpretasi Kesejahteraan
             doc.setFontSize(11).setFont('helvetica', 'bold').text('Interpretasi Kesejahteraan Psikologi', margin, y);
             y += 12;
             doc.setFontSize(10).setFont('helvetica', 'normal');
+            // Pecahkan teks interpretasi kepada beberapa baris jika terlalu panjang
             let lines = doc.splitTextToSize(interpretations.wellbeing[wellbeingTahapText], pageWidth - margin * 2);
             doc.text(lines, margin, y);
             y += lines.length * 12 + 15;
 
-            // Resilience Interpretation
+            // Interpretasi Daya Tahan
             doc.setFontSize(11).setFont('helvetica', 'bold').text('Interpretasi Daya Tahan (Resilience)', margin, y);
             y += 12;
             doc.setFontSize(10).setFont('helvetica', 'normal');
@@ -420,7 +483,7 @@
             doc.text(lines, margin, y);
             y += lines.length * 12 + 25;
 
-            // Personality Table
+            // Jadual Personaliti
             doc.setFontSize(11).setFont('helvetica', 'bold').text('Skor Personaliti (Big Five)', margin, y);
             y += 15;
             doc.setFontSize(10).setFont('helvetica', 'bold');
@@ -428,21 +491,73 @@
             doc.text('Skor (%)', margin + 250, y);
             doc.text('Tahap', margin + 400, y);
             y += 5;
-            doc.setLineWidth(0.5).line(margin, y, pageWidth - margin, y);
+            doc.setLineWidth(0.5).line(margin, y, pageWidth - margin, y); // Garisan pemisah
             y += 15;
 
             doc.setFont('helvetica', 'normal');
+            // Tambah setiap domain personaliti ke dalam jadual
             Object.entries(personalityScores).forEach(([key, score]) => {
                 const trait = interpretations.personality[key];
                 const tahapText = getTahap(score);
                 const style = getTahapStyle(tahapText);
                 doc.text(trait.label, margin + 10, y);
                 doc.text(String(score), margin + 250, y);
-                doc.setTextColor(...style.color).text(tahapText, margin + 400, y).setTextColor(0,0,0);
+                doc.setTextColor(...style.color).text(tahapText, margin + 400, y).setTextColor(0,0,0); // Warna teks tahap
                 y += 20;
             });
             y += 15;
-            
+
+            // Interpretasi Personaliti Anda
+            doc.setFontSize(14).setFont('helvetica', 'bold').text('Interpretasi Personaliti Anda', margin, y);
+            y += 20;
+
+            // Domain Personaliti Paling Dominan
+            doc.setFontSize(11).setFont('helvetica', 'bold').text('Domain Personaliti Paling Dominan Anda:', margin, y);
+            y += 15;
+            doc.setFontSize(10).setFont('helvetica', 'normal');
+            const personalityRanked = Object.entries(personalityScores).sort(([, a], [, b]) => b - a).map(([key]) => key);
+            personalityRanked.slice(0, 3).forEach((key, idx) => {
+                const trait = interpretations.personality[key];
+                if (y + 12 > doc.internal.pageSize.getHeight() - margin) { // Check for page break
+                    doc.addPage();
+                    y = margin;
+                }
+                doc.text(`${idx + 1}. ${trait.label}`, margin + 10, y);
+                y += 12;
+            });
+            y += 15;
+
+            // Interpretasi setiap domain personaliti
+            Object.keys(interpretations.personality).forEach(key => {
+                const trait = interpretations.personality[key];
+                const score = personalityScores[key];
+                const tahapText = getTahap(score);
+                const style = getTahapStyle(tahapText);
+
+                // Check for page break before adding new trait interpretation
+                if (y + 60 > doc.internal.pageSize.getHeight() - margin) { 
+                    doc.addPage();
+                    y = margin;
+                }
+                
+                // Draw label
+                doc.setFontSize(11).setFont('helvetica', 'bold').text(trait.label, margin, y);
+                y += 15; // Move Y down for score and tahap
+
+                // Draw score and tahap on a new line
+                doc.setFontSize(10).setFont('helvetica', 'normal').text(`Skor: ${score}% (Tahap: `, margin, y);
+                doc.setTextColor(...style.color).text(`${tahapText})`, margin + doc.getTextWidth(`Skor: ${score}% (Tahap: `), y, { align: 'left' }).setTextColor(0,0,0);
+                y += 15; // Move Y down for description
+
+                // Draw description
+                doc.setFontSize(10).setFont('helvetica', 'normal');
+                lines = doc.splitTextToSize(trait.description, pageWidth - margin * 2);
+                doc.text(lines, margin, y);
+                y += lines.length * 12 + 10;
+            });
+            y += 15; // Extra space after interpretations
+
+            // Nota Kaunselor
             doc.setFont('helvetica', 'italic').setFontSize(10);
             const counselorNote = "Untuk mendapatkan penerangan yang lebih mendalam tentang PKPW, sila berjumpa Kaunselor Pendidikan Institut di kampus masing-masing.";
             const noteLines = doc.splitTextToSize(counselorNote, pageWidth - margin * 2);
@@ -454,37 +569,41 @@
             doc.text(noteLines, margin, y);
             y += (noteLines.length * 12) + 60;
 
-            // Signature Space
+            // Ruang tandatangan
             doc.setLineWidth(0.5).line(margin, y, margin + 200, y);
             y += 12;
             doc.setFont('helvetica', 'normal').setFontSize(10);
             doc.text('(Kaunselor Pendidikan Institut)', margin, y);
 
+            // Tambah nombor halaman pada setiap halaman
             const pageCount = doc.internal.getNumberOfPages();
             for (let i = 1; i <= pageCount; i++) {
                 doc.setPage(i);
                 doc.setFontSize(8).setTextColor(150).text(`2024@Unit Psikologi dan Kaunseling, IPGM | Muka surat ${i} dari ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 15, { align: 'center' });
             }
 
+            // Simpan dokumen PDF
             const fileName = `Profil_Kesejahteraan_${demographics.name.replace(/ /g, '_') || 'Pengguna'}.pdf`;
             doc.save(fileName);
-            pdfButton.disabled = false;
+            pdfButton.disabled = false; // Aktifkan semula butang
             pdfButton.innerHTML = 'Muat Turun Laporan PDF';
         }
         
         // --- UI RENDERING ---
+        // Fungsi utama untuk memaparkan UI berdasarkan keadaan semasa.
         function render() {
             const app = document.getElementById('app');
             app.className = "max-w-4xl mx-auto p-4 sm:p-6 bg-white min-h-screen shadow-lg rounded-lg border border-gray-200 fade-in";
             
             if (state.currentSection === -1) {
-                app.innerHTML = renderWelcomePage();
+                app.innerHTML = renderWelcomePage(); // Paparkan halaman selamat datang
             } else if (state.showResults) {
-                app.innerHTML = renderResults();
-                setTimeout(renderSpiderChart, 50);
+                app.innerHTML = renderResults(); // Paparkan halaman hasil
+                setTimeout(renderBarChart, 50); // Panggil renderBarChart untuk carta bar
             } else {
+                // Paparkan bahagian soal selidik
                 const totalSections = 4;
-                const progress = ((state.currentSection + 1) / totalSections) * 100;
+                const progress = ((state.currentSection + 1) / totalSections) * 100; // Kira peratusan kemajuan
                 let content = '';
                 if (state.currentSection === 0) content = renderDemographics();
                 else if (state.currentSection === 1) content = renderPersonality();
@@ -504,12 +623,14 @@
                     </div>
                     ${content}
                 `;
-                 if(state.currentSection === 0) {
-                     updateICCounter(state.responses.demographics.ic || '');
-                 }
+                // Kemas kini kaunter MyKad selepas DOM dimuatkan untuk bahagian demografi
+                if(state.currentSection === 0) {
+                    updateICCounter(state.responses.demographics.ic || '');
+                }
             }
         }
 
+        // Memaparkan halaman selamat datang.
         function renderWelcomePage() {
             return `
                 <div class="text-center py-10 px-4 fade-in">
@@ -545,6 +666,7 @@
             `;
         }
 
+        // Memaparkan borang maklumat demografi.
         function renderDemographics() {
             const fieldsHtml = demographicsQuestions.map(q => {
                 const value = state.responses.demographics[q.id] || '';
@@ -564,9 +686,9 @@
                         break;
                 }
                 return `<div>
-                        <label for="${q.id}" class="block text-sm font-medium text-gray-700">${q.label}${q.required ? '<span class="text-red-500">*</span>' : ''}</label>
-                        ${inputHtml}
-                    </div>`;
+                            <label for="${q.id}" class="block text-sm font-medium text-gray-700">${q.label}${q.required ? '<span class="text-red-500">*</span>' : ''}</label>
+                            ${inputHtml}
+                        </div>`;
             }).join('');
             const nextButtonHtml = `<button onclick="handleNextSection()" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors">Seterusnya &rarr;</button>`;
 
@@ -577,24 +699,25 @@
                 </div>`;
         }
         
+        // Fungsi generik untuk memaparkan bahagian soal selidik dengan soalan dan skala respons.
         function renderQuestionnaireSection(title, questions, handleChange, sectionName, scaleLabels, scaleDescription) {
             const questionsHtml = questions.map((q, index) => {
                 const selectedValue = state.responses[sectionName][index];
                 const radioButtons = [1, 2, 3, 4, 5].map(value => {
                     const isChecked = selectedValue === value;
-                    let colorClass = 'bg-blue-500'; // Default
+                    let colorClass = 'bg-blue-500'; // Warna lalai
                     if (sectionName === 'wellbeing') colorClass = 'bg-green-500';
                     if (sectionName === 'resilience') colorClass = 'bg-indigo-500';
                     return `<div class="radio-container">
-                            <input type="radio" id="${sectionName}-${index}-${value}" name="${sectionName}-${index}" value="${value}" class="hidden" onchange="${handleChange}(${index}, this.value)" ${isChecked ? 'checked' : ''}>
-                            <label for="${sectionName}-${index}-${value}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 cursor-pointer ${isChecked ? `${colorClass} text-white shadow-lg transform scale-110` : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}">${value}</label>
-                        </div>`;
+                                <input type="radio" id="${sectionName}-${index}-${value}" name="${sectionName}-${index}" value="${value}" class="hidden" onchange="${handleChange}(${index}, this.value)" ${isChecked ? 'checked' : ''}>
+                                <label for="${sectionName}-${index}-${value}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 cursor-pointer ${isChecked ? `${colorClass} text-white shadow-lg transform scale-110` : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}">${value}</label>
+                            </div>`;
                 }).join('');
 
                 return `<div class="p-4 rounded-lg border bg-gray-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <p class="font-medium text-gray-800 flex-1"><span class="font-bold">${index + 1}.</span> ${q}</p>
-                        <div class="flex items-center space-x-2 sm:space-x-3">${radioButtons}</div>
-                    </div>`;
+                            <p class="font-medium text-gray-800 flex-1"><span class="font-bold">${index + 1}.</span> ${q}</p>
+                            <div class="flex items-center space-x-2 sm:space-x-3">${radioButtons}</div>
+                        </div>`;
             }).join('');
 
             return `<div class="space-y-6">
@@ -621,6 +744,7 @@
                 </div>`;
         }
 
+        // Memaparkan bahagian personaliti.
         function renderPersonality() {
             return renderQuestionnaireSection('Bahagian B: Personaliti Diri (Big Five Inventory)', personalityQuestions, 'handlePersonalityChange', 'personality', {
                 '1': 'Sangat Tidak Setuju',
@@ -631,6 +755,7 @@
             }, 'Sila tandakan pada skala yang paling sesuai untuk menggambarkan diri anda.');
         }
 
+        // Memaparkan bahagian kesejahteraan.
         function renderWellbeing() {
             return renderQuestionnaireSection('Bahagian C: Kesejahteraan Psikologi (WEMWBS)', wellbeingQuestions, 'handleWellbeingChange', 'wellbeing', {
                 '1': 'Sangat Jarang / Tidak Pernah',
@@ -641,6 +766,7 @@
             }, 'Berikut adalah kenyataan mengenai perasaan dan pemikiran anda. Sila tandakan jawapan yang paling menggambarkan pengalaman anda sepanjang 2 minggu yang lalu.');
         }
 
+        // Memaparkan bahagian daya tahan.
         function renderResilience() {
             return renderQuestionnaireSection('Bahagian D: Daya Tahan', resilienceQuestions, 'handleResilienceChange', 'resilience', {
                 '1': 'Sangat Tidak Setuju',
@@ -651,154 +777,201 @@
             }, 'Sila tandakan pada nombor yang disediakan mengikut kecenderungan anda. Secara jujurnya, bagaimana penilaian terhadap diri anda kepada situasi tekanan tersebut?');
         }
 
+        // Memaparkan hasil soal selidik.
         function renderResults() {
-             const { name } = state.responses.demographics;
-             const personalityScores = calculatePersonalityScores();
-             const wellbeingScore = calculateWellbeingScore();
-             const resilienceScore = calculateResilienceScore();
+            const { name } = state.responses.demographics;
+            const personalityScores = calculatePersonalityScores();
+            const wellbeingScore = calculateWellbeingScore();
+            const resilienceScore = calculateResilienceScore();
 
-             const getTahapStyle = (score) => {
+            // Fungsi pembantu untuk menentukan gaya tahap (warna, teks, latar belakang)
+            const getTahapStyle = (score) => {
                 if (score >= 67) return { text: 'Tinggi', color: 'text-green-600', bg: 'bg-green-100' };
                 if (score >= 34) return { text: 'Sederhana', color: 'text-yellow-600', bg: 'bg-yellow-100' };
                 return { text: 'Rendah', color: 'text-red-600', bg: 'bg-red-100' };
-             };
-             const getWellbeingTahapStyle = (total) => {
+            };
+            const getWellbeingTahapStyle = (total) => {
                 if (total >= 45) return { text: 'Tinggi', color: 'text-green-600', bg: 'bg-green-100' };
                 if (total >= 25) return { text: 'Sederhana', color: 'text-yellow-600', bg: 'bg-yellow-100' };
                 return { text: 'Rendah', color: 'text-red-600', bg: 'bg-red-100' };
-             };
-             const getResilienceTahapStyle = (mean) => {
+            };
+            const getResilienceTahapStyle = (mean) => {
                 if (mean > 4.3) return { text: 'Tinggi', color: 'text-green-600', bg: 'bg-green-100' };
                 if (mean >= 3.0) return { text: 'Normal', color: 'text-yellow-600', bg: 'bg-yellow-100' };
                 return { text: 'Rendah', color: 'text-red-600', bg: 'bg-red-100' };
-             };
+            };
 
-             const personalityTraits = {
+            // Definisi ciri-ciri personaliti untuk interpretasi
+            const personalityTraits = {
                 extraversion: { label: 'Extraversion', description: 'Tahap di mana seseorang itu suka bersosial, bertenaga dan mempunyai emosi positif. Skor tinggi menunjukkan anda seorang yang peramah dan aktif, manakala skor rendah menunjukkan anda lebih suka bersendirian dan pendiam.' },
                 agreeableness: { label: 'Agreeableness', description: 'Kecenderungan untuk bersimpati dan bekerjasama. Skor tinggi menunjukkan anda seorang yang mudah mesra dan baik hati, manakala skor rendah menunjukkan anda seorang yang lebih kompetitif dan analitikal.' },
                 conscientiousness: { label: 'Conscientiousness', description: 'Kecenderungan untuk berdisiplin, teratur dan bermatlamat. Skor tinggi menunjukkan anda seorang yang berhati-hati dan boleh dipercayai, manakala skor rendah menunjukkan anda lebih spontan dan fleksibel.' },
                 neuroticism: { label: 'Neuroticism', description: 'Kecenderungan untuk mengalami emosi negatif seperti marah, cemas atau tertekan. Skor tinggi menunjukkan anda lebih reaktif dari segi emosi dan mudah risau, manakala skor rendah menunjukkan anda seorang yang tenang dan stabil.' },
                 openness: { label: 'Openness', description: 'Kecenderungan untuk menghargai seni, emosi, pengembaraan, dan idea luar biasa. Skor tinggi menunjukkan anda seorang yang kreatif dan ingin tahu, manakala skor rendah menunjukkan anda lebih praktikal dan konvensional.' }
-             };
-             
+            };
+            
             const personalityRanked = Object.entries(personalityScores).sort(([,a],[,b]) => b-a).map(([key]) => key);
             const wellbeingTahap = getWellbeingTahapStyle(wellbeingScore.total);
             const resilienceTahap = getResilienceTahapStyle(resilienceScore.mean);
 
-             return `<div id="results-content" class="space-y-8 p-2 sm:p-4">
-                    <div class="text-center border-b pb-6">
-                        <h1 class="text-3xl font-bold text-gray-800">Laporan Profil Individu</h1>
-                        <p class="text-xl text-gray-600 mt-2">${name || 'Pengguna'}</p>
-                    </div>
+            return `<div id="results-content" class="space-y-8 p-2 sm:p-4">
+                        <div class="text-center border-b pb-6">
+                            <h1 class="text-3xl font-bold text-gray-800">Laporan Profil Individu</h1>
+                            <p class="text-xl text-gray-600 mt-2">${name || 'Pengguna'}</p>
+                        </div>
 
-                    <div class="grid md:grid-cols-2 gap-8">
-                        <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
-                            <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">Kesejahteraan Psikologi</h2>
-                            <div class="text-center">
-                                <p class="text-lg text-gray-600">Skor WEMWBS:</p>
-                                <p class="text-5xl font-bold text-green-600 my-2">${wellbeingScore.total}</p>
-                                <div class="inline-flex items-center px-4 py-1 rounded-full text-lg font-semibold ${wellbeingTahap.bg} ${wellbeingTahap.color}">${wellbeingTahap.text}</div>
+                        <div class="grid md:grid-cols-2 gap-8">
+                            <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
+                                <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">Kesejahteraan Psikologi</h2>
+                                <div class="text-center">
+                                    <p class="text-lg text-gray-600">Skor WEMWBS:</p>
+                                    <p class="text-5xl font-bold text-green-600 my-2">${wellbeingScore.total}</p>
+                                    <div class="inline-flex items-center px-4 py-1 rounded-full text-lg font-semibold ${wellbeingTahap.bg} ${wellbeingTahap.color}">${wellbeingTahap.text}</div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
+                                <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">Daya Tahan (Resilience)</h2>
+                                <div class="text-center">
+                                    <p class="text-lg text-gray-600">Skor Purata BRS:</p>
+                                    <p class="text-5xl font-bold text-indigo-600 my-2">${resilienceScore.mean}</p>
+                                    <div class="inline-flex items-center px-4 py-1 rounded-full text-lg font-semibold ${resilienceTahap.bg} ${resilienceTahap.color}">${resilienceTahap.text}</div>
+                                </div>
                             </div>
                         </div>
+
                         <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
-                            <h2 class="text-2xl font-bold text-center text-gray-800 mb-4">Daya Tahan (Resilience)</h2>
-                            <div class="text-center">
-                                <p class="text-lg text-gray-600">Skor Purata BRS:</p>
-                                <p class="text-5xl font-bold text-indigo-600 my-2">${resilienceScore.mean}</p>
-                                <div class="inline-flex items-center px-4 py-1 rounded-full text-lg font-semibold ${resilienceTahap.bg} ${resilienceTahap.color}">${resilienceTahap.text}</div>
+                            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Profil Personaliti (Big Five)</h2>
+                            <div class="grid lg:grid-cols-2 gap-8 items-center">
+                                <div><canvas id="personalityChart"></canvas></div>
+                                <div class="space-y-4">
+                                    ${Object.entries(personalityScores).map(([key, score]) => {
+                                        const style = getTahapStyle(score);
+                                        return `<div class="flex items-center justify-between p-3 bg-white rounded-md border">
+                                            <div class="flex items-center"><span class="font-semibold text-gray-700">${personalityTraits[key].label}</span></div>
+                                            <div class="text-right"><span class="font-bold text-lg text-blue-600">${score}%</span><span class="block text-xs font-medium px-2 py-0.5 rounded-full ${style.bg} ${style.color}">${style.text}</span></div>
+                                        </div>`
+                                    }).join('')}
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
-                        <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Profil Personaliti (Big Five)</h2>
-                        <div class="grid lg:grid-cols-2 gap-8 items-center">
-                            <div><canvas id="personalityChart"></canvas></div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-center text-gray-800 my-6">Interpretasi Personaliti Anda</h2>
                             <div class="space-y-4">
-                                ${Object.entries(personalityScores).map(([key, score]) => {
-                                    const style = getTahapStyle(score);
-                                    return `<div class="flex items-center justify-between p-3 bg-white rounded-md border">
-                                        <div class="flex items-center"><span class="font-semibold text-gray-700">${personalityTraits[key].label}</span></div>
-                                        <div class="text-right"><span class="font-bold text-lg text-blue-600">${score}%</span><span class="block text-xs font-medium px-2 py-0.5 rounded-full ${style.bg} ${style.color}">${style.text}</span></div>
-                                    </div>`
-                                }).join('')}
+                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <h3 class="font-bold text-lg text-blue-800">Domain Personaliti Paling Dominan Anda:</h3>
+                                    <ol class="list-decimal list-inside mt-2 text-blue-700 space-y-1">
+                                        <li><span class="font-semibold">${personalityTraits[personalityRanked[0]].label}</span></li>
+                                        <li><span class="font-semibold">${personalityTraits[personalityRanked[1]].label}</span></li>
+                                        <li><span class="font-semibold">${personalityTraits[personalityRanked[2]].label}</span></li>
+                                    </ol>
+                                </div>
+                                ${Object.keys(personalityTraits).map(key => `
+                                    <div class="p-4 bg-white border rounded-lg">
+                                        <h3 class="font-bold text-lg text-gray-800">${personalityTraits[key].label}</h3>
+                                        <p class="mt-1 text-gray-600">${personalityTraits[key].description}</p>
+                                    </div>
+                                `).join('')}
                             </div>
                         </div>
-                    </div>
-                    <div>
-                         <h2 class="text-2xl font-bold text-center text-gray-800 my-6">Interpretasi Personaliti Anda</h2>
-                         <div class="space-y-4">
-                             <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                <h3 class="font-bold text-lg text-blue-800">Domain Personaliti Paling Dominan Anda:</h3>
-                                <ol class="list-decimal list-inside mt-2 text-blue-700 space-y-1">
-                                    <li><span class="font-semibold">${personalityTraits[personalityRanked[0]].label}</span></li>
-                                    <li><span class="font-semibold">${personalityTraits[personalityRanked[1]].label}</span></li>
-                                    <li><span class="font-semibold">${personalityTraits[personalityRanked[2]].label}</span></li>
-                                </ol>
-                            </div>
-                             ${Object.keys(personalityTraits).map(key => `
-                                 <div class="p-4 bg-white border rounded-lg">
-                                     <h3 class="font-bold text-lg text-gray-800">${personalityTraits[key].label}</h3>
-                                     <p class="mt-1 text-gray-600">${personalityTraits[key].description}</p>
-                                 </div>
-                             `).join('')}
-                         </div>
-                    </div>
-                    <div class="no-print text-center pt-6 flex justify-center gap-4">
-                        <button id="pdf-button" onclick="generatePDF()" class="bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 transition-colors">Muat Turun Laporan PDF</button>
-                        <button onclick="restartSurvey()" class="bg-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-700 transition-colors">Ambil Semula Ujian</button>
-                    </div>
-                </div>`;
+                        <div class="no-print text-center pt-6 flex justify-center gap-4">
+                            <button id="pdf-button" onclick="generatePDF()" class="bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 transition-colors">Muat Turun Laporan PDF</button>
+                            <button onclick="restartSurvey()" class="bg-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-700 transition-colors">Ambil Semula Ujian</button>
+                        </div>
+                    </div>`;
         }
 
-        function renderSpiderChart() {
+        // Melukis carta bar untuk skor personaliti.
+        function renderBarChart() {
             const ctx = document.getElementById('personalityChart');
-            if (!ctx) return;
-            const scores = calculatePersonalityScores();
+            if (!ctx) return; // Keluar jika kanvas tidak wujud
+            const scores = calculatePersonalityScores(); // Dapatkan skor personaliti
+            const labels = ['Extraversion', 'Agreeableness', 'Conscientiousness', 'Neuroticism', 'Openness'];
+            const data = [scores.extraversion, scores.agreeableness, scores.conscientiousness, scores.neuroticism, scores.openness];
+
             new Chart(ctx, {
-                type: 'radar',
+                type: 'bar', // Ubah jenis carta kepada 'bar'
                 data: {
-                    labels: ['Extraversion', 'Agreeableness', 'Conscientiousness', 'Neuroticism', 'Openness'],
+                    labels: labels,
                     datasets: [{
                         label: 'Skor Personaliti Anda (%)',
-                        data: [scores.extraversion, scores.agreeableness, scores.conscientiousness, scores.neuroticism, scores.openness],
-                        fill: true, backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgb(59, 130, 246)',
-                        pointBackgroundColor: 'rgb(59, 130, 246)', pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff', pointHoverBorderColor: 'rgb(59, 130, 246)'
+                        data: data,
+                        backgroundColor: [ // Warna bar untuk setiap domain
+                            'rgba(59, 130, 246, 0.6)', // Blue
+                            'rgba(168, 85, 247, 0.6)', // Purple
+                            'rgba(34, 197, 94, 0.6)',  // Green
+                            'rgba(239, 68, 68, 0.6)',  // Red
+                            'rgba(245, 158, 11, 0.6)'  // Yellow
+                        ],
+                        borderColor: [ // Warna sempadan bar
+                            'rgb(59, 130, 246)',
+                            'rgb(168, 85, 247)',
+                            'rgb(34, 197, 94)',
+                            'rgb(239, 68, 68)',
+                            'rgb(245, 158, 11)'
+                        ],
+                        borderWidth: 1
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: true, scales: { r: { suggestedMin: 0, suggestedMax: 100, pointLabels: { font: { size: 11 } } } }, plugins: { legend: { position: 'top' } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: true, 
+                    scales: { 
+                        y: { // Konfigurasi skala Y untuk carta bar
+                            beginAtZero: true,
+                            max: 100, // Maksimum 100%
+                            title: {
+                                display: true,
+                                text: 'Skor (%)'
+                            }
+                        },
+                        x: { // Konfigurasi skala X untuk carta bar
+                            title: {
+                                display: true,
+                                text: 'Domain Personaliti'
+                            }
+                        }
+                    }, 
+                    plugins: { 
+                        legend: { 
+                            position: 'top' 
+                        } 
+                    } 
+                }
             });
         }
         
+        // Memulakan semula soal selidik, membersihkan respons tetapi mengekalkan e-mel yang diserahkan.
         window.restartSurvey = function() {
-            const submittedEmails = new Set(state.submittedEmails);
+            const submittedEmails = new Set(state.submittedEmails); // Simpan e-mel yang telah diserahkan
             state = {
                 currentSection: -1, showResults: false,
                 responses: { demographics: {}, personality: {}, wellbeing: {}, resilience: {} },
-                submittedEmails: submittedEmails
+                submittedEmails: submittedEmails // Pulihkan e-mel yang telah diserahkan
             };
-            render();
-            window.scrollTo(0, 0);
+            render(); // Paparkan halaman selamat datang
+            window.scrollTo(0, 0); // Tatal ke atas halaman
         }
 
+        // Memaparkan modal amaran tersuai.
         function showModal(message) {
             const existingModal = document.getElementById('alert-modal');
-            if (existingModal) existingModal.remove();
+            if (existingModal) existingModal.remove(); // Buang modal sedia ada jika ada
             const modalHtml = `<div id="alert-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 p-4">
-                    <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-auto">
-                        <div class="text-center">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900">Perhatian!</h3>
-                            <div class="mt-2 px-4 py-3"><p class="text-sm text-gray-600">${message}</p></div>
-                            <div class="mt-4"><button id="close-modal-btn" class="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300">OK</button></div>
+                        <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full mx-auto">
+                            <div class="text-center">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900">Perhatian!</h3>
+                                <div class="mt-2 px-4 py-3"><p class="text-sm text-gray-600">${message}</p></div>
+                                <div class="mt-4"><button id="close-modal-btn" class="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300">OK</button></div>
+                            </div>
                         </div>
-                    </div>
-                </div>`;
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
+                    </div>`;
+            document.body.insertAdjacentHTML('beforeend', modalHtml); // Tambah modal ke DOM
+            // Tutup modal apabila butang OK diklik
             document.getElementById('close-modal-btn').onclick = () => document.getElementById('alert-modal').remove();
         }
 
         // --- INITIALIZATION ---
+        // Panggil fungsi render apabila DOM telah dimuatkan sepenuhnya.
         document.addEventListener('DOMContentLoaded', render);
     </script>
 </body>
