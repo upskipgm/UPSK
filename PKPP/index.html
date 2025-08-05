@@ -304,6 +304,26 @@
             return ikpsiScoring.getScores(state.responses.ikpsi);
         }
         
+        // --- DATA SUBMISSION ---
+        async function sendToGoogleSheets(data) {
+            const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbw7L35wqdMIrgJAn-S5e9zNp2LPok9VEsn7WdG_DFfqa-QIZFFftqFgzOLLN5F5xDhA/exec';
+
+            try {
+                await fetch(GOOGLE_SHEETS_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Important for sending data to Google Apps Script
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                console.log('✅ Data submission attempted. Check your Google Sheet for the new entry.');
+            } catch (error) {
+                console.error('❌ Error sending data to Google Sheets:', error);
+                showModal("Maaf, terdapat ralat semasa menghantar data anda. Sila cuba lagi.");
+            }
+        }
+
         window.showResults = function() {
             const validation = validateCurrentSection();
             if (!validation.isValid) {
@@ -315,6 +335,43 @@
             if (email) {
                 state.submittedEmails.add(email.toLowerCase());
             }
+            
+            const personalityScores = calculatePersonalityScores();
+            const ikpsiScores = calculateIkpsiScores();
+            
+            const getPersonalityTahap = (score) => (score >= 67 ? 'Tinggi' : score >= 34 ? 'Sederhana' : 'Rendah');
+            const getIkpsiTahap = (score) => {
+                const maxScore = 50;
+                const percentage = (score / maxScore) * 100;
+                if (percentage >= 81) return 'Tinggi';
+                if (percentage >= 61) return 'Sederhana Tinggi';
+                if (percentage >= 41) return 'Sederhana';
+                if (percentage >= 21) return 'Sederhana Rendah';
+                return 'Rendah';
+            };
+
+            const sheetData = {
+                timestamp: new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kuala_Lumpur' }),
+                ...state.responses.demographics,
+                ...state.responses.guardianDemographics,
+                ...personalityScores,
+                tahap_extraversion: getPersonalityTahap(personalityScores.extraversion),
+                tahap_agreeableness: getPersonalityTahap(personalityScores.agreeableness),
+                tahap_conscientiousness: getPersonalityTahap(personalityScores.conscientiousness),
+                tahap_neuroticism: getPersonalityTahap(personalityScores.neuroticism),
+                tahap_openness: getPersonalityTahap(personalityScores.openness),
+                ...ikpsiScores,
+                tahap_emosi: getIkpsiTahap(ikpsiScores.emosi),
+                tahap_kendiri: getIkpsiTahap(ikpsiScores.kendiri),
+                tahap_fizikal: getIkpsiTahap(ikpsiScores.fizikal),
+                tahap_perhubungan: getIkpsiTahap(ikpsiScores.perhubungan),
+                tahap_intelektual: getIkpsiTahap(ikpsiScores.intelektual),
+                tahap_spiritual: getIkpsiTahap(ikpsiScores.spiritual),
+                tahap_identiti: getIkpsiTahap(ikpsiScores.identiti),
+                tahap_kewangan: getIkpsiTahap(ikpsiScores.kewangan),
+            };
+
+            sendToGoogleSheets(sheetData);
             
             state.showResults = true;
             render();
