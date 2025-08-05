@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil Kesejahteraan dan Personaliti Pelajar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.23/dist/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .progress-bar-animated {
+            transition: width 0.5s ease-in-out;
+        }
+        .radio-container label {
+            transition: all 0.2s ease-in-out;
+        }
+        .radio-container input:checked + label {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .welcome-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .welcome-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-backdrop.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal-backdrop.visible .modal-content {
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app" class="max-w-4xl mx-auto p-4 sm:p-6 bg-white min-h-screen">
+        <!-- App content will be rendered here -->
+        <div class="text-center py-20">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="mt-4 text-gray-600">Memuatkan soal selidik...</p>
+        </div>
+    </div>
+    <footer class="text-center py-4 text-sm text-gray-500 bg-white">
+        2024@Unit Psikologi dan Kaunseling, IPGM
+    </footer>
+
+    <!-- Modal container -->
+    <div id="modal-container"></div>
+
+    <script>
+        // --- STATE MANAGEMENT ---
+        let state = {
+            currentSection: -1, // -1:welcome, 0:demo, 1:personality, 2:ikpsi
+            showResults: false,
+            responses: {
+                demographics: {},
+                personality: {},
+                ikpsi: {}
+            },
+            submittedEmails: new Set() // In-memory set to track submitted emails for the session
+        };
+
+        // --- QUESTIONNAIRE DATA ---
+        const demographicsQuestions = [
+            { id: 'name', label: 'Nama Penuh', type: 'text', required: true },
+            { id: 'ic', label: 'No. MyKad (Tanpa sempang)', type: 'tel', required: true, maxLength: 12, pattern: '[0-9]*' },
+            { id: 'email', label: 'Alamat Email', type: 'email', required: true },
+            { id: 'gender', label: 'Jantina', type: 'select', options: ['Lelaki', 'Perempuan'], required: true },
+            { id: 'race', label: 'Bangsa', type: 'select', options: ['Melayu', 'Cina', 'India', 'Bumiputera Sabah/Sarawak', 'Lain-lain'], required: true },
+            { id: 'religion', label: 'Agama', type: 'select', options: ['Islam', 'Buddha', 'Kristian', 'Hindu', 'Lain-lain'], required: true },
+            { id: 'phone', label: 'No. Telefon (Bimbit)', type: 'tel', required: true },
+            { id: 'ipgKampus', label: 'IPGM/IPGK', type: 'select', options: ['IPG Kampus Bahasa Melayu', 'IPG Kampus Bahasa Antarabangsa', 'IPG Kampus Ilmu Khas', 'IPG Kampus Pendidikan Islam', 'IPG Kampus Pendidikan Teknik', 'IPG Kampus Raja Melewar', 'IPG Kampus Tun Hussein Onn', 'IPG Kampus Temenggong Ibrahim', 'IPG Kampus Perempuan Melayu Melaka', 'IPG Kampus Ipoh', 'IPG Kampus Pulau Pinang', 'IPG Kampus Tuanku Bainun', 'IPG Kampus Perlis', 'IPG Kampus Darul Aman', 'IPG Kampus Sultan Abdul Halim', 'IPG Kampus Tengku Ampuan Afzan', 'IPG Kampus Dato\' Razali Ismail', 'IPG Kampus Sultan Mizan', 'IPG Kampus Kota Bharu', 'IPG Kampus Kent', 'IPG Kampus Gaya', 'IPG Kampus Keningau', 'IPG Kampus Tawau', 'IPG Kampus Batu Lintang', 'IPG Kampus Sarawak', 'IPG Kampus Rajang', 'IPG Kampus Tun Abdul Razak'], required: true },
+            { id: 'program', label: 'Program', type: 'select', options: ['PPISMP', 'PISMP', 'PISP', 'PDPP', 'PDPP KDC'], required: true },
+            { id: 'semester', label: 'Semester', type: 'select', options: ['Semester 1', 'Semester 2', 'Semester 3', 'Semester 4', 'Semester 5', 'Semester 6', 'Semester 7', 'Semester 8', 'Semester 9', 'Semester 10', 'Semester 11', 'Semester 12'], required: true }
+        ];
+
+        const personalityQuestions = [
+            'Saya seorang yang menceriakan suasana majlis.', 'Saya kurang mengambil berat tentang orang lain.', 'Saya sentiasa bersedia.', 'Saya mudah berasa tertekan.', 'Saya mempunyai kosa kata yang luas.', 'Saya tidak banyak bercakap.', 'Saya cenderung untuk berurusan dengan orang lain.', 'Saya sering meninggalkan barang di merata tempat.', 'Saya tenang pada kebanyakan masa.', 'Saya sukar memahami idea-idea abstrak.', 'Saya berasa selesa dikelilingi orang ramai.', 'Saya sering menghina orang lain.', 'Saya memberikan tumpuan kepada sesuatu perkara secara terperinci.', 'Saya bimbang tentang sesuatu perkara.', 'Saya mempunyai imaginasi yang jelas.', 'Saya suka laksanakan tugas di belakang tabir.', 'Saya simpati dengan perasaan orang lain.', 'Saya sering membuat keadaan menjadi kucar-kacir.', 'Saya jarang berasa sedih.', 'Saya tidak berminat dengan idea-idea abstrak.', 'Saya selalu memulakan perbualan dengan orang lain.', 'Saya tidak berminat dengan masalah orang lain.', 'Saya menyelesaikan tugas dengan segera.', 'Saya mudah terganggu.', 'Saya mempunyai idea-idea yang bernas.', 'Saya kurang bercakap.', 'Saya seorang yang berhati lembut.', 'Saya sering lupa meletakkan kembali barang ke tempat asal.', 'Saya mudah berasa kecewa.', 'Saya tidak mempunyai imaginasi yang baik.', 'Saya selesa berbual dengan ramai orang di sesuatu majlis.', 'Saya tidak berminat berurusan dengan orang lain.', 'Saya suka kepada keteraturan.', 'Hati saya kerap berubah-ubah.', 'Saya cepat memahami sesuatu perkara.', 'Saya tidak suka memberi perhatian kepada diri sendiri.', 'Saya meluangkan masa untuk orang lain.', 'Saya mengelak daripada tanggungjawab.', 'Saya kerap mengalami perubahan emosi.', 'Saya sering menggunakan perkataan yang sukar.', 'Saya tidak kisah menjadi perhatian orang lain.', 'Saya memahami perasaan orang lain.', 'Saya seorang yang mengikut jadual.', 'Saya mudah rasa terganggu.', 'Saya selalu meluangkan masa meneliti sesuatu perkara.', 'Saya akan diam apabila bersama orang yang tidak dikenali.', 'Saya selalu membuat orang lain berasa selesa.', 'Saya teliti dalam kerja saya.', 'Saya sering berasa sedih.', 'Saya seorang yang banyak idea.'
+        ];
+        
+        const ikpsiQuestions = [
+            "Saya dapat mengenal emosi orang lain dengan baik.", "Saya dapat mengenal emosi saya dengan sepenuhnya.", "Saya sedar keadaan emosi yang sedang saya alami.", "Saya dapat menyelami emosi orang lain.", "Saya memahami perubahan emosi yang berlaku dalam diri saya.", "Saya memahami bahawa emosi saya boleh mempengaruhi tingkah laku orang lain.", "Saya mampu mengawal emosi walaupun dalam keadaan tertekan", "Saya mampu bertenang walaupun sedang marah.", "Saya dapat menangani tekanan dengan baik.", "Saya tidak pernah marah dalam hidup.", "Saya bertanggungjawab atas bidang pengajian yang saya pilih.", "Saya seorang yang berdikari.", "Saya bertanggungjawab terhadap laluan kerjaya yang saya pilih.", "Saya mampu memperkembang potensi diri secara berterusan.", "Saya suka akan situasi baharu yang dapat memperbaiki diri.", "Saya bersedia menerima pengalaman baharu.", "Saya suka menerima pengiktirafan atas tugasan yang saya lakukan.", "Saya memberikan ganjaran terhadap diri sendiri.", "Saya menjalankan tugas dengan baik tanpa mengharapkan pengiktirafan.", "Saya mempunyai masa untuk melakukan aktiviti yang saya sukai.", "Saya berupaya membahagikan masa untuk aktiviti belajar dengan kehidupan peribadi.", "Saya dapat menguruskan kehidupan peribadi dengan seimbang.", "Saya tidak pernah gagal dalam hidup.", "Saya mengamalkan pemakanan seimbang.", "Saya sihat jika mengambil makanan yang berkhasiat.", "Saya mengambil makanan yang berkhasiat untuk keperluan tubuh badan.", "Saya tidak pernah mengambil makanan ringan.", "Saya melakukan aktiviti fizikal sekurang-kurangnya 3 kali seminggu.", "Saya melakukan aktiviti senaman secara berkala.", "Saya tidak pernah bersenam.", "Saya mendapat rehat yang mencukupi.", "Saya mendapat tidur yang mencukupi.", "Saya tidak pernah berasa letih.", "Saya mempunyai hubungan yang baik dengan rakan-rakan.", "Saya mempunyai hubungan yang baik dengan keluarga.", "Saya mempunyai hubungan yang baik dengan pensyarah.", "Saya tidak pernah berselisih faham dengan sesiapa.", "Saya sentiasa berfikiran positif.", "Saya sentiasa bersangka baik terhadap orang lain.", "Saya sentiasa melihat kebaikan dalam setiap kejadian.", "Saya tidak pernah berfikiran negatif.", "Saya mempunyai matlamat hidup yang jelas.", "Saya tahu apa yang saya mahu dalam hidup.", "Saya mempunyai perancangan masa depan yang jelas.", "Saya tidak pernah mempunyai matlamat hidup.", "Saya seorang yang pemaaf.", "Saya mudah memaafkan kesalahan orang lain.", "Saya tidak menyimpan dendam terhadap sesiapa.", "Saya tidak pernah rasa benci pada sesiapa.", "Saya seorang yang penyabar.", "Saya sentiasa bersabar dalam menghadapi dugaan.", "Saya tidak pernah berputus asa.", "Saya seorang yang bersyukur.", "Saya sentiasa bersyukur dengan apa yang saya ada.", "Saya tidak pernah mengeluh.", "Saya tidak pernah rasa kecil hati terhadap sesiapa.", "Saya percaya setiap perkara yang berlaku mempunyai kebaikan disebaliknya.", "Saya menganggap belajar itu sebagai kewajipan.", "Saya melakukan kebaikan dalam kehidupan.", "Saya menghayati nilai murni dalam kehidupan.", "Saya tidak menyalahgunakan kemudahan di institusi pendidikan untuk tujuan peribadi.", "Saya seorang yang amanah.", "Saya boleh dipercayai dalam menjalankan tugas.", "Saya boleh menjalankan tugasan tanpa pengawasan orang lain.", "Saya tidak pernah suka ilmu pengetahuan.", "Saya menerima jantina saya.", "Saya selesa dengan jantina saya.", "Saya menghormati diri saya.", "Saya menghormati kelainan budaya dalam masyarakat.", "Saya boleh melibatkan diri dalam aktiviti silang budaya.", "Saya boleh bertoleransi dengan silang budaya (makanan, pakaian dan gaya hidup).", "Saya berupaya menjalankan tugasan dengan cekap.", "Saya tidak menangguh kerja.", "Saya mampu menyiapkan sesuatu tugasan.", "Saya tidak pernah melakukan tugasan pada saat akhir.", "Saya sedar kepentingan pengurusan kewangan yang bijak.", "Saya tahu kepentingan mengurus perbelanjaan harian.", "Saya mengamalkan sikap menabung.", "Saya mengamalkan sikap berjimat cermat.", "Saya dapati perbelanjaan bulanan mencukupi."
+        ];
+
+        // --- SCORING LOGIC FOR IKPSI-P (8 Constructs) ---
+        const ikpsiScoring = {
+            domains: {
+                emosi: { label: 'Emosi', items: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], reverse: [10] },
+                kendiri: { label: 'Kendiri', items: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20], reverse: [] },
+                fizikal: { label: 'Fizikal', items: [21, 22, 23, 24, 25, 26, 27, 28, 29, 30], reverse: [23, 27, 30] },
+                perhubungan: { label: 'Perhubungan', items: [31, 32, 33, 34, 35, 36, 37, 38, 39, 40], reverse: [33, 37] },
+                intelektual: { label: 'Intelektual', items: [41, 42, 43, 44, 45, 46, 47, 48, 49, 50], reverse: [41, 45, 50] },
+                spiritual: { label: 'Spiritual', items: [51, 52, 53, 54, 55, 56, 57, 58, 59, 60], reverse: [52, 55, 56] },
+                identiti: { label: 'Identiti', items: [61, 62, 63, 64, 65, 66, 67, 68, 69, 70], reverse: [65] },
+                kewangan: { label: 'Kewangan', items: [71, 72, 73, 74, 75, 76, 77, 78, 79, 80], reverse: [75] }
+            },
+            getScores: function(responses) {
+                const scores = {};
+                const reverseScore = (score) => 6 - score; // Reverse score for 1-5 scale
+
+                for (const domainKey in this.domains) {
+                    const domain = this.domains[domainKey];
+                    let totalScore = 0;
+                    domain.items.forEach(itemIndex => {
+                        let score = responses[itemIndex - 1] || 3; // Default to neutral
+                        if (domain.reverse.includes(itemIndex)) {
+                            score = reverseScore(score);
+                        }
+                        totalScore += score;
+                    });
+                    scores[domainKey] = totalScore;
+                }
+                return scores;
+            }
+        };
+
+        // --- EVENT HANDLERS & STATE UPDATERS ---
+        window.startSurvey = function() {
+            state.currentSection = 0;
+            render();
+            window.scrollTo(0, 0);
+        }
+
+        window.handleDemographicChange = function(id, value) {
+            const inputElement = document.getElementById(id);
+            if (id === 'ic' || id === 'phone') {
+                let digitsOnly = value.replace(/\D/g, '');
+                if (id === 'ic') {
+                    digitsOnly = digitsOnly.slice(0, 12);
+                    updateICCounter(digitsOnly);
+                }
+                state.responses.demographics[id] = digitsOnly;
+                if (inputElement) {
+                    inputElement.value = digitsOnly;
+                }
+            } else {
+                state.responses.demographics[id] = value;
+            }
+        }
+
+        function updateICCounter(icValue) {
+            const counterElement = document.getElementById('ic-counter');
+            if (counterElement) {
+                const length = icValue.length;
+                counterElement.textContent = `(${length}/12)`;
+                counterElement.className = `absolute inset-y-0 right-0 pr-3 flex items-center text-sm pointer-events-none font-medium ${length === 12 ? 'text-green-600' : 'text-red-500'}`;
+            }
+        }
+
+        window.handlePersonalityChange = function(index, value) {
+            state.responses.personality[index] = parseInt(value);
+            updateRadioButtonVisual('personality', index, value);
+        }
+
+        window.handleIkpsiChange = function(index, value) {
+            state.responses.ikpsi[index] = parseInt(value);
+            updateRadioButtonVisual('ikpsi', index, value);
+        }
+
+        function updateRadioButtonVisual(section, index, selectedValue) {
+            const buttons = document.querySelectorAll(`input[name="${section}-${index}"]`);
+            buttons.forEach(button => {
+                const label = button.nextElementSibling;
+                const baseClass = 'w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 cursor-pointer';
+                let specificClass = 'bg-gray-200 text-gray-600 hover:bg-gray-300';
+                if (parseInt(button.value) === parseInt(selectedValue)) {
+                    let colorClass = 'bg-blue-500'; // Default
+                    if (section === 'personality') colorClass = 'bg-blue-500';
+                    if (section === 'ikpsi') colorClass = 'bg-green-500';
+                    specificClass = `${colorClass} text-white shadow-lg transform scale-110`;
+                }
+                label.className = `${baseClass} ${specificClass}`;
+            });
+        }
+
+        function validateCurrentSection() {
+            if (state.currentSection === 0) {
+                for (const field of demographicsQuestions) {
+                    if (field.required && !state.responses.demographics[field.id]) {
+                        return { isValid: false, message: `Sila lengkapkan maklumat: ${field.label}.` };
+                    }
+                }
+                if ((state.responses.demographics.ic || '').length !== 12) {
+                    return { isValid: false, message: `No. MyKad mesti mengandungi tepat 12 digit nombor.` };
+                }
+                const email = state.responses.demographics.email;
+                if (email && state.submittedEmails.has(email.toLowerCase())) {
+                    return { isValid: false, message: 'Alamat emel ini telah digunakan untuk menjawab soal selidik. Setiap emel hanya boleh digunakan sekali sahaja.' };
+                }
+            } else if (state.currentSection === 1) {
+                if (Object.keys(state.responses.personality).length < personalityQuestions.length) {
+                    return { isValid: false, message: 'Sila jawab semua soalan dalam Bahagian B.' };
+                }
+            } else if (state.currentSection === 2) {
+                if (Object.keys(state.responses.ikpsi).length < ikpsiQuestions.length) {
+                    return { isValid: false, message: 'Sila jawab semua soalan dalam Bahagian C.' };
+                }
+            }
+            return { isValid: true };
+        }
+
+        window.handleNextSection = function() {
+            const validation = validateCurrentSection();
+            if (!validation.isValid) {
+                showModal(validation.message);
+                return;
+            }
+            state.currentSection++;
+            render();
+            window.scrollTo(0, 0);
+        }
+
+        window.handlePrevSection = function() {
+            state.currentSection = Math.max(0, state.currentSection - 1);
+            render();
+            window.scrollTo(0, 0);
+        }
+
+        // --- SCORE CALCULATIONS ---
+        function calculatePersonalityScores() {
+            const r = state.responses.personality;
+            const p = (index) => r[index - 1] || 3;
+            const reverse = (score) => 6 - score;
+            const scores = {
+                extraversion: p(1) + reverse(p(6)) + p(11) + reverse(p(16)) + p(21) + reverse(p(26)) + p(31) + reverse(p(36)) + p(41) + reverse(p(46)),
+                agreeableness: reverse(p(2)) + p(7) + reverse(p(12)) + p(17) + reverse(p(22)) + p(27) + reverse(p(32)) + p(37) + p(42) + p(47),
+                conscientiousness: p(3) + reverse(p(8)) + p(13) + reverse(p(18)) + p(23) + reverse(p(28)) + p(33) + reverse(p(38)) + p(43) + p(48),
+                neuroticism: p(4) + reverse(p(9)) + p(14) + reverse(p(19)) + p(24) + p(29) + p(34) + p(39) + p(44) + p(49),
+                openness: p(5) + reverse(p(10)) + p(15) + reverse(p(20)) + p(25) + reverse(p(30)) + p(35) + p(40) + p(45) + p(50)
+            };
+            const toPercent = (score) => Math.round(((score - 10) / 40) * 100);
+            return {
+                extraversion: toPercent(scores.extraversion),
+                agreeableness: toPercent(scores.agreeableness),
+                conscientiousness: toPercent(scores.conscientiousness),
+                neuroticism: toPercent(scores.neuroticism),
+                openness: toPercent(scores.openness)
+            };
+        }
+
+        function calculateIkpsiScores() {
+            return ikpsiScoring.getScores(state.responses.ikpsi);
+        }
+        
+        window.showResults = function() {
+            const validation = validateCurrentSection();
+            if (!validation.isValid) {
+                showModal(validation.message);
+                return;
+            }
+
+            const email = state.responses.demographics.email;
+            if (email) {
+                state.submittedEmails.add(email.toLowerCase());
+            }
+            
+            state.showResults = true;
+            render();
+            window.scrollTo(0, 0);
+        }
+
+        // --- PDF GENERATION ---
+        window.generatePDF = async function() {
+            const pdfButton = document.getElementById('pdf-button');
+            pdfButton.disabled = true;
+            pdfButton.innerHTML = `<div class="flex items-center justify-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Menjana PDF...</div>`;
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+            const personalityScores = calculatePersonalityScores();
+            const ikpsiScores = calculateIkpsiScores();
+            const demographics = state.responses.demographics;
+            
+            const getPersonalityTahap = (score) => (score >= 67 ? 'Tinggi' : score >= 34 ? 'Sederhana' : 'Rendah');
+            const getIkpsiTahap = (score) => {
+                const maxScore = 50; // 10 items * 5
+                const percentage = (score / maxScore) * 100;
+                if (percentage >= 81) return 'Tinggi';
+                if (percentage >= 61) return 'Sederhana Tinggi';
+                if (percentage >= 41) return 'Sederhana';
+                if (percentage >= 21) return 'Sederhana Rendah';
+                return 'Rendah';
+            };
+            
+            const interpretations = {
+                personality: {
+                    extraversion: { label: 'Extraversion' },
+                    agreeableness: { label: 'Agreeableness' },
+                    conscientiousness: { label: 'Conscientiousness' },
+                    neuroticism: { label: 'Neuroticism' },
+                    openness: { label: 'Openness' }
+                }
+            };
+
+            const margin = 40;
+            const pageWidth = doc.internal.pageSize.getWidth();
+            let y = margin;
+
+            // --- PAGE 1 ---
+            doc.setFont('helvetica', 'bold').setFontSize(18).text('Laporan Profil Individu', pageWidth / 2, y, { align: 'center' });
+            y += 25;
+            
+            doc.setFont('helvetica', 'bold').setFontSize(12).text('Maklumat Demografi', margin, y);
+            y += 15;
+            doc.setFont('helvetica', 'normal').setFontSize(10);
+            doc.text(`Nama: ${demographics.name || ''}`, margin, y);
+            doc.text(`Emel: ${demographics.email || ''}`, margin + 250, y);
+            y += 15;
+            doc.text(`No. MyKad: ${demographics.ic || ''}`, margin, y);
+            doc.text(`No. Telefon: ${demographics.phone || ''}`, margin + 250, y);
+            y += 15;
+            doc.text(`Jantina: ${demographics.gender || ''}`, margin, y);
+            doc.text(`IPGK: ${demographics.ipgKampus || ''}`, margin + 250, y);
+            y += 15;
+            doc.text(`Program: ${demographics.program || ''}`, margin, y);
+            doc.text(`Semester: ${demographics.semester || ''}`, margin + 250, y);
+            y += 30;
+
+            doc.setFont('helvetica', 'bold').setFontSize(12).text('Profil Kesejahteraan Psikologi (IKPsi-P)', margin, y);
+            y += 20;
+            const ikpsiChartCanvas = document.getElementById('ikpsiChart');
+            const ikpsiChartImage = ikpsiChartCanvas.toDataURL('image/png', 1.0);
+            doc.addImage(ikpsiChartImage, 'PNG', (pageWidth - 300) / 2, y, 300, 300);
+            y += 310;
+
+            // --- PAGE 2 ---
+            doc.addPage();
+            y = margin;
+            doc.setFontSize(14).setFont('helvetica', 'bold').text('Skor & Interpretasi', margin, y);
+            y += 25;
+
+            doc.setFont('helvetica', 'bold').setFontSize(12).text('Profil Personaliti (Big Five)', margin, y);
+            y += 20;
+            const personalityChartCanvas = document.getElementById('personalityChart');
+            const personalityChartImage = personalityChartCanvas.toDataURL('image/png', 1.0);
+            doc.addImage(personalityChartImage, 'PNG', (pageWidth - 500) / 2, y, 500, 250);
+            y += 260;
+
+            // Personality Table
+            doc.setFontSize(11).setFont('helvetica', 'bold').text('Skor Personaliti (Big Five)', margin, y);
+            y += 15;
+            doc.autoTable({
+                startY: y,
+                head: [['Domain', 'Skor (%)', 'Tahap']],
+                body: Object.entries(personalityScores).map(([key, score]) => {
+                    const trait = interpretations.personality[key];
+                    const tahapText = getPersonalityTahap(score);
+                    return [trait.label, score, tahapText];
+                }),
+                theme: 'grid',
+                headStyles: { fillColor: [22, 160, 133] }
+            });
+            y = doc.autoTable.previous.finalY + 20;
+
+            // --- PAGE 3 ---
+            doc.addPage();
+            y = margin;
+
+            // IKPsi-P Table
+            doc.setFontSize(11).setFont('helvetica', 'bold').text('Skor Kesejahteraan Psikologi (IKPsi-P)', margin, y);
+            y += 15;
+            doc.autoTable({
+                startY: y,
+                head: [['Konstruk', 'Skor', 'Tahap']],
+                body: Object.entries(ikpsiScores).map(([key, score]) => {
+                    const domain = ikpsiScoring.domains[key];
+                    const tahapText = getIkpsiTahap(score);
+                    return [domain.label, score, tahapText];
+                }),
+                theme: 'grid',
+                headStyles: { fillColor: [41, 128, 185] }
+            });
+            y = doc.autoTable.previous.finalY + 20;
+            
+            doc.setFont('helvetica', 'italic').setFontSize(10);
+            const counselorNote = "Untuk mendapatkan penerangan yang lebih mendalam tentang PKPP, sila berjumpa Kaunselor Pendidikan Institut di kampus masing-masing.";
+            const noteLines = doc.splitTextToSize(counselorNote, pageWidth - margin * 2);
+            if (y + (noteLines.length * 12) > doc.internal.pageSize.getHeight() - 100) {
+                doc.addPage();
+                y = margin;
+            }
+            doc.text(noteLines, margin, y);
+            y += (noteLines.length * 12) + 60;
+
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8).setTextColor(150).text(`2024@Unit Psikologi dan Kaunseling, IPGM | Muka surat ${i} dari ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 15, { align: 'center' });
+            }
+
+            const fileName = `Profil_Kesejahteraan_${demographics.name.replace(/ /g, '_') || 'Pengguna'}.pdf`;
+            doc.save(fileName);
+            pdfButton.disabled = false;
+            pdfButton.innerHTML = 'Muat Turun Laporan PDF';
+        }
+        
+        // --- UI RENDERING ---
+        function render() {
+            const app = document.getElementById('app');
+            app.className = "max-w-4xl mx-auto p-4 sm:p-6 bg-white min-h-screen shadow-lg rounded-lg border border-gray-200 fade-in";
+            
+            if (state.currentSection === -1) {
+                app.innerHTML = renderWelcomePage();
+            } else if (state.showResults) {
+                app.innerHTML = renderResults();
+                setTimeout(() => {
+                    renderPersonalityBarChart();
+                    renderIkpsiSpiderChart();
+                }, 50);
+            } else {
+                const totalSections = 3;
+                const progress = ((state.currentSection + 1) / totalSections) * 100;
+                let content = '';
+                if (state.currentSection === 0) content = renderDemographics();
+                else if (state.currentSection === 1) content = renderPersonality();
+                else if (state.currentSection === 2) content = renderIkpsi();
+
+                app.innerHTML = `
+                    <div>
+                        <div class="mb-6">
+                            <div class="flex justify-between mb-1">
+                                <span class="text-base font-medium text-blue-700">Kemajuan Soal Selidik</span>
+                                <span class="text-sm font-medium text-blue-700">${Math.round(progress)}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div class="bg-blue-600 h-2.5 rounded-full progress-bar-animated" style="width: ${progress}%"></div>
+                            </div>
+                        </div>
+                        ${content}
+                        <div class="flex justify-between mt-8">
+                            <button onclick="handlePrevSection()" class="px-6 py-2 text-base font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors ${state.currentSection === 0 ? 'invisible' : ''}">
+                                Kembali
+                            </button>
+                            ${state.currentSection < 2 ? `
+                            <button onclick="handleNextSection()" class="px-6 py-2 text-base font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                                Seterusnya
+                            </button>
+                            ` : `
+                            <button onclick="showResults()" class="px-6 py-2 text-base font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
+                                Hantar & Lihat Keputusan
+                            </button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function renderWelcomePage() {
+            return `
+                <div class="text-center py-10 px-4">
+                    <div class="welcome-card bg-white p-8 rounded-xl shadow-md border border-gray-100">
+                        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-4">Profil Kesejahteraan dan Personaliti Pelajar (PKPP)</h1>
+                        <p class="text-gray-600 max-w-2xl mx-auto mb-6">
+                            Soal selidik ini bertujuan untuk membantu anda memahami profil kesejahteraan psikologi dan personaliti anda. Maklum balas anda adalah sulit dan akan digunakan untuk tujuan pembangunan diri.
+                        </p>
+                        <p class="text-sm text-gray-500 mb-8">Anggaran masa menjawab: 15-20 minit.</p>
+                        <button onclick="startSurvey()" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition-transform transform hover:scale-105">
+                            Mula Jawab
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDemographics() {
+            let fieldsHtml = demographicsQuestions.map(q => {
+                const value = state.responses.demographics[q.id] || '';
+                if (q.type === 'select') {
+                    return `
+                        <div class="mb-4">
+                            <label for="${q.id}" class="block mb-2 text-sm font-medium text-gray-900">${q.label}</label>
+                            <select id="${q.id}" onchange="handleDemographicChange('${q.id}', this.value)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                <option value="" disabled ${!value ? 'selected' : ''}>Sila pilih...</option>
+                                ${q.options.map(opt => `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="mb-4 relative">
+                        <label for="${q.id}" class="block mb-2 text-sm font-medium text-gray-900">${q.label}</label>
+                        <input type="${q.type}" id="${q.id}" value="${value}" oninput="handleDemographicChange('${q.id}', this.value)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" ${q.maxLength ? `maxlength="${q.maxLength}"` : ''} ${q.pattern ? `pattern="${q.pattern}"` : ''}>
+                        ${q.id === 'ic' ? `<span id="ic-counter" class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm pointer-events-none font-medium text-red-500">(0/12)</span>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            setTimeout(() => {
+                if (document.getElementById('ic')) {
+                    updateICCounter(state.responses.demographics.ic || '');
+                }
+            }, 0);
+
+            return `
+                <h2 class="text-2xl font-bold mb-1 text-gray-800">Bahagian A: Maklumat Demografi</h2>
+                <p class="text-gray-500 mb-6">Sila lengkapkan maklumat di bawah.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                    ${fieldsHtml}
+                </div>
+            `;
+        }
+        
+        function renderQuestionWithRadios(section, question, index, options) {
+            const selectedValue = state.responses[section][index];
+            const handler = `window.handle${section.charAt(0).toUpperCase() + section.slice(1)}Change`;
+            return `
+                <div class="mb-6 p-4 border rounded-lg bg-gray-50">
+                    <p class="mb-3 font-medium text-gray-800">${index + 1}. ${question}</p>
+                    <div class="flex justify-around items-center radio-container">
+                        ${options.map(opt => `
+                            <div class="text-center">
+                                <input type="radio" id="${section}-${index}-${opt.value}" name="${section}-${index}" value="${opt.value}" class="hidden" onchange="${handler}(${index}, this.value)" ${selectedValue === opt.value ? 'checked' : ''}>
+                                <label for="${section}-${index}-${opt.value}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 cursor-pointer bg-gray-200 text-gray-600 hover:bg-gray-300">
+                                    ${opt.value}
+                                </label>
+                                <span class="text-xs text-gray-500 mt-1 block sm:hidden">${opt.value}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPersonality() {
+            const options = [
+                { value: 1, label: 'Sangat Tidak Setuju' }, { value: 2, label: 'Tidak Setuju' }, { value: 3, label: 'Neutral' }, { value: 4, label: 'Setuju' }, { value: 5, label: 'Sangat Setuju' }
+            ];
+            const radioLabels = options.map(o => `<div class="text-center flex-1"><p class="font-semibold">${o.value}</p><p class="text-xs text-gray-500">${o.label}</p></div>`).join('');
+            
+            return `
+                <h2 class="text-2xl font-bold mb-1 text-gray-800">Bahagian B: Personaliti</h2>
+                <p class="text-gray-500 mb-6">Nyatakan sejauh mana anda setuju atau tidak setuju dengan setiap pernyataan.</p>
+                <div class="hidden sm:flex justify-around items-center mb-4 p-2 bg-gray-100 rounded-lg">${radioLabels}</div>
+                ${personalityQuestions.map((q, i) => renderQuestionWithRadios('personality', q, i, options)).join('')}
+            `;
+        }
+
+        function renderIkpsi() {
+            const options = [
+                { value: 1, label: 'Sangat Tidak Setuju' }, { value: 2, label: 'Tidak Setuju' }, { value: 3, label: 'Neutral' }, { value: 4, label: 'Setuju' }, { value: 5, label: 'Sangat Setuju' }
+            ];
+            const radioLabels = options.map(o => `<div class="text-center flex-1"><p class="font-semibold">${o.value}</p><p class="text-xs text-gray-500">${o.label}</p></div>`).join('');
+
+            return `
+                <h2 class="text-2xl font-bold mb-1 text-gray-800">Bahagian C: Inventori Kesejahteraan Psikologi (IKPsi-P)</h2>
+                <p class="text-gray-500 mb-6">Pilih jawapan yang paling sesuai dengan apa yang anda alami sepanjang 2 minggu yang lalu.</p>
+                <div class="hidden sm:flex justify-around items-center mb-4 p-2 bg-green-50 rounded-lg">${radioLabels}</div>
+                ${ikpsiQuestions.map((q, i) => renderQuestionWithRadios('ikpsi', q, i, options)).join('')}
+            `;
+        }
+
+        function renderResults() {
+             return `
+                <div class="text-center">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Keputusan Anda</h2>
+                    <p class="text-gray-600 mb-6">Terima kasih kerana melengkapkan soal selidik. Berikut adalah ringkasan profil anda.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        <div>
+                            <canvas id="personalityChart"></canvas>
+                        </div>
+                        <div>
+                            <canvas id="ikpsiChart"></canvas>
+                        </div>
+                    </div>
+                    <p class="text-gray-700 italic max-w-xl mx-auto mb-8">
+                        Laporan ini memberikan gambaran umum. Untuk pemahaman yang lebih mendalam, sila berunding dengan kaunselor bertauliah.
+                    </p>
+                    <button id="pdf-button" onclick="generatePDF()" class="bg-green-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-700 transition-colors">
+                        Muat Turun Laporan PDF
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderPersonalityBarChart() {
+            const ctx = document.getElementById('personalityChart');
+            if (!ctx) return;
+            const scores = calculatePersonalityScores();
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Extraversion', 'Agreeableness', 'Conscientiousness', 'Neuroticism', 'Openness'],
+                    datasets: [{
+                        label: 'Skor Personaliti (%)',
+                        data: [scores.extraversion, scores.agreeableness, scores.conscientiousness, scores.neuroticism, scores.openness],
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.5)',
+                            'rgba(54, 162, 235, 0.5)',
+                            'rgba(255, 206, 86, 0.5)',
+                            'rgba(75, 192, 192, 0.5)',
+                            'rgba(153, 102, 255, 0.5)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: { x: { beginAtZero: true, max: 100 } },
+                    plugins: { legend: { display: false }, title: { display: true, text: 'Profil Personaliti Big Five' } }
+                }
+            });
+        }
+
+        function renderIkpsiSpiderChart() {
+            const ctx = document.getElementById('ikpsiChart');
+            if (!ctx) return;
+            const scores = calculateIkpsiScores();
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: Object.values(ikpsiScoring.domains).map(d => d.label),
+                    datasets: [{
+                        label: 'Skor IKPsi-P',
+                        data: Object.values(scores),
+                        fill: true,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgb(75, 192, 192)',
+                        pointBackgroundColor: 'rgb(75, 192, 192)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: { r: { suggestedMin: 10, suggestedMax: 50 } },
+                    plugins: { title: { display: true, text: 'Profil Kesejahteraan Psikologi' } }
+                }
+            });
+        }
+        
+        function showModal(message) {
+            const modalContainer = document.getElementById('modal-container');
+            const modalHTML = `
+                <div id="alert-modal" class="modal-backdrop">
+                    <div class="modal-content">
+                        <h3 class="text-lg font-bold text-yellow-600 mb-4">Perhatian</h3>
+                        <p class="text-gray-700 mb-6">${message}</p>
+                        <button onclick="closeModal()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">Faham</button>
+                    </div>
+                </div>
+            `;
+            modalContainer.innerHTML = modalHTML;
+            setTimeout(() => {
+                document.getElementById('alert-modal').classList.add('visible');
+            }, 10);
+        }
+
+        window.closeModal = function() {
+            const modal = document.getElementById('alert-modal');
+            if (modal) {
+                modal.classList.remove('visible');
+                setTimeout(() => { modal.remove(); }, 300);
+            }
+        }
+
+        // Initial render on page load
+        document.addEventListener('DOMContentLoaded', render);
+
+    </script>
+</body>
+</html>
