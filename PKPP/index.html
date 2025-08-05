@@ -119,10 +119,10 @@
 
         const guardianDemographicsQuestions = [
             { id: 'guardian_father_name', label: 'Nama Bapa/Penjaga', type: 'text', required: true },
-            { id: 'guardian_father_occupation', label: 'Pekerjaan Bapa/Penjaga', type: 'text', required: true },
+            { id: 'guardian_father_phone', label: 'No. Telefon Bapa/Penjaga', type: 'tel', required: true },
             { id: 'guardian_father_income', label: 'Pendapatan Kasar Bulanan Bapa/Penjaga', type: 'select', options: ['Tiada Pendapatan', 'Kurang dari RM1,000', 'RM1,001 - RM2,500', 'RM2,501 - RM5,000', 'RM5,001 - RM10,000', 'Lebih dari RM10,000'], required: true },
             { id: 'guardian_mother_name', label: 'Nama Ibu/Penjaga', type: 'text', required: true },
-            { id: 'guardian_mother_occupation', label: 'Pekerjaan Ibu/Penjaga', type: 'text', required: true },
+            { id: 'guardian_mother_phone', label: 'No. Telefon Ibu/Penjaga', type: 'tel', required: true },
             { id: 'guardian_mother_income', label: 'Pendapatan Kasar Bulanan Ibu/Penjaga', type: 'select', options: ['Tiada Pendapatan', 'Kurang dari RM1,000', 'RM1,001 - RM2,500', 'RM2,501 - RM5,000', 'RM5,001 - RM10,000', 'Lebih dari RM10,000'], required: true },
         ];
 
@@ -191,7 +191,16 @@
         }
 
         window.handleGuardianDemographicChange = function(id, value) {
-            state.responses.guardianDemographics[id] = value;
+            const inputElement = document.getElementById(id);
+            if (id === 'guardian_father_phone' || id === 'guardian_mother_phone') {
+                let digitsOnly = value.replace(/\D/g, '');
+                state.responses.guardianDemographics[id] = digitsOnly;
+                if (inputElement) {
+                    inputElement.value = digitsOnly;
+                }
+            } else {
+                state.responses.guardianDemographics[id] = value;
+            }
         }
 
         function updateICCounter(icValue) {
@@ -476,13 +485,13 @@
             doc.setFont('helvetica', 'normal').setFontSize(10);
             doc.text(`Nama Bapa/Penjaga: ${guardianDemographics.guardian_father_name || ''}`, margin, y);
             y += 15;
-            doc.text(`Pekerjaan Bapa/Penjaga: ${guardianDemographics.guardian_father_occupation || ''}`, margin, y);
+            doc.text(`No. Telefon Bapa/Penjaga: ${guardianDemographics.guardian_father_phone || ''}`, margin, y);
             y += 15;
             doc.text(`Pendapatan Bapa/Penjaga: ${guardianDemographics.guardian_father_income || ''}`, margin, y);
             y += 20;
             doc.text(`Nama Ibu/Penjaga: ${guardianDemographics.guardian_mother_name || ''}`, margin, y);
             y += 15;
-            doc.text(`Pekerjaan Ibu/Penjaga: ${guardianDemographics.guardian_mother_occupation || ''}`, margin, y);
+            doc.text(`No. Telefon Ibu/Penjaga: ${guardianDemographics.guardian_mother_phone || ''}`, margin, y);
             y += 15;
             doc.text(`Pendapatan Ibu/Penjaga: ${guardianDemographics.guardian_mother_income || ''}`, margin, y);
             y += 30;
