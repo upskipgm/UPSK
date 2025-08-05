@@ -92,10 +92,11 @@
     <script>
         // --- STATE MANAGEMENT ---
         let state = {
-            currentSection: -1, // -1:welcome, 0:demo, 1:personality, 2:ikpsi
+            currentSection: -1, // -1:welcome, 0:demo, 1:guardian, 2:personality, 3:ikpsi
             showResults: false,
             responses: {
                 demographics: {},
+                guardianDemographics: {},
                 personality: {},
                 ikpsi: {}
             },
@@ -114,6 +115,15 @@
             { id: 'ipgKampus', label: 'IPGM/IPGK', type: 'select', options: ['IPG Kampus Bahasa Melayu', 'IPG Kampus Bahasa Antarabangsa', 'IPG Kampus Ilmu Khas', 'IPG Kampus Pendidikan Islam', 'IPG Kampus Pendidikan Teknik', 'IPG Kampus Raja Melewar', 'IPG Kampus Tun Hussein Onn', 'IPG Kampus Temenggong Ibrahim', 'IPG Kampus Perempuan Melayu Melaka', 'IPG Kampus Ipoh', 'IPG Kampus Pulau Pinang', 'IPG Kampus Tuanku Bainun', 'IPG Kampus Perlis', 'IPG Kampus Darul Aman', 'IPG Kampus Sultan Abdul Halim', 'IPG Kampus Tengku Ampuan Afzan', 'IPG Kampus Dato\' Razali Ismail', 'IPG Kampus Sultan Mizan', 'IPG Kampus Kota Bharu', 'IPG Kampus Kent', 'IPG Kampus Gaya', 'IPG Kampus Keningau', 'IPG Kampus Tawau', 'IPG Kampus Batu Lintang', 'IPG Kampus Sarawak', 'IPG Kampus Rajang', 'IPG Kampus Tun Abdul Razak'], required: true },
             { id: 'program', label: 'Program', type: 'select', options: ['PPISMP', 'PISMP', 'PISP', 'PDPP', 'PDPP KDC'], required: true },
             { id: 'semester', label: 'Semester', type: 'select', options: ['Semester 1', 'Semester 2', 'Semester 3', 'Semester 4', 'Semester 5', 'Semester 6', 'Semester 7', 'Semester 8', 'Semester 9', 'Semester 10', 'Semester 11', 'Semester 12'], required: true }
+        ];
+
+        const guardianDemographicsQuestions = [
+            { id: 'guardian_father_name', label: 'Nama Bapa/Penjaga', type: 'text', required: true },
+            { id: 'guardian_father_occupation', label: 'Pekerjaan Bapa/Penjaga', type: 'text', required: true },
+            { id: 'guardian_father_income', label: 'Pendapatan Kasar Bulanan Bapa/Penjaga', type: 'select', options: ['Tiada Pendapatan', 'Kurang dari RM1,000', 'RM1,001 - RM2,500', 'RM2,501 - RM5,000', 'RM5,001 - RM10,000', 'Lebih dari RM10,000'], required: true },
+            { id: 'guardian_mother_name', label: 'Nama Ibu/Penjaga', type: 'text', required: true },
+            { id: 'guardian_mother_occupation', label: 'Pekerjaan Ibu/Penjaga', type: 'text', required: true },
+            { id: 'guardian_mother_income', label: 'Pendapatan Kasar Bulanan Ibu/Penjaga', type: 'select', options: ['Tiada Pendapatan', 'Kurang dari RM1,000', 'RM1,001 - RM2,500', 'RM2,501 - RM5,000', 'RM5,001 - RM10,000', 'Lebih dari RM10,000'], required: true },
         ];
 
         const personalityQuestions = [
@@ -180,6 +190,10 @@
             }
         }
 
+        window.handleGuardianDemographicChange = function(id, value) {
+            state.responses.guardianDemographics[id] = value;
+        }
+
         function updateICCounter(icValue) {
             const counterElement = document.getElementById('ic-counter');
             if (counterElement) {
@@ -230,12 +244,18 @@
                     return { isValid: false, message: 'Alamat emel ini telah digunakan untuk menjawab soal selidik. Setiap emel hanya boleh digunakan sekali sahaja.' };
                 }
             } else if (state.currentSection === 1) {
-                if (Object.keys(state.responses.personality).length < personalityQuestions.length) {
-                    return { isValid: false, message: 'Sila jawab semua soalan dalam Bahagian B.' };
+                for (const field of guardianDemographicsQuestions) {
+                    if (field.required && !state.responses.guardianDemographics[field.id]) {
+                        return { isValid: false, message: `Sila lengkapkan maklumat: ${field.label}.` };
+                    }
                 }
             } else if (state.currentSection === 2) {
-                if (Object.keys(state.responses.ikpsi).length < ikpsiQuestions.length) {
+                if (Object.keys(state.responses.personality).length < personalityQuestions.length) {
                     return { isValid: false, message: 'Sila jawab semua soalan dalam Bahagian C.' };
+                }
+            } else if (state.currentSection === 3) {
+                if (Object.keys(state.responses.ikpsi).length < ikpsiQuestions.length) {
+                    return { isValid: false, message: 'Sila jawab semua soalan dalam Bahagian D.' };
                 }
             }
             return { isValid: true };
@@ -312,6 +332,7 @@
             const personalityScores = calculatePersonalityScores();
             const ikpsiScores = calculateIkpsiScores();
             const demographics = state.responses.demographics;
+            const guardianDemographics = state.responses.guardianDemographics;
             
             const getPersonalityTahap = (score) => (score >= 67 ? 'Tinggi' : score >= 34 ? 'Sederhana' : 'Rendah');
             const getIkpsiTahap = (score) => {
@@ -326,11 +347,46 @@
             
             const interpretations = {
                 personality: {
-                    extraversion: { label: 'Extraversion' },
-                    agreeableness: { label: 'Agreeableness' },
-                    conscientiousness: { label: 'Conscientiousness' },
-                    neuroticism: { label: 'Neuroticism' },
-                    openness: { label: 'Openness' }
+                    extraversion: { 
+                        label: 'Extraversion',
+                        Tinggi: 'Anda sangat suka bersosial, bertenaga, dan cenderung mengalami emosi positif. Anda mungkin seorang yang peramah, aktif, dan selesa dalam kumpulan.',
+                        Sederhana: 'Anda mempunyai keseimbangan antara suka bersosial dan meluangkan masa bersendirian. Anda boleh menjadi peramah dalam situasi tertentu tetapi juga menghargai masa tenang.',
+                        Rendah: 'Anda lebih suka bersendirian, pendiam, dan tidak memerlukan banyak rangsangan sosial. Anda mungkin lebih selesa dalam kumpulan kecil atau dengan rakan rapat.'
+                    },
+                    agreeableness: { 
+                        label: 'Agreeableness',
+                        Tinggi: 'Anda cenderung bersimpati, bekerjasama, dan baik hati. Anda mudah mempercayai orang lain dan sering mengelakkan konflik.',
+                        Sederhana: 'Anda boleh menjadi seorang yang bekerjasama tetapi juga akan mempertahankan pendirian anda apabila perlu. Anda seimbang antara mementingkan keharmonian dan keperluan peribadi.',
+                        Rendah: 'Anda lebih kompetitif, analitikal, dan kadangkala skeptikal. Anda tidak takut untuk mencabar orang lain dan lebih mementingkan logik berbanding emosi dalam membuat keputusan.'
+                    },
+                    conscientiousness: { 
+                        label: 'Conscientiousness',
+                        Tinggi: 'Anda sangat berdisiplin, teratur, dan berorientasikan matlamat. Anda seorang yang boleh dipercayai, berhati-hati, dan sentiasa berusaha untuk melakukan yang terbaik.',
+                        Sederhana: 'Anda boleh diharap dan teratur, tetapi juga fleksibel. Anda tahu bila masanya untuk serius dan bila boleh bersikap lebih santai.',
+                        Rendah: 'Anda lebih spontan, fleksibel, dan kadangkala kurang teratur. Anda mungkin lebih suka bekerja tanpa perancangan yang ketat dan mudah menyesuaikan diri dengan perubahan.'
+                    },
+                    neuroticism: { 
+                        label: 'Neuroticism',
+                        Tinggi: 'Anda cenderung mengalami emosi negatif seperti marah, cemas, atau tertekan. Anda mungkin lebih reaktif dari segi emosi dan mudah risau tentang pelbagai perkara.',
+                        Sederhana: 'Anda secara amnya stabil dari segi emosi tetapi masih boleh mengalami tekanan atau kebimbangan dalam situasi yang mencabar. Anda mempunyai daya tahan emosi yang baik.',
+                        Rendah: 'Anda sangat tenang, stabil dari segi emosi, dan jarang berasa tertekan. Anda mampu menghadapi tekanan dengan baik dan tidak mudah bimbang.'
+                    },
+                    openness: { 
+                        label: 'Openness',
+                        Tinggi: 'Anda sangat terbuka kepada pengalaman baharu, kreatif, dan mempunyai imaginasi yang tinggi. Anda suka meneroka idea-idea baharu dan menghargai seni.',
+                        Sederhana: 'Anda terbuka kepada idea baharu tetapi juga menghargai tradisi. Anda mempunyai keseimbangan antara kreativiti dan praktikaliti.',
+                        Rendah: 'Anda lebih praktikal, konvensional, dan lebih suka rutin. Anda selesa dengan perkara yang biasa dan mungkin kurang berminat dengan idea-idea abstrak atau perubahan.'
+                    }
+                },
+                ikpsi: {
+                    emosi: { label: 'Emosi', description: 'Keupayaan untuk mengenali, memahami, dan mengurus emosi diri sendiri dan orang lain.' },
+                    kendiri: { label: 'Kendiri', description: 'Tahap penghargaan, tanggungjawab, dan usaha untuk pembangunan peribadi.' },
+                    fizikal: { label: 'Fizikal', description: 'Amalan gaya hidup sihat merangkumi pemakanan, senaman, dan rehat yang mencukupi.' },
+                    perhubungan: { label: 'Perhubungan', description: 'Kualiti interaksi dan hubungan sosial dengan keluarga, rakan, dan pensyarah.' },
+                    intelektual: { label: 'Intelektual', description: 'Sikap positif terhadap ilmu, mempunyai matlamat yang jelas, dan kemahiran berfikir.' },
+                    spiritual: { label: 'Spiritual', description: 'Penghayatan nilai-nilai murni seperti pemaaf, sabar, syukur, dan amanah.' },
+                    identiti: { label: 'Identiti', description: 'Penerimaan terhadap jantina, diri sendiri, dan kepelbagaian budaya dalam masyarakat.' },
+                    kewangan: { label: 'Kewangan', description: 'Kesedaran dan amalan pengurusan kewangan yang bijak dan berhemah.' }
                 }
             };
 
@@ -342,7 +398,7 @@
             doc.setFont('helvetica', 'bold').setFontSize(18).text('Laporan Profil Individu', pageWidth / 2, y, { align: 'center' });
             y += 25;
             
-            doc.setFont('helvetica', 'bold').setFontSize(12).text('Maklumat Demografi', margin, y);
+            doc.setFont('helvetica', 'bold').setFontSize(12).text('Maklumat Demografi Pelajar', margin, y);
             y += 15;
             doc.setFont('helvetica', 'normal').setFontSize(10);
             doc.text(`Nama: ${demographics.name || ''}`, margin, y);
@@ -356,19 +412,35 @@
             y += 15;
             doc.text(`Program: ${demographics.program || ''}`, margin, y);
             doc.text(`Semester: ${demographics.semester || ''}`, margin + 250, y);
+            y += 25;
+
+            doc.setFont('helvetica', 'bold').setFontSize(12).text('Maklumat Demografi Penjaga', margin, y);
+            y += 15;
+            doc.setFont('helvetica', 'normal').setFontSize(10);
+            doc.text(`Nama Bapa/Penjaga: ${guardianDemographics.guardian_father_name || ''}`, margin, y);
+            y += 15;
+            doc.text(`Pekerjaan Bapa/Penjaga: ${guardianDemographics.guardian_father_occupation || ''}`, margin, y);
+            y += 15;
+            doc.text(`Pendapatan Bapa/Penjaga: ${guardianDemographics.guardian_father_income || ''}`, margin, y);
+            y += 20;
+            doc.text(`Nama Ibu/Penjaga: ${guardianDemographics.guardian_mother_name || ''}`, margin, y);
+            y += 15;
+            doc.text(`Pekerjaan Ibu/Penjaga: ${guardianDemographics.guardian_mother_occupation || ''}`, margin, y);
+            y += 15;
+            doc.text(`Pendapatan Ibu/Penjaga: ${guardianDemographics.guardian_mother_income || ''}`, margin, y);
             y += 30;
+
 
             doc.setFont('helvetica', 'bold').setFontSize(12).text('Profil Kesejahteraan Psikologi (IKPsi-P)', margin, y);
             y += 20;
             const ikpsiChartCanvas = document.getElementById('ikpsiChart');
             const ikpsiChartImage = ikpsiChartCanvas.toDataURL('image/png', 1.0);
             doc.addImage(ikpsiChartImage, 'PNG', (pageWidth - 300) / 2, y, 300, 300);
-            y += 310;
-
+            
             // --- PAGE 2 ---
             doc.addPage();
             y = margin;
-            doc.setFontSize(14).setFont('helvetica', 'bold').text('Skor & Interpretasi', margin, y);
+            doc.setFontSize(14).setFont('helvetica', 'bold').text('Skor & Interpretasi Personaliti', margin, y);
             y += 25;
 
             doc.setFont('helvetica', 'bold').setFontSize(12).text('Profil Personaliti (Big Five)', margin, y);
@@ -378,9 +450,6 @@
             doc.addImage(personalityChartImage, 'PNG', (pageWidth - 500) / 2, y, 500, 250);
             y += 260;
 
-            // Personality Table
-            doc.setFontSize(11).setFont('helvetica', 'bold').text('Skor Personaliti (Big Five)', margin, y);
-            y += 15;
             doc.autoTable({
                 startY: y,
                 head: [['Domain', 'Skor (%)', 'Tahap']],
@@ -397,10 +466,33 @@
             // --- PAGE 3 ---
             doc.addPage();
             y = margin;
-
-            // IKPsi-P Table
-            doc.setFontSize(11).setFont('helvetica', 'bold').text('Skor Kesejahteraan Psikologi (IKPsi-P)', margin, y);
+            doc.setFontSize(12).setFont('helvetica', 'bold').text('Huraian Domain Personaliti', margin, y);
             y += 15;
+            
+            Object.entries(personalityScores).forEach(([key, score]) => {
+                const trait = interpretations.personality[key];
+                const tahapText = getPersonalityTahap(score);
+                const description = trait[tahapText];
+
+                if (y > doc.internal.pageSize.getHeight() - 100) {
+                    doc.addPage();
+                    y = margin;
+                }
+
+                doc.setFont('helvetica', 'bold').setFontSize(10).text(`${trait.label} (${tahapText})`, margin, y);
+                y += 12;
+                doc.setFont('helvetica', 'normal').setFontSize(10);
+                const lines = doc.splitTextToSize(description, pageWidth - margin * 2);
+                doc.text(lines, margin, y);
+                y += (lines.length * 12) + 10;
+            });
+
+            // --- PAGE 4 ---
+            doc.addPage();
+            y = margin;
+            doc.setFontSize(14).setFont('helvetica', 'bold').text('Skor & Interpretasi Kesejahteraan Psikologi', margin, y);
+            y += 25;
+
             doc.autoTable({
                 startY: y,
                 head: [['Konstruk', 'Skor', 'Tahap']],
@@ -413,21 +505,46 @@
                 headStyles: { fillColor: [41, 128, 185] }
             });
             y = doc.autoTable.previous.finalY + 20;
+
+            doc.setFontSize(12).setFont('helvetica', 'bold').text('Huraian Konstruk Kesejahteraan Psikologi', margin, y);
+            y += 15;
+
+            Object.entries(ikpsiScores).forEach(([key, score]) => {
+                const domain = interpretations.ikpsi[key];
+                if (y > doc.internal.pageSize.getHeight() - 80) {
+                    doc.addPage();
+                    y = margin;
+                }
+                doc.setFont('helvetica', 'bold').setFontSize(10).text(domain.label, margin, y);
+                y += 12;
+                doc.setFont('helvetica', 'normal').setFontSize(10);
+                const lines = doc.splitTextToSize(domain.description, pageWidth - margin * 2);
+                doc.text(lines, margin, y);
+                y += (lines.length * 12) + 10;
+            });
+
+            // --- FINAL PAGE ---
+            if (y > doc.internal.pageSize.getHeight() - 150) {
+                 doc.addPage();
+                 y = margin;
+            }
             
             doc.setFont('helvetica', 'italic').setFontSize(10);
-            const counselorNote = "Untuk mendapatkan penerangan yang lebih mendalam tentang PKPP, sila berjumpa Kaunselor Pendidikan Institut di kampus masing-masing.";
+            const counselorNote = "Untuk penerangan lebih melanjut berkaitan keputusan PKPP, sila berjumpa Kaunselor Pendidikan Institut di IPG Kampus masing-masing.";
             const noteLines = doc.splitTextToSize(counselorNote, pageWidth - margin * 2);
-            if (y + (noteLines.length * 12) > doc.internal.pageSize.getHeight() - 100) {
-                doc.addPage();
-                y = margin;
-            }
             doc.text(noteLines, margin, y);
-            y += (noteLines.length * 12) + 60;
+            y += (noteLines.length * 12) + 80;
+
+            doc.setLineWidth(0.5).line(margin, y, margin + 200, y);
+            y += 15;
+            doc.setFont('helvetica', 'normal').setFontSize(10);
+            doc.text('(Tandatangan Kaunselor Pendidikan)', margin, y);
+
 
             const pageCount = doc.internal.getNumberOfPages();
             for (let i = 1; i <= pageCount; i++) {
                 doc.setPage(i);
-                doc.setFontSize(8).setTextColor(150).text(`2024@Unit Psikologi dan Kaunseling, IPGM | Muka surat ${i} dari ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 15, { align: 'center' });
+                doc.setFontSize(8).setTextColor(150).text(`2024@Unit Psikologi dan Kaunseling, IPGM | Muka surat ${i} dari ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 20, { align: 'center' });
             }
 
             const fileName = `Profil_Kesejahteraan_${demographics.name.replace(/ /g, '_') || 'Pengguna'}.pdf`;
@@ -450,12 +567,13 @@
                     renderIkpsiSpiderChart();
                 }, 50);
             } else {
-                const totalSections = 3;
+                const totalSections = 4;
                 const progress = ((state.currentSection + 1) / totalSections) * 100;
                 let content = '';
                 if (state.currentSection === 0) content = renderDemographics();
-                else if (state.currentSection === 1) content = renderPersonality();
-                else if (state.currentSection === 2) content = renderIkpsi();
+                else if (state.currentSection === 1) content = renderGuardianDemographics();
+                else if (state.currentSection === 2) content = renderPersonality();
+                else if (state.currentSection === 3) content = renderIkpsi();
 
                 app.innerHTML = `
                     <div>
@@ -473,7 +591,7 @@
                             <button onclick="handlePrevSection()" class="px-6 py-2 text-base font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors ${state.currentSection === 0 ? 'invisible' : ''}">
                                 Kembali
                             </button>
-                            ${state.currentSection < 2 ? `
+                            ${state.currentSection < 3 ? `
                             <button onclick="handleNextSection()" class="px-6 py-2 text-base font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
                                 Seterusnya
                             </button>
@@ -535,7 +653,7 @@
             }, 0);
 
             return `
-                <h2 class="text-2xl font-bold mb-1 text-gray-800">Bahagian A: Maklumat Demografi</h2>
+                <h2 class="text-2xl font-bold mb-1 text-gray-800">Bahagian A: Maklumat Demografi Pelajar</h2>
                 <p class="text-gray-500 mb-6">Sila lengkapkan maklumat di bawah.</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6">
                     ${fieldsHtml}
@@ -543,6 +661,37 @@
             `;
         }
         
+        function renderGuardianDemographics() {
+            let fieldsHtml = guardianDemographicsQuestions.map(q => {
+                const value = state.responses.guardianDemographics[q.id] || '';
+                if (q.type === 'select') {
+                    return `
+                        <div class="mb-4">
+                            <label for="${q.id}" class="block mb-2 text-sm font-medium text-gray-900">${q.label}</label>
+                            <select id="${q.id}" onchange="handleGuardianDemographicChange('${q.id}', this.value)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                                <option value="" disabled ${!value ? 'selected' : ''}>Sila pilih...</option>
+                                ${q.options.map(opt => `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="mb-4 relative">
+                        <label for="${q.id}" class="block mb-2 text-sm font-medium text-gray-900">${q.label}</label>
+                        <input type="${q.type}" id="${q.id}" value="${value}" oninput="handleGuardianDemographicChange('${q.id}', this.value)" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <h2 class="text-2xl font-bold mb-1 text-gray-800">Bahagian B: Maklumat Demografi Penjaga</h2>
+                <p class="text-gray-500 mb-6">Sila lengkapkan maklumat di bawah.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                    ${fieldsHtml}
+                </div>
+            `;
+        }
+
         function renderQuestionWithRadios(section, question, index, options) {
             const selectedValue = state.responses[section][index];
             const handler = `window.handle${section.charAt(0).toUpperCase() + section.slice(1)}Change`;
@@ -571,7 +720,7 @@
             const radioLabels = options.map(o => `<div class="text-center flex-1"><p class="font-semibold">${o.value}</p><p class="text-xs text-gray-500">${o.label}</p></div>`).join('');
             
             return `
-                <h2 class="text-2xl font-bold mb-1 text-gray-800">Bahagian B: Personaliti</h2>
+                <h2 class="text-2xl font-bold mb-1 text-gray-800">Bahagian C: Personaliti</h2>
                 <p class="text-gray-500 mb-6">Nyatakan sejauh mana anda setuju atau tidak setuju dengan setiap pernyataan.</p>
                 <div class="hidden sm:flex justify-around items-center mb-4 p-2 bg-gray-100 rounded-lg">${radioLabels}</div>
                 ${personalityQuestions.map((q, i) => renderQuestionWithRadios('personality', q, i, options)).join('')}
@@ -585,7 +734,7 @@
             const radioLabels = options.map(o => `<div class="text-center flex-1"><p class="font-semibold">${o.value}</p><p class="text-xs text-gray-500">${o.label}</p></div>`).join('');
 
             return `
-                <h2 class="text-2xl font-bold mb-1 text-gray-800">Bahagian C: Inventori Kesejahteraan Psikologi (IKPsi-P)</h2>
+                <h2 class="text-2xl font-bold mb-1 text-gray-800">Bahagian D: Inventori Kesejahteraan Psikologi (IKPsi-P)</h2>
                 <p class="text-gray-500 mb-6">Pilih jawapan yang paling sesuai dengan apa yang anda alami sepanjang 2 minggu yang lalu.</p>
                 <div class="hidden sm:flex justify-around items-center mb-4 p-2 bg-green-50 rounded-lg">${radioLabels}</div>
                 ${ikpsiQuestions.map((q, i) => renderQuestionWithRadios('ikpsi', q, i, options)).join('')}
