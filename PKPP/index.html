@@ -72,6 +72,23 @@
         .modal-backdrop.visible .modal-content {
             transform: scale(1);
         }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #results-container, #results-container * {
+                visibility: visible;
+            }
+            #results-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+            .no-print {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -82,7 +99,7 @@
             <p class="mt-4 text-gray-600">Memuatkan soal selidik...</p>
         </div>
     </div>
-    <footer class="text-center py-4 text-sm text-gray-500 bg-white">
+    <footer class="text-center py-4 text-sm text-gray-500 bg-white no-print">
         2024@Unit Psikologi dan Kaunseling, IPGM
     </footer>
 
