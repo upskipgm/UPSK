@@ -118,12 +118,9 @@
         ];
 
         const guardianDemographicsQuestions = [
-            { id: 'guardian_father_name', label: 'Nama Bapa/Penjaga', type: 'text', required: true },
-            { id: 'guardian_father_phone', label: 'No. Telefon Bapa/Penjaga', type: 'tel', required: true },
-            { id: 'guardian_father_income', label: 'Pendapatan Kasar Bulanan Bapa/Penjaga', type: 'select', options: ['Tiada Pendapatan', 'Kurang dari RM1,000', 'RM1,001 - RM2,500', 'RM2,501 - RM5,000', 'RM5,001 - RM10,000', 'Lebih dari RM10,000'], required: true },
-            { id: 'guardian_mother_name', label: 'Nama Ibu/Penjaga', type: 'text', required: true },
-            { id: 'guardian_mother_phone', label: 'No. Telefon Ibu/Penjaga', type: 'tel', required: true },
-            { id: 'guardian_mother_income', label: 'Pendapatan Kasar Bulanan Ibu/Penjaga', type: 'select', options: ['Tiada Pendapatan', 'Kurang dari RM1,000', 'RM1,001 - RM2,500', 'RM2,501 - RM5,000', 'RM5,001 - RM10,000', 'Lebih dari RM10,000'], required: true },
+            { id: 'guardian_name', label: 'Nama Ibu/Bapa/Penjaga', type: 'text', required: true },
+            { id: 'guardian_phone', label: 'No. Telefon Ibu/Bapa/Penjaga', type: 'tel', required: true },
+            { id: 'guardian_income', label: 'Jumlah Pendapatan Kasar Bulanan Isi Rumah', type: 'select', options: ['Tiada Pendapatan', 'Kurang dari RM2,500 (B40)', 'RM2,501 - RM5,000 (B40)', 'RM5,001 - RM10,960 (M40)', 'Lebih dari RM10,961 (T20)'], required: true },
         ];
 
         const personalityQuestions = [
@@ -131,37 +128,40 @@
         ];
         
         const ikpsiQuestions = [
-            "Saya dapat mengenal emosi orang lain dengan baik.", "Saya dapat mengenal emosi saya dengan sepenuhnya.", "Saya sedar keadaan emosi yang sedang saya alami.", "Saya dapat menyelami emosi orang lain.", "Saya memahami perubahan emosi yang berlaku dalam diri saya.", "Saya memahami bahawa emosi saya boleh mempengaruhi tingkah laku orang lain.", "Saya mampu mengawal emosi walaupun dalam keadaan tertekan", "Saya mampu bertenang walaupun sedang marah.", "Saya dapat menangani tekanan dengan baik.", "Saya tidak pernah marah dalam hidup.", "Saya bertanggungjawab atas bidang pengajian yang saya pilih.", "Saya seorang yang berdikari.", "Saya bertanggungjawab terhadap laluan kerjaya yang saya pilih.", "Saya mampu memperkembang potensi diri secara berterusan.", "Saya suka akan situasi baharu yang dapat memperbaiki diri.", "Saya bersedia menerima pengalaman baharu.", "Saya suka menerima pengiktirafan atas tugasan yang saya lakukan.", "Saya memberikan ganjaran terhadap diri sendiri.", "Saya menjalankan tugas dengan baik tanpa mengharapkan pengiktirafan.", "Saya mempunyai masa untuk melakukan aktiviti yang saya sukai.", "Saya berupaya membahagikan masa untuk aktiviti belajar dengan kehidupan peribadi.", "Saya dapat menguruskan kehidupan peribadi dengan seimbang.", "Saya tidak pernah gagal dalam hidup.", "Saya mengamalkan pemakanan seimbang.", "Saya sihat jika mengambil makanan yang berkhasiat.", "Saya mengambil makanan yang berkhasiat untuk keperluan tubuh badan.", "Saya tidak pernah mengambil makanan ringan.", "Saya melakukan aktiviti fizikal sekurang-kurangnya 3 kali seminggu.", "Saya melakukan aktiviti senaman secara berkala.", "Saya tidak pernah bersenam.", "Saya mendapat rehat yang mencukupi.", "Saya mendapat tidur yang mencukupi.", "Saya tidak pernah berasa letih.", "Saya mempunyai hubungan yang baik dengan rakan-rakan.", "Saya mempunyai hubungan yang baik dengan keluarga.", "Saya mempunyai hubungan yang baik dengan pensyarah.", "Saya tidak pernah berselisih faham dengan sesiapa.", "Saya sentiasa berfikiran positif.", "Saya sentiasa bersangka baik terhadap orang lain.", "Saya sentiasa melihat kebaikan dalam setiap kejadian.", "Saya tidak pernah berfikiran negatif.", "Saya mempunyai matlamat hidup yang jelas.", "Saya tahu apa yang saya mahu dalam hidup.", "Saya mempunyai perancangan masa depan yang jelas.", "Saya tidak pernah mempunyai matlamat hidup.", "Saya seorang yang pemaaf.", "Saya mudah memaafkan kesalahan orang lain.", "Saya tidak menyimpan dendam terhadap sesiapa.", "Saya tidak pernah rasa benci pada sesiapa.", "Saya seorang yang penyabar.", "Saya sentiasa bersabar dalam menghadapi dugaan.", "Saya tidak pernah berputus asa.", "Saya seorang yang bersyukur.", "Saya sentiasa bersyukur dengan apa yang saya ada.", "Saya tidak pernah mengeluh.", "Saya tidak pernah rasa kecil hati terhadap sesiapa.", "Saya percaya setiap perkara yang berlaku mempunyai kebaikan disebaliknya.", "Saya menganggap belajar itu sebagai kewajipan.", "Saya melakukan kebaikan dalam kehidupan.", "Saya menghayati nilai murni dalam kehidupan.", "Saya tidak menyalahgunakan kemudahan di institusi pendidikan untuk tujuan peribadi.", "Saya seorang yang amanah.", "Saya boleh dipercayai dalam menjalankan tugas.", "Saya boleh menjalankan tugasan tanpa pengawasan orang lain.", "Saya tidak pernah suka ilmu pengetahuan.", "Saya menerima jantina saya.", "Saya selesa dengan jantina saya.", "Saya menghormati diri saya.", "Saya menghormati kelainan budaya dalam masyarakat.", "Saya boleh melibatkan diri dalam aktiviti silang budaya.", "Saya boleh bertoleransi dengan silang budaya (makanan, pakaian dan gaya hidup).", "Saya berupaya menjalankan tugasan dengan cekap.", "Saya tidak menangguh kerja.", "Saya mampu menyiapkan sesuatu tugasan.", "Saya tidak pernah melakukan tugasan pada saat akhir.", "Saya sedar kepentingan pengurusan kewangan yang bijak.", "Saya tahu kepentingan mengurus perbelanjaan harian.", "Saya mengamalkan sikap menabung.", "Saya mengamalkan sikap berjimat cermat.", "Saya dapati perbelanjaan bulanan mencukupi."
+            "Saya dapat mengenal emosi orang lain dengan baik.", "Saya dapat mengenal emosi saya dengan sepenuhnya.", "Saya sedar keadaan emosi yang sedang saya alami.", "Saya dapat menyelami emosi orang lain.", "Saya memahami perubahan emosi yang berlaku dalam diri saya.", "Saya memahami bahawa emosi saya boleh mempengaruhi tingkah laku orang lain.", "Saya mampu mengawal emosi walaupun dalam keadaan tertekan", "Saya mampu bertenang walaupun sedang marah.", "Saya dapat menangani tekanan dengan baik.", "Saya tidak pernah marah dalam hidup.", "Saya bertanggungjawab atas bidang pengajian yang saya pilih.", "Saya seorang yang berdikari.", "Saya bertanggungjawab terhadap laluan kerjaya yang saya pilih.", "Saya mampu memperkembang potensi diri secara berterusan.", "Saya suka akan situasi baharu yang dapat memperbaiki diri.", "Saya bersedia menerima pengalaman baharu.", "Saya suka menerima pengiktirafan atas tugasan yang saya lakukan.", "Saya memberikan ganjaran terhadap diri sendiri.", "Saya menjalankan tugas dengan baik tanpa mengharapkan pengiktirafan.", "Saya mempunyai masa untuk melakukan aktiviti yang saya sukai.", "Saya berupaya membahagikan masa untuk aktiviti belajar dengan kehidupan peribadi.", "Saya dapat menguruskan kehidupan peribadi dengan seimbang.", "Saya tidak pernah gagal dalam hidup.", "Saya mengamalkan pemakanan seimbang.", "Saya sihat jika mengambil makanan yang berkhasiat.", "Saya mengambil makanan yang berkhasiat untuk keperluan tubuh badan.", "Saya prihatin tentang berat badan saya.", "Saya akan membuat regangan apabila duduk terlalu lama.", "Saya memilih beriadah berbanding berehat di bilik.", "Saya mandi setiap hari untuk memastikan badan saya bersih.", "Saya mencuci tangan untuk mengekalkan kebersihan.", "Saya menjaga kebersihan walau di manan-mana saya berada.", "Saya mengambil ubat dengan konsultasi doktor.", "Saya tidak mengambil bahan terlarang seperti dadah/inhalan/rokok/vape.", "Saya tidak minum minuman beralkohol.", "Saya tidak pernah sakit sepanjang hidup.", "Saya seronok melakukan aktiviti bermakna bersama ahli keluarga.", "Saya sentiasa menjaga hubungan baik dengan ahli keluarga.", "Saya sentiasa memberi sokongan kepada ahli keluarga.", "Saya menerima rakan sebaya seadanya.", "Saya menghormati pandangan rakan sebaya.", "Saya mengambil berat kebajikan rakan sebaya.", "Saya menjaga hubungan baik dengan komuniti setempat.", "Saya menerima kehidupan berkomuniti.", "Saya menerima komuniti setempat saya seadanya.", "Saya tidak pernah berbohong dalam hidup.", "Saya berbincang dengan rakan untuk meningkatkan pengetahuan.", "Saya menguasai bidang pengajian yang dipelajari.", "Saya mencari ilmu pengetahuan untuk meningkatkan pencapaian diri.", "Saya mengenalpasti masalah yang perlu diselesaikan.", "Saya mencari jalan penyelesaian bagi setiap masalah.", "Saya berfikir secara rasional dalam membuat sesuatu keputusan.", "Saya mampu menghasilkan idea baharu dalam pelbagai situasi.", "Saya melihat sesuatu perkara dari pelbagai sudut.", "Saya sentiasa meneroka idea baharu.", "Saya tidak pernah rasa kecil hati terhadap sesiapa.", "Saya percaya setiap perkara yang berlaku mempunyai kebaikan disebaliknya.", "Saya menganggap belajar itu sebagai kewajipan.", "Saya melakukan kebaikan dalam kehidupan.", "Saya menghayati nilai murni dalam kehidupan.", "Saya tidak menyalahgunakan kemudahan di institusi pendidikan untuk tujuan peribadi.", "Saya seorang yang amanah.", "Saya boleh dipercayai dalam menjalankan tugas.", "Saya boleh menjalankan tugasan tanpa pengawasan orang lain.", "Saya tidak pernah suka ilmu pengetahuan.", "Saya menerima jantina saya.", "Saya selesa dengan jantina saya.", "Saya menghormati diri saya.", "Saya menghormati kelainan budaya dalam masyarakat.", "Saya boleh melibatkan diri dalam aktiviti silang budaya.", "Saya boleh bertoleransi dengan silang budaya (makanan, pakaian dan gaya hidup).", "Saya berupaya menjalankan tugasan dengan cekap.", "Saya tidak menangguh kerja.", "Saya mampu menyiapkan sesuatu tugasan.", "Saya tidak pernah melakukan tugasan pada saat akhir.", "Saya sedar kepentingan pengurusan kewangan yang bijak.", "Saya tahu kepentingan mengurus perbelanjaan harian.", "Saya mengamalkan sikap menabung.", "Saya mengamalkan sikap berjimat cermat.", "Saya dapati perbelanjaan bulanan mencukupi.", "Saya merancang perbelanjaan setiap bulan.", "Saya menggunakan wang secara berhemah.", "Saya dapat membezakan antara kehendak dan keperluan dalam berbelanja.", "Saya tidak pernah berbelanja."
         ];
 
-        // --- SCORING LOGIC FOR IKPSI-P (8 Constructs) ---
+        // --- SCORING LOGIC FOR IKPSI-P (8 Constructs + Consistency) ---
         const ikpsiScoring = {
             domains: {
-                emosi: { label: 'Emosi', items: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], reverse: [10] },
-                kendiri: { label: 'Kendiri', items: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20], reverse: [] },
-                fizikal: { label: 'Fizikal', items: [21, 22, 23, 24, 25, 26, 27, 28, 29, 30], reverse: [23, 27, 30] },
-                perhubungan: { label: 'Perhubungan', items: [31, 32, 33, 34, 35, 36, 37, 38, 39, 40], reverse: [33, 37] },
-                intelektual: { label: 'Intelektual', items: [41, 42, 43, 44, 45, 46, 47, 48, 49, 50], reverse: [41, 45, 50] },
-                spiritual: { label: 'Spiritual', items: [51, 52, 53, 54, 55, 56, 57, 58, 59, 60], reverse: [52, 55, 56] },
-                identiti: { label: 'Identiti', items: [61, 62, 63, 64, 65, 66, 67, 68, 69, 70], reverse: [65] },
-                kewangan: { label: 'Kewangan', items: [71, 72, 73, 74, 75, 76, 77, 78, 79, 80], reverse: [75] }
+                emosi: { label: 'Emosi', items: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
+                kendiri: { label: 'Kendiri', items: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22] },
+                fizikal: { label: 'Fizikal', items: [24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35] },
+                perhubungan: { label: 'Perhubungan', items: [37, 38, 39, 40, 41, 42, 43, 44, 45] },
+                intelektual: { label: 'Intelektual', items: [47, 48, 49, 50, 51, 52, 53, 54, 55] },
+                spiritual: { label: 'Spiritual', items: [57, 58, 59, 60, 61, 62, 63, 64] },
+                identiti: { label: 'Identiti', items: [66, 67, 68, 69, 70, 71, 72, 73, 74] },
+                kewangan: { label: 'Kewangan', items: [76, 77, 78, 79, 80, 81, 82, 83] }
             },
+            consistencyItems: [10, 23, 36, 46, 56, 65, 75, 84],
             getScores: function(responses) {
                 const scores = {};
-                const reverseScore = (score) => 6 - score; // Reverse score for 1-5 scale
-
+                
                 for (const domainKey in this.domains) {
                     const domain = this.domains[domainKey];
                     let totalScore = 0;
                     domain.items.forEach(itemIndex => {
-                        let score = responses[itemIndex - 1] || 3; // Default to neutral
-                        if (domain.reverse.includes(itemIndex)) {
-                            score = reverseScore(score);
-                        }
-                        totalScore += score;
+                        totalScore += responses[itemIndex - 1] || 3;
                     });
                     scores[domainKey] = totalScore;
                 }
+                
+                let consistencyScore = 0;
+                this.consistencyItems.forEach(itemIndex => {
+                    consistencyScore += responses[itemIndex - 1] || 0;
+                });
+                scores.keselarasan = consistencyScore;
+
                 return scores;
             }
         };
@@ -192,7 +192,7 @@
 
         window.handleGuardianDemographicChange = function(id, value) {
             const inputElement = document.getElementById(id);
-            if (id === 'guardian_father_phone' || id === 'guardian_mother_phone') {
+            if (id === 'guardian_phone') {
                 let digitsOnly = value.replace(/\D/g, '');
                 state.responses.guardianDemographics[id] = digitsOnly;
                 if (inputElement) {
@@ -340,6 +340,11 @@
                 return;
             }
 
+            const submitButton = document.querySelector('button[onclick="showResults()"]');
+            submitButton.disabled = true;
+            submitButton.innerHTML = `<div class="flex items-center justify-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Memproses...</div>`;
+
+
             const email = state.responses.demographics.email;
             if (email) {
                 state.submittedEmails.add(email.toLowerCase());
@@ -349,13 +354,12 @@
             const ikpsiScores = calculateIkpsiScores();
             
             const getPersonalityTahap = (score) => (score >= 67 ? 'Tinggi' : score >= 34 ? 'Sederhana' : 'Rendah');
-            const getIkpsiTahap = (score) => {
-                const maxScore = 50;
-                const percentage = (score / maxScore) * 100;
-                if (percentage >= 81) return 'Tinggi';
-                if (percentage >= 61) return 'Sederhana Tinggi';
-                if (percentage >= 41) return 'Sederhana';
-                if (percentage >= 21) return 'Sederhana Rendah';
+            const getIkpsiPercent = (score, totalItems) => Math.round(((score - totalItems) / (totalItems * 4)) * 100);
+            const getIkpsiTahap = (percent) => {
+                if (percent >= 80) return 'Tinggi';
+                if (percent >= 60) return 'Sederhana Tinggi';
+                if (percent >= 40) return 'Sederhana';
+                if (percent >= 20) return 'Sederhana Rendah';
                 return 'Rendah';
             };
 
@@ -370,21 +374,22 @@
                 tahap_neuroticism: getPersonalityTahap(personalityScores.neuroticism),
                 tahap_openness: getPersonalityTahap(personalityScores.openness),
                 ...ikpsiScores,
-                tahap_emosi: getIkpsiTahap(ikpsiScores.emosi),
-                tahap_kendiri: getIkpsiTahap(ikpsiScores.kendiri),
-                tahap_fizikal: getIkpsiTahap(ikpsiScores.fizikal),
-                tahap_perhubungan: getIkpsiTahap(ikpsiScores.perhubungan),
-                tahap_intelektual: getIkpsiTahap(ikpsiScores.intelektual),
-                tahap_spiritual: getIkpsiTahap(ikpsiScores.spiritual),
-                tahap_identiti: getIkpsiTahap(ikpsiScores.identiti),
-                tahap_kewangan: getIkpsiTahap(ikpsiScores.kewangan),
+                tahap_emosi: getIkpsiTahap(getIkpsiPercent(ikpsiScores.emosi, 9)),
+                tahap_kendiri: getIkpsiTahap(getIkpsiPercent(ikpsiScores.kendiri, 12)),
+                tahap_fizikal: getIkpsiTahap(getIkpsiPercent(ikpsiScores.fizikal, 12)),
+                tahap_perhubungan: getIkpsiTahap(getIkpsiPercent(ikpsiScores.perhubungan, 9)),
+                tahap_intelektual: getIkpsiTahap(getIkpsiPercent(ikpsiScores.intelektual, 9)),
+                tahap_spiritual: getIkpsiTahap(getIkpsiPercent(ikpsiScores.spiritual, 8)),
+                tahap_identiti: getIkpsiTahap(getIkpsiPercent(ikpsiScores.identiti, 9)),
+                tahap_kewangan: getIkpsiTahap(getIkpsiPercent(ikpsiScores.kewangan, 8)),
+                tahap_keselarasan: ikpsiScores.keselarasan > 20 ? 'Selaras' : 'Tidak Selaras'
             };
 
-            sendToGoogleSheets(sheetData);
-            
-            state.showResults = true;
-            render();
-            window.scrollTo(0, 0);
+            sendToGoogleSheets(sheetData).then(() => {
+                state.showResults = true;
+                render();
+                window.scrollTo(0, 0);
+            });
         }
 
         // --- PDF GENERATION ---
@@ -401,15 +406,27 @@
             const guardianDemographics = state.responses.guardianDemographics;
             
             const getPersonalityTahap = (score) => (score >= 67 ? 'Tinggi' : score >= 34 ? 'Sederhana' : 'Rendah');
-            const getIkpsiTahap = (score) => {
-                const maxScore = 50; // 10 items * 5
-                const percentage = (score / maxScore) * 100;
-                if (percentage >= 81) return 'Tinggi';
-                if (percentage >= 61) return 'Sederhana Tinggi';
-                if (percentage >= 41) return 'Sederhana';
-                if (percentage >= 21) return 'Sederhana Rendah';
+            
+            const getIkpsiPercent = (score, totalItems) => Math.round(((score - totalItems) / (totalItems * 4)) * 100);
+            const getIkpsiTahap = (percent) => {
+                if (percent >= 80) return 'Tinggi';
+                if (percent >= 60) return 'Sederhana Tinggi';
+                if (percent >= 40) return 'Sederhana';
+                if (percent >= 20) return 'Sederhana Rendah';
                 return 'Rendah';
             };
+            
+            const ikpsiPercentScores = {};
+            let totalIkpsiPercentSum = 0;
+            for (const key in ikpsiScoring.domains) {
+                const domain = ikpsiScoring.domains[key];
+                const score = ikpsiScores[key];
+                const percent = getIkpsiPercent(score, domain.items.length);
+                ikpsiPercentScores[key] = percent;
+                totalIkpsiPercentSum += percent;
+            }
+            const overallWellbeingPercent = Math.round(totalIkpsiPercentSum / Object.keys(ikpsiScoring.domains).length);
+            const overallWellbeingTahap = getIkpsiTahap(overallWellbeingPercent);
             
             const interpretations = {
                 personality: {
@@ -485,25 +502,42 @@
             doc.setFont('helvetica', 'bold').setFontSize(12).text('Maklumat Demografi Penjaga', margin, y);
             y += 15;
             doc.setFont('helvetica', 'normal').setFontSize(10);
-            doc.text(`Nama Bapa/Penjaga: ${guardianDemographics.guardian_father_name || ''}`, margin, y);
+            doc.text(`Nama Ibu/Bapa/Penjaga: ${guardianDemographics.guardian_name || ''}`, margin, y);
             y += 15;
-            doc.text(`No. Telefon Bapa/Penjaga: ${guardianDemographics.guardian_father_phone || ''}`, margin, y);
+            doc.text(`No. Telefon Ibu/Bapa/Penjaga: ${guardianDemographics.guardian_phone || ''}`, margin, y);
             y += 15;
-            doc.text(`Pendapatan Bapa/Penjaga: ${guardianDemographics.guardian_father_income || ''}`, margin, y);
-            y += 20;
-            doc.text(`Nama Ibu/Penjaga: ${guardianDemographics.guardian_mother_name || ''}`, margin, y);
-            y += 15;
-            doc.text(`No. Telefon Ibu/Penjaga: ${guardianDemographics.guardian_mother_phone || ''}`, margin, y);
-            y += 15;
-            doc.text(`Pendapatan Ibu/Penjaga: ${guardianDemographics.guardian_mother_income || ''}`, margin, y);
+            doc.text(`Jumlah Pendapatan Isi Rumah: ${guardianDemographics.guardian_income || ''}`, margin, y);
             y += 30;
-
 
             doc.setFont('helvetica', 'bold').setFontSize(12).text('Profil Kesejahteraan Psikologi (IKPsi-P)', margin, y);
             y += 20;
+            
+            const donutCanvas = document.createElement('canvas');
+            new Chart(donutCanvas, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [overallWellbeingPercent, 100 - overallWellbeingPercent],
+                        backgroundColor: ['rgb(255, 99, 132)', 'rgb(230, 230, 230)'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: false, cutout: '70%' }
+            });
+
+            const donutImage = donutCanvas.toDataURL('image/png', 1.0);
+            doc.addImage(donutImage, 'PNG', margin, y, 100, 100);
+            doc.setFontSize(24).text(`${overallWellbeingPercent}%`, margin + 50, y + 60, { align: 'center' });
+            doc.setFontSize(10).text(overallWellbeingTahap, margin + 50, y + 75, { align: 'center' });
+            
+            const keselarasanTahap = ikpsiScores.keselarasan > 20 ? 'Selaras' : 'Tidak Selaras';
+            doc.setFont('helvetica', 'bold').setFontSize(10).text('Keselarasan:', margin, y + 120);
+            doc.setFont('helvetica', 'normal').setFontSize(10).text(keselarasanTahap, margin + 70, y + 120);
+
+
             const ikpsiChartCanvas = document.getElementById('ikpsiChart');
             const ikpsiChartImage = ikpsiChartCanvas.toDataURL('image/png', 1.0);
-            doc.addImage(ikpsiChartImage, 'PNG', (pageWidth - 300) / 2, y, 300, 300);
+            doc.addImage(ikpsiChartImage, 'PNG', (pageWidth - 300) / 2 + 50, y, 300, 300);
             
             // --- PAGE 2 ---
             doc.addPage();
@@ -516,7 +550,21 @@
             const personalityChartCanvas = document.getElementById('personalityChart');
             const personalityChartImage = personalityChartCanvas.toDataURL('image/png', 1.0);
             doc.addImage(personalityChartImage, 'PNG', (pageWidth - 500) / 2, y, 500, 250);
-            y += 260;
+            y += 270;
+
+            const personalityRanked = Object.entries(personalityScores)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 3);
+
+            doc.setFont('helvetica', 'bold').setFontSize(12).text('Tiga Domain Personaliti Tertinggi', margin, y);
+            y += 20;
+            doc.setFont('helvetica', 'normal').setFontSize(10);
+            personalityRanked.forEach(([key, score], index) => {
+                const trait = interpretations.personality[key];
+                doc.text(`${index + 1}. ${trait.label} (${score}%)`, margin, y);
+                y += 15;
+            });
+            y += 10;
 
             doc.autoTable({
                 startY: y,
@@ -561,14 +609,21 @@
             doc.setFontSize(14).setFont('helvetica', 'bold').text('Skor & Interpretasi Kesejahteraan Psikologi', margin, y);
             y += 25;
 
+            const tableBody = Object.entries(ikpsiScores).map(([key, score]) => {
+                if (key === 'keselarasan') return null;
+                const domain = ikpsiScoring.domains[key];
+                const percent = getIkpsiPercent(score, domain.items.length);
+                const tahapText = getIkpsiTahap(percent);
+                return [domain.label, `${percent}%`, tahapText];
+            }).filter(row => row !== null);
+
+            const consistencyPercentForTable = getIkpsiPercent(ikpsiScores.keselarasan, 8);
+            tableBody.push(['Keselarasan', `${consistencyPercentForTable}%`, ikpsiScores.keselarasan > 20 ? 'Selaras' : 'Tidak Selaras']);
+
             doc.autoTable({
                 startY: y,
-                head: [['Konstruk', 'Skor', 'Tahap']],
-                body: Object.entries(ikpsiScores).map(([key, score]) => {
-                    const domain = ikpsiScoring.domains[key];
-                    const tahapText = getIkpsiTahap(score);
-                    return [domain.label, score, tahapText];
-                }),
+                head: [['Konstruk', 'Skor (%)', 'Tahap']],
+                body: tableBody,
                 theme: 'grid',
                 headStyles: { fillColor: [41, 128, 185] }
             });
@@ -578,6 +633,7 @@
             y += 15;
 
             Object.entries(ikpsiScores).forEach(([key, score]) => {
+                if (key === 'keselarasan') return;
                 const domain = interpretations.ikpsi[key];
                 if (y > doc.internal.pageSize.getHeight() - 80) {
                     doc.addPage();
@@ -630,10 +686,6 @@
                 app.innerHTML = renderWelcomePage();
             } else if (state.showResults) {
                 app.innerHTML = renderResults();
-                setTimeout(() => {
-                    renderPersonalityBarChart();
-                    renderIkpsiSpiderChart();
-                }, 50);
             } else {
                 const totalSections = 4;
                 const progress = ((state.currentSection + 1) / totalSections) * 100;
@@ -812,22 +864,15 @@
         function renderResults() {
              return `
                 <div class="text-center">
-                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Keputusan Anda</h2>
-                    <p class="text-gray-600 mb-6">Terima kasih kerana melengkapkan soal selidik. Berikut adalah ringkasan profil anda.</p>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                        <div>
-                            <canvas id="personalityChart"></canvas>
-                        </div>
-                        <div>
-                            <canvas id="ikpsiChart"></canvas>
-                        </div>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Terima Kasih!</h2>
+                    <p class="text-gray-600 mb-6">Jawapan anda telah berjaya dihantar. Satu salinan laporan profil penuh akan dihantar ke emel anda sebentar lagi.</p>
+                    <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 my-8 text-left" role="alert">
+                      <p class="font-bold">Sila Semak Emel Anda</p>
+                      <p>Laporan PDF akan dihantar ke: <strong>${state.responses.demographics.email}</strong>. Jika tidak diterima dalam masa 5 minit, sila semak folder Spam/Junk anda.</p>
                     </div>
                     <p class="text-gray-700 italic max-w-xl mx-auto mb-8">
-                        Laporan ini memberikan gambaran umum. Untuk pemahaman yang lebih mendalam, sila berunding dengan kaunselor bertauliah.
+                        Untuk pemahaman yang lebih mendalam, sila berunding dengan kaunselor bertauliah.
                     </p>
-                    <button id="pdf-button" onclick="generatePDF()" class="bg-green-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-700 transition-colors">
-                        Muat Turun Laporan PDF
-                    </button>
                 </div>
             `;
         }
@@ -874,13 +919,14 @@
             const ctx = document.getElementById('ikpsiChart');
             if (!ctx) return;
             const scores = calculateIkpsiScores();
+            const domainScores = Object.keys(ikpsiScoring.domains).map(key => scores[key]);
             new Chart(ctx, {
                 type: 'radar',
                 data: {
                     labels: Object.values(ikpsiScoring.domains).map(d => d.label),
                     datasets: [{
                         label: 'Skor IKPsi-P',
-                        data: Object.values(scores),
+                        data: domainScores,
                         fill: true,
                         backgroundColor: 'rgba(75, 192, 192, 0.2)',
                         borderColor: 'rgb(75, 192, 192)',
@@ -890,7 +936,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
-                    scales: { r: { suggestedMin: 10, suggestedMax: 50 } },
+                    scales: { r: { suggestedMin: 0 } },
                     plugins: { title: { display: true, text: 'Profil Kesejahteraan Psikologi' } }
                 }
             });
