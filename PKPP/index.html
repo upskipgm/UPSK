@@ -517,7 +517,6 @@
                 theme: 'grid',
                 headStyles: { fillColor: [22, 160, 133] },
                 body: [
-                    // FIX: Wrapped cell objects in an array to define them as a single row
                     [{ content: 'Maklumat Pelajar', colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240], halign: 'center' } }],
                     ['Nama Penuh', demographics.name || 'N/A'],
                     ['No. MyKad', demographics.ic || 'N/A'],
@@ -591,13 +590,17 @@
             doc.setFont('helvetica', 'bold');
             doc.text('Ringkasan Kesejahteraan Keseluruhan:', margin, y);
             y += 20;
+            const keselarasanTahap = getKeselarasanTahap(ikpsiScores.keselarasan);
+            const keselarasanInterp = interpretations.ikpsi.keselarasan[keselarasanTahap];
             doc.autoTable({
                 startY: y,
                 theme: 'plain',
                 body: [
                     ['Skor Keseluruhan:', `${overallWellbeingPercent}%`],
                     ['Tahap Keseluruhan:', `${overallWellbeingTahap}`],
-                    ['Keselarasan Jawapan:', `${getKeselarasanTahap(ikpsiScores.keselarasan)} (Skor: ${ikpsiScores.keselarasan})`]
+                    ['Keselarasan Jawapan:', `${keselarasanTahap} (Skor: ${ikpsiScores.keselarasan})`],
+                    // FIX: Added interpretation for consistency score
+                    ['Interpretasi Keselarasan:', keselarasanInterp]
                 ],
                 columnStyles: { 0: { fontStyle: 'bold' } }
             });
@@ -671,7 +674,7 @@
                             <li>Jawab semua soalan dengan jujur dan ikhlas.</li>
                             <li>Tiada jawapan yang betul atau salah.</li>
                             <li>Anggaran masa menjawab adalah 15-20 minit.</li>
-                            <li>Laporan individu akan dijana dan dihantar ke e-mel anda selepas selesai.</li>
+                            <li>Anda digalakkan untuk memuat turun keputusan secara manual setelah selesai menjawab.</li>
                         </ul>
                     </div>
                     <button onclick="startSurvey()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full text-lg transition duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1">
@@ -1108,4 +1111,3 @@
     </script>
 </body>
 </html>
-
