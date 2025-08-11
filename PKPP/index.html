@@ -681,9 +681,9 @@
                 } else if (state.currentSection === 1) {
                     content += renderGuardianDemographicsForm();
                 } else if (state.currentSection === 2) {
-                    content += renderQuestions('personality', 'Bahagian C: Inventori Personaliti Big-Five (BFI)', personalityQuestions, state.responses.personality, handlePersonalityChange);
+                    content += renderQuestions('personality', 'Bahagian C: Inventori Personaliti Pelajar', personalityQuestions, state.responses.personality, handlePersonalityChange);
                 } else if (state.currentSection === 3) {
-                    content += renderQuestions('ikpsi', 'Bahagian D: Inventori Kesejahteraan Psikologi Siswa Pendidik (IKPSI-P)', ikpsiQuestions, state.responses.ikpsi, handleIkpsiChange);
+                    content += renderQuestions('ikpsi', 'Bahagian D: Inventori Kesejahteraan Psikologi Pelajar', ikpsiQuestions, state.responses.ikpsi, handleIkpsiChange);
                 }
 
                 content += renderNavigationButtons(state.currentSection, totalSections);
@@ -735,7 +735,7 @@
         }
 
         function renderDemographicsForm() {
-            let formHTML = `<h2 class="text-2xl font-bold text-gray-800 mb-6">Bahagian A: Maklumat Demografi</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
+            let formHTML = `<h2 class="text-2xl font-bold text-gray-800 mb-6">Bahagian A: Maklumat Diri</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-6">`;
             demographicsQuestions.forEach(q => {
                 const value = state.responses.demographics[q.id] || '';
                 if (q.type === 'select') {
