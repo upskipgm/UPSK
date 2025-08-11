@@ -814,12 +814,12 @@
             let questionsHTML = `<h2 class="text-2xl font-bold text-gray-800 mb-2">${title}</h2>`;
             questionsHTML += `<p class="text-gray-600 mb-6">Sila tandakan jawapan anda pada skala 1 hingga 5.</p>`;
 
-            // Sticky header for options
+            // Sticky header for desktop
             questionsHTML += `
                 <div class="sticky top-0 bg-white py-3 z-10 hidden md:grid grid-cols-[1fr,250px] gap-4 border-b-2 border-gray-200 mb-4">
                      <div class="font-semibold text-gray-600">Penyataan</div>
                      <div class="grid grid-cols-5 gap-2 text-center font-semibold text-gray-600 text-xs">
-                        ${options.map(o => `<div>${o.label}</div>`).join('')}
+                        ${options.map(o => `<div>${o.label.replace(/ /g, '<br>')}</div>`).join('')}
                      </div>
                 </div>
             `;
@@ -829,15 +829,25 @@
                 questionsHTML += `
                     <div class="grid grid-cols-1 md:grid-cols-[1fr,250px] gap-4 py-4 border-b border-gray-200 items-center">
                         <p class="text-gray-800">${index + 1}. ${q}</p>
-                        <div class="flex justify-around items-center radio-container">
-                            ${options.map(opt => `
-                                <div>
-                                    <input type="radio" id="${type}-${index}-${opt.value}" name="${type}-${index}" value="${opt.value}" class="sr-only" onchange="${handler.name}(${index}, this.value)" ${selectedValue === opt.value ? 'checked' : ''}>
-                                    <label for="${type}-${index}-${opt.value}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 cursor-pointer ${selectedValue === opt.value ? (type === 'personality' ? 'bg-blue-500' : 'bg-green-500') + ' text-white shadow-lg transform scale-110' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}">
-                                        ${opt.value}
-                                    </label>
-                                </div>
-                            `).join('')}
+                        <div>
+                            <!-- Header for mobile view -->
+                            <div class="grid grid-cols-5 gap-2 text-center text-xs text-gray-500 mb-2 md:hidden">
+                                <span>STS</span>
+                                <span>TS</span>
+                                <span>N</span>
+                                <span>S</span>
+                                <span>SS</span>
+                            </div>
+                            <div class="flex justify-around items-center radio-container">
+                                ${options.map(opt => `
+                                    <div>
+                                        <input type="radio" id="${type}-${index}-${opt.value}" name="${type}-${index}" value="${opt.value}" class="sr-only" onchange="${handler.name}(${index}, this.value)" ${selectedValue === opt.value ? 'checked' : ''}>
+                                        <label for="${type}-${index}-${opt.value}" class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-200 cursor-pointer ${selectedValue === opt.value ? (type === 'personality' ? 'bg-blue-500' : 'bg-green-500') + ' text-white shadow-lg transform scale-110' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}">
+                                            ${opt.value}
+                                        </label>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
                     </div>
                 `;
