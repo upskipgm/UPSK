@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penilaian Program Unit Psikologi & Kaunseling, IPGM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .form-radio-label { display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem; cursor: pointer; transition: all 0.2s ease-in-out; height: 60px; width: 60px; }
+        .form-radio-label:hover { border-color: #4f46e5; background-color: #eef2ff; }
+        input[type="radio"]:checked + .form-radio-label { border-color: #4f46e5; background-color: #4f46e5; color: white; }
+        input[type="radio"] { display: none; }
+        .question-group { border-left: 3px solid #4f46e5; padding-left: 1.5rem; margin-top: 2rem; }
+        .nav-button { transition: all 0.2s; }
+        .nav-button.active { background-color: #4f46e5; color: white; }
+        #loader { border: 5px solid #f3f3f3; border-top: 5px solid #4f46e5; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #generateReportBtn:disabled { background-color: #9ca3af; cursor: not-allowed; }
+        .penceramah-block { border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 1rem; margin-top: 1rem; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- App Container -->
+    <div class="container mx-auto max-w-4xl p-4 sm:p-8">
+        <!-- Header -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Penilaian Program</h1>
+            <p class="text-lg text-indigo-700 font-semibold mt-1">Unit Psikologi & Kaunseling, IPGM</p>
+        </header>
+
+        <!-- View Switcher -->
+        <nav class="flex justify-center bg-gray-200 p-1.5 rounded-xl mb-8 max-w-md mx-auto">
+            <button id="publicViewBtn" class="nav-button w-1/2 p-2 rounded-lg font-semibold">Paparan Umum</button>
+            <button id="adminViewBtn" class="nav-button w-1/2 p-2 rounded-lg font-semibold">Paparan Admin</button>
+        </nav>
+
+        <!-- Public View: Evaluation Form -->
+        <div id="publicView">
+            <form id="evaluationForm" class="bg-white p-6 sm:p-10 rounded-2xl shadow-lg space-y-8">
+                <input type="hidden" id="selectedProgramDate" name="programDate">
+                <input type="hidden" id="selectedProgramVenue" name="programVenue">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div><label for="programName" class="block text-sm font-medium text-gray-700 mb-2">Sila Pilih Program Yang Dinilai:</label><select id="programName" name="programName" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></select></div>
+                    <div><label for="gender" class="block text-sm font-medium text-gray-700 mb-2">Jantina:</label><select id="gender" name="gender" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"><option value="" disabled selected>-- Pilih Jantina --</option><option value="Lelaki">Lelaki</option><option value="Perempuan">Perempuan</option></select></div>
+                </div>
+                <hr>
+                <p class="text-sm text-center text-gray-600 bg-indigo-50 p-3 rounded-lg">Sila nilaikan setiap item berikut berdasarkan skala: <br> <strong>1</strong>=Sangat Tidak Setuju, <strong>2</strong>=Tidak Setuju, <strong>3</strong>=Kurang Setuju, <strong>4</strong>=Setuju, <strong>5</strong>=Sangat Setuju</p>
+                <div id="questionnaire"></div>
+                <div class="question-group">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">Cadangan Penambahbaikan</h3>
+                    <div><label for="suggestions" class="block text-sm font-medium text-gray-700 mb-2">Sila nyatakan maklumbalas atau cadangan anda:</label><textarea id="suggestions" name="suggestions" rows="5" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Tulis cadangan anda di sini..."></textarea></div>
+                </div>
+                <div class="pt-6 text-center"><button type="submit" id="submitBtn" class="w-full md:w-auto bg-indigo-600 text-white font-bold py-4 px-12 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300">Hantar Penilaian</button></div>
+            </form>
+        </div>
+
+        <!-- Admin Login View -->
+        <div id="adminLoginView" class="hidden"><div class="bg-white p-6 sm:p-10 rounded-2xl shadow-lg"><h2 class="text-2xl font-bold text-gray-900 mb-6 text-center">Log Masuk Admin</h2><form id="adminLoginForm" class="max-w-sm mx-auto space-y-4"><div><label for="adminUserID" class="block text-sm font-medium text-gray-700">UserID</label><input type="text" id="adminUserID" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></div><div><label for="adminPassword" class="block text-sm font-medium text-gray-700">Kata Laluan</label><input type="password" id="adminPassword" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></div><p id="loginError" class="text-red-500 text-sm text-center hidden">UserID atau Kata Laluan salah.</p><div class="pt-4"><button type="submit" class="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-indigo-700">Log Masuk</button></div></form></div></div>
+
+        <!-- Admin Panel View -->
+        <div id="adminPanelView" class="hidden">
+            <div class="bg-white p-6 sm:p-10 rounded-2xl shadow-lg">
+                <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold text-gray-900">Pengurusan Program</h2><button id="logoutBtn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600">Log Keluar</button></div>
+                <form id="addProgramForm" class="mb-8 p-4 border border-gray-200 rounded-lg space-y-4">
+                    <h3 class="text-lg font-semibold text-gray-800">Tambah Program Baharu</h3>
+                    <div><label for="newProgramName" class="block text-sm font-medium text-gray-700">Nama Program</label><input type="text" id="newProgramName" placeholder="Cth: Bengkel Pengurusan Stress" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label for="newProgramDate" class="block text-sm font-medium text-gray-700">Tarikh</label><input type="date" id="newProgramDate" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></div>
+                        <div><label for="newProgramVenue" class="block text-sm font-medium text-gray-700">Tempat</label><input type="text" id="newProgramVenue" placeholder="Cth: Dewan Utama IPGM" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></div>
+                    </div>
+                    <!-- DIKEMAS KINI: Ruangan untuk admin memasukkan nama penceramah -->
+                    <div class="space-y-2 pt-2">
+                        <label class="block text-sm font-medium text-gray-700">Nama Penceramah (Optional)</label>
+                        <input type="text" id="newPenceramah1" placeholder="Nama Penceramah 1" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <input type="text" id="newPenceramah2" placeholder="Nama Penceramah 2" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <input type="text" id="newPenceramah3" placeholder="Nama Penceramah 3" class="w-full p-3 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="text-right"><button type="submit" class="bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-indigo-700">Tambah Program</button></div>
+                </form>
+                <div><h3 class="text-lg font-semibold text-gray-800 mb-4">Senarai Program Sedia Ada:</h3><ul id="programList" class="space-y-3"></ul></div>
+                
+                <div class="mt-8 pt-6 border-t border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Jana Laporan Program</h3>
+                    <div id="reportGenerator" class="p-4 bg-gray-50 rounded-lg">
+                        <label for="reportProgramSelect" class="block text-sm font-medium text-gray-700 mb-2">Pilih program untuk dianalisis:</label>
+                        <div class="flex flex-col sm:flex-row gap-2 items-center">
+                            <select id="reportProgramSelect" class="flex-grow w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                                <option>Sila tambah program dahulu</option>
+                            </select>
+                            <button id="generateReportBtn" class="bg-green-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-green-700 w-full sm:w-auto mt-2 sm:mt-0">
+                                Jana Laporan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 hidden z-50"><div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center transform transition-all scale-95 opacity-0" id="modalContent"></div></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyxE3rGAAKTqlNCnEaKNfo0e2y7g_EET7ALffoclu_TeABwoUjXoEa3xFDtLT0ytgL3/exec';
+            
+            const allViews = { publicView: document.getElementById('publicView'), adminLoginView: document.getElementById('adminLoginView'), adminPanelView: document.getElementById('adminPanelView') };
+            const publicViewBtn = document.getElementById('publicViewBtn');
+            const adminViewBtn = document.getElementById('adminViewBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const evaluationForm = document.getElementById('evaluationForm');
+            const programNameSelect = document.getElementById('programName');
+            const selectedProgramDateInput = document.getElementById('selectedProgramDate');
+            const selectedProgramVenueInput = document.getElementById('selectedProgramVenue');
+            const adminLoginForm = document.getElementById('adminLoginForm');
+            const loginError = document.getElementById('loginError');
+            const addProgramForm = document.getElementById('addProgramForm');
+            const programListUl = document.getElementById('programList');
+            const questionnaireContainer = document.getElementById('questionnaire');
+            const modal = document.getElementById('modal');
+            const modalContent = document.getElementById('modalContent');
+            const reportProgramSelect = document.getElementById('reportProgramSelect');
+            const generateReportBtn = document.getElementById('generateReportBtn');
+
+            let programs = [];
+            const ADMIN_USERID = 'upskipgm';
+            const ADMIN_PASSWORD = 'upskipgm1234';
+            
+            const questionsData = [
+                { category: 'Pengurusan & Urus Setia', items: ['Pendaftaran peserta disediakan', 'Maklumat yang disediakan mudah', 'Pengurusan teratur', 'Urus setia sentiasa membantu saya']},
+                { category: 'Kemudahan & Logistik', items: ['Tempat / Pelantar Sesuai', 'Dewan sesuai', 'Peralatan dan alat tulis disediakan', 'Dewan makan bersih dan selesa', 'Kualiti makanan baik', 'Makanan yang disediakan mencukupi']},
+                { category: 'Keberkesanan Program', items: ['Program ini mampu meningkatkan prestasi kerja saya', 'Program ini mampu memberi keyakinan kepada saya dalam memberi perkhidmatan', 'Tempoh masa program mencukupi']},
+                { category: 'Bahan', items: ['Berguna', 'Membantu', 'Mudah difahami', 'Jelas']},
+                { category: 'Penceramah / Fasilitator', items: [ 'Isi kandungan sesuai dengan objektif', 'Isi kandungan menepati tajuk', 'Isi kandungan mampu meningkatkan percambahan ilmu saya', 'Isi kandungan berjaya meningkatkan kemahiran saya', 'Isi kandungan membantu saya mengamalkannya dalam tugas seharian', 'Penyampaian amat jelas', 'Bahasa yang digunakan mudah difahami', 'Interaksi penceramah/fasilitator adalah sesuai', 'Penceramah/Fasilitator bersifat bersedia, yakin dan terbuka', 'Penampilan penceramah/fasilitator adalah sesuai dan profesional', 'Penceramah/Fasilitator menepati masa', 'Penceramah/Fasilitator menggunakan masa secara optimum' ]}
+            ];
+
+            function loadPrograms() {
+                const storedPrograms = localStorage.getItem('ipgmPrograms');
+                programs = storedPrograms ? JSON.parse(storedPrograms) : [
+                    { name: "Program Kesejahteraan Diri", date: "2025-01-17", venue: "Dewan Serbaguna IPGM", penceramah: ["Dr. Ahmad"] },
+                    { name: "Bengkel Minda Sihat", date: "2025-02-20", venue: "Bilik Latihan 1", penceramah: ["Prof. Madya Dr. Siti", "En. Budi"] }
+                ];
+                programs.sort((a, b) => new Date(b.date) - new Date(a.date));
+            }
+
+            function savePrograms() {
+                localStorage.setItem('ipgmPrograms', JSON.stringify(programs));
+            }
+            
+            function renderAdminProgramList() {
+                programListUl.innerHTML = '';
+                if (programs.length === 0) {
+                    programListUl.innerHTML = '<li class="text-gray-500 text-center p-4">Tiada program ditemui.</li>';
+                    return;
+                }
+                programs.forEach((program, index) => {
+                    const li = document.createElement('li');
+                    const penceramahList = (program.penceramah && program.penceramah.length > 0) ? `<p class="text-sm text-gray-600"><strong>Penceramah:</strong> ${program.penceramah.join(', ')}</p>` : '';
+                    li.className = 'flex flex-col md:flex-row justify-between items-start md:items-center bg-gray-100 p-4 rounded-lg';
+                    li.innerHTML = `<div><p class="font-bold text-indigo-700">${program.name}</p><p class="text-sm text-gray-600"><strong>Tarikh:</strong> ${program.date}</p><p class="text-sm text-gray-600"><strong>Tempat:</strong> ${program.venue}</p>${penceramahList}</div><button data-index="${index}" data-name="${program.name}" class="delete-btn text-red-500 hover:text-red-700 font-semibold mt-3 md:mt-0 md:ml-4">Padam</button>`;
+                    programListUl.appendChild(li);
+                });
+            }
+
+            function populateProgramDropdown() {
+                programNameSelect.innerHTML = '<option value="" disabled selected>-- Pilih Program --</option>';
+                programs.forEach((program, index) => {
+                    const option = document.createElement('option');
+                    option.value = program.name;
+                    option.textContent = `${program.name} (${program.date})`;
+                    option.dataset.index = index;
+                    programNameSelect.appendChild(option);
+                });
+                selectedProgramDateInput.value = '';
+                selectedProgramVenueInput.value = '';
+            }
+
+            function switchView(viewToShow) {
+                Object.values(allViews).forEach(view => view.classList.add('hidden'));
+                loginError.classList.add('hidden');
+                if (viewToShow === 'public') {
+                    allViews.publicView.classList.remove('hidden');
+                    publicViewBtn.classList.add('active');
+                    adminViewBtn.classList.remove('active');
+                    populateProgramDropdown();
+                } else if (viewToShow === 'admin_login') {
+                    allViews.adminLoginView.classList.remove('hidden');
+                    adminViewBtn.classList.add('active');
+                    publicViewBtn.classList.remove('active');
+                } else if (viewToShow === 'admin_panel') {
+                    allViews.adminPanelView.classList.remove('hidden');
+                    adminViewBtn.classList.add('active');
+                    publicViewBtn.classList.remove('active');
+                    renderAdminProgramList();
+                    loadProgramsForReporting();
+                }
+            }
+
+            function generateQuestionnaire() {
+                let formHtml = '';
+                questionsData.forEach((section) => {
+                    if (section.category !== 'Penceramah / Fasilitator') {
+                        formHtml += `<div class="question-group"><h3 class="text-xl font-semibold text-gray-800 mb-6">${section.category}</h3><div class="space-y-8">`;
+                        section.items.forEach((question, questionIndex) => {
+                            const questionName = `${section.category.replace(/[^a-zA-Z0-9]/g, '')}_${questionIndex}`;
+                            formHtml += `<div><label class="block text-center text-base font-medium text-gray-700">${questionIndex + 1}. ${question}</label><div class="flex justify-center space-x-2 sm:space-x-3 mt-3">`;
+                            for (let i = 1; i <= 5; i++) {
+                                const id = `${questionName}-${i}`;
+                                formHtml += `<div><input type="radio" id="${id}" name="${questionName}" value="${i}" required><label for="${id}" class="form-radio-label"><span class="font-bold text-lg">${i}</span></label></div>`;
+                            }
+                            formHtml += `</div></div>`;
+                        });
+                        formHtml += `</div></div>`;
+                    } else {
+                        formHtml += `<div class="question-group">
+                            <h3 class="text-xl font-semibold text-gray-800 mb-4">${section.category}</h3>
+                            <div id="penceramahContainer" class="space-y-6"></div>
+                        </div>`;
+                    }
+                });
+                questionnaireContainer.innerHTML = formHtml;
+                displayPenceramahQuestions(); // Paparkan blok penceramah lalai
+            }
+
+            function generatePenceramahBlock(count, name, isRequired) {
+                const penceramahSection = questionsData.find(s => s.category === 'Penceramah / Fasilitator');
+                if (!penceramahSection) return;
+
+                const requiredAttr = isRequired ? 'required' : '';
+                const nameInputHtml = `<input type="text" id="namaPenceramah${count}" name="namaPenceramah${count}" value="${name}" ${requiredAttr} class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Sila masukkan nama...">`;
+
+                let blockHtml = `<div class="penceramah-block space-y-8">
+                    <h4 class="text-lg font-semibold text-gray-800">Penilaian Penceramah ${count} ${!isRequired ? '(Optional)' : ''}</h4>
+                    <div>
+                        <label for="namaPenceramah${count}" class="block text-sm font-medium text-gray-700 mb-2">Nama Penceramah / Fasilitator ${count}:</label>
+                        ${nameInputHtml}
+                    </div>
+                `;
+
+                penceramahSection.items.forEach((question, questionIndex) => {
+                    const questionName = `Penceramah${count}_Fasilitator_${questionIndex}`;
+                    blockHtml += `<div><label class="block text-center text-base font-medium text-gray-700">${questionIndex + 1}. ${question}</label><div class="flex justify-center space-x-2 sm:space-x-3 mt-3">`;
+                    for (let i = 1; i <= 5; i++) {
+                        const id = `${questionName}-${i}`;
+                        blockHtml += `<div><input type="radio" id="${id}" name="${questionName}" value="${i}" ${requiredAttr}><label for="${id}" class="form-radio-label"><span class="font-bold text-lg">${i}</span></label></div>`;
+                    }
+                    blockHtml += `</div></div>`;
+                });
+
+                blockHtml += `</div>`;
+                document.getElementById('penceramahContainer').insertAdjacentHTML('beforeend', blockHtml);
+            }
+
+            function displayPenceramahQuestions(penceramahList = []) {
+                const container = document.getElementById('penceramahContainer');
+                if (!container) return;
+                container.innerHTML = ''; 
+
+                if (penceramahList.length === 0) {
+                    generatePenceramahBlock(1, "", true);
+                    return;
+                }
+
+                penceramahList.forEach((name, index) => {
+                    const isRequired = (index === 0);
+                    generatePenceramahBlock(index + 1, name, isRequired);
+                });
+            }
+
+            function showModal(type, message = '', onConfirm = null) {
+                let contentHtml = '';
+                if (type === 'loading') {
+                    contentHtml = `<div id="loader" class="mx-auto"></div><p class="mt-4 text-gray-700">${message}</p>`;
+                } else if (type === 'success') {
+                    contentHtml = `<div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-5"><svg class="h-10 w-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg></div><h3 class="text-2xl font-bold text-gray-900">Berjaya!</h3><p class="text-gray-600 mt-3">${message}</p><button class="modal-close-btn w-full bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 mt-8">Tutup</button>`;
+                } else if (type === 'error') {
+                    contentHtml = `<div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-5"><svg class="h-10 w-10 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></div><h3 class="text-2xl font-bold text-gray-900">Ralat</h3><p class="text-gray-600 mt-3">${message}</p><button class="modal-close-btn w-full bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-gray-700 mt-8">Tutup</button>`;
+                } else if (type === 'confirm') {
+                    contentHtml = `<div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 mb-5"><svg class="h-10 w-10 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg></div><h3 class="text-2xl font-bold text-gray-900">Pengesahan</h3><p class="text-gray-600 mt-3">${message}</p><div class="flex justify-center gap-4 mt-8"><button class="modal-cancel-btn bg-gray-300 text-gray-800 font-semibold py-2 px-8 rounded-lg hover:bg-gray-400">Batal</button><button class="modal-confirm-btn bg-red-600 text-white font-semibold py-2 px-8 rounded-lg hover:bg-red-700">Padam</button></div>`;
+                }
+                
+                modalContent.innerHTML = contentHtml;
+                modal.classList.remove('hidden');
+                setTimeout(() => modalContent.classList.remove('scale-95', 'opacity-0'), 10);
+
+                if (type === 'confirm' && onConfirm) {
+                    modal.querySelector('.modal-confirm-btn').onclick = () => { onConfirm(); hideModal(); };
+                    modal.querySelector('.modal-cancel-btn').onclick = hideModal;
+                }
+            }
+
+            function hideModal() {
+                modalContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 200);
+            }
+            
+            function loadProgramsForReporting() {
+                reportProgramSelect.innerHTML = '';
+                if (programs.length > 0) {
+                    programs.forEach(p => {
+                        const option = document.createElement('option');
+                        option.value = p.name;
+                        option.textContent = `${p.name} (${p.date})`;
+                        reportProgramSelect.appendChild(option);
+                    });
+                    generateReportBtn.disabled = false;
+                } else {
+                    reportProgramSelect.innerHTML = '<option>Tiada program untuk dilaporkan</option>';
+                    generateReportBtn.disabled = true;
+                }
+            }
+
+            publicViewBtn.addEventListener('click', () => switchView('public'));
+            adminViewBtn.addEventListener('click', () => switchView('admin_login'));
+            logoutBtn.addEventListener('click', () => switchView('public'));
+            
+            adminLoginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const u = document.getElementById('adminUserID').value;
+                const p = document.getElementById('adminPassword').value;
+                if (u === ADMIN_USERID && p === ADMIN_PASSWORD) {
+                    switchView('admin_panel');
+                    adminLoginForm.reset();
+                } else {
+                    loginError.classList.remove('hidden');
+                }
+            });
+
+            addProgramForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const penceramahNames = [
+                    document.getElementById('newPenceramah1').value.trim(),
+                    document.getElementById('newPenceramah2').value.trim(),
+                    document.getElementById('newPenceramah3').value.trim()
+                ].filter(name => name !== '');
+
+                const newProgram = {
+                    name: document.getElementById('newProgramName').value.trim(),
+                    date: document.getElementById('newProgramDate').value,
+                    venue: document.getElementById('newProgramVenue').value.trim(),
+                    penceramah: penceramahNames
+                };
+                if (newProgram.name && newProgram.date && newProgram.venue) {
+                    programs.push(newProgram);
+                    programs.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    savePrograms();
+                    renderAdminProgramList();
+                    loadProgramsForReporting();
+                    addProgramForm.reset();
+                    document.getElementById('newPenceramah1').value = '';
+                    document.getElementById('newPenceramah2').value = '';
+                    document.getElementById('newPenceramah3').value = '';
+                }
+            });
+
+            programListUl.addEventListener('click', (e) => {
+                if (e.target.classList.contains('delete-btn')) {
+                    const index = e.target.getAttribute('data-index');
+                    const name = e.target.getAttribute('data-name');
+                    showModal('confirm', `Anda pasti ingin memadam program "${name}"?`, () => {
+                        programs.splice(index, 1);
+                        savePrograms();
+                        renderAdminProgramList();
+                        loadProgramsForReporting();
+                    });
+                }
+            });
+
+            modal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal-close-btn') || e.target === modal || e.target.classList.contains('modal-cancel-btn')) {
+                    hideModal();
+                }
+            });
+
+            programNameSelect.addEventListener('change', (e) => {
+                const selectedIndex = e.target.options[e.target.selectedIndex].dataset.index;
+                if (selectedIndex) {
+                    const selectedProgram = programs[selectedIndex];
+                    selectedProgramDateInput.value = selectedProgram.date;
+                    selectedProgramVenueInput.value = selectedProgram.venue;
+                    displayPenceramahQuestions(selectedProgram.penceramah || []);
+                } else {
+                    selectedProgramDateInput.value = '';
+                    selectedProgramVenueInput.value = '';
+                    displayPenceramahQuestions([]);
+                }
+            });
+            
+            evaluationForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                showModal('loading', 'Menghantar data...');
+                const formData = new FormData(evaluationForm);
+                
+                const data = {};
+                for (let [key, value] of formData.entries()) {
+                    data[key] = value;
+                }
+
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                })
+                .then(() => {
+                    showModal('success', 'Penilaian anda telah berjaya dihantar.');
+                    evaluationForm.reset();
+                    populateProgramDropdown();
+                    displayPenceramahQuestions();
+                    window.scrollTo(0, 0);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showModal('error', `Gagal menghantar data. Sila semak sambungan internet anda.`);
+                });
+            });
+
+            generateReportBtn.addEventListener('click', () => {
+                const selectedProgram = reportProgramSelect.value;
+                if (!selectedProgram || reportProgramSelect.firstElementChild.textContent.startsWith('Tiada')) {
+                    showModal('error', 'Sila pilih program yang sah.');
+                    return;
+                }
+                showModal('loading', 'Menjana laporan...');
+
+                const reportUrl = `${GOOGLE_SCRIPT_URL}?action=generateReport&program=${encodeURIComponent(selectedProgram)}`;
+                window.open(reportUrl, '_blank');
+                
+                setTimeout(() => {
+                    hideModal();
+                }, 1000);
+            });
+
+            function init() {
+                loadPrograms();
+                generateQuestionnaire();
+                switchView('public');
+            }
+            
+            init();
+        });
+    </script>
+</body>
+</html>
