@@ -147,6 +147,13 @@
             { category: 'Penceramah / Fasilitator', items: [ 'Isi kandungan sesuai dengan objektif', 'Isi kandungan menepati tajuk', 'Isi kandungan mampu meningkatkan percambahan ilmu saya', 'Isi kandungan berjaya meningkatkan kemahiran saya', 'Isi kandungan membantu saya mengamalkannya dalam tugas seharian', 'Penyampaian amat jelas', 'Bahasa yang digunakan mudah difahami', 'Interaksi penceramah/fasilitator adalah sesuai', 'Penceramah/Fasilitator bersifat bersedia, yakin dan terbuka', 'Penampilan penceramah/fasilitator adalah sesuai dan profesional', 'Penceramah/Fasilitator menepati masa', 'Penceramah/Fasilitator menggunakan masa secara optimum' ]}
         ];
 
+        // --- Fungsi Bantuan untuk Format Tarikh ---
+        function formatDateMY(dateString) {
+            if (!dateString) return '';
+            const [year, month, day] = dateString.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
         // --- Listener Masa Nyata untuk Program ---
         const q = query(programsCollection, orderBy("date", "desc"));
         onSnapshot(q, (snapshot) => {
@@ -170,7 +177,7 @@
                 const li = document.createElement('li');
                 const penceramahList = (program.penceramah && program.penceramah.length > 0) ? `<p class="text-sm text-gray-600"><strong>Penceramah:</strong> ${program.penceramah.join(', ')}</p>` : '';
                 li.className = 'flex flex-col md:flex-row justify-between items-start md:items-center bg-gray-100 p-4 rounded-lg';
-                li.innerHTML = `<div><p class="font-bold text-indigo-700">${program.name}</p><p class="text-sm text-gray-600"><strong>Tarikh:</strong> ${program.date}</p><p class="text-sm text-gray-600"><strong>Tempat:</strong> ${program.venue}</p>${penceramahList}</div><button data-id="${program.id}" data-name="${program.name}" class="delete-btn text-red-500 hover:text-red-700 font-semibold mt-3 md:mt-0 md:ml-4">Padam</button>`;
+                li.innerHTML = `<div><p class="font-bold text-indigo-700">${program.name}</p><p class="text-sm text-gray-600"><strong>Tarikh:</strong> ${formatDateMY(program.date)}</p><p class="text-sm text-gray-600"><strong>Tempat:</strong> ${program.venue}</p>${penceramahList}</div><button data-id="${program.id}" data-name="${program.name}" class="delete-btn text-red-500 hover:text-red-700 font-semibold mt-3 md:mt-0 md:ml-4">Padam</button>`;
                 programListUl.appendChild(li);
             });
         }
@@ -180,7 +187,7 @@
             localProgramsCache.forEach((program) => {
                 const option = document.createElement('option');
                 option.value = program.id;
-                option.textContent = `${program.name} (${program.date})`;
+                option.textContent = `${program.name} (${formatDateMY(program.date)})`;
                 programNameSelect.appendChild(option);
             });
             selectedProgramIdInput.value = '';
@@ -435,4 +442,4 @@
         init();
     </script>
 </body>
-</html>
+</ht
