@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Latihan Pengisian Laporan Sesi E2PK</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #0056b3;
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 5px;
+        }
+        .form-section {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        textarea {
+            resize: vertical;
+            height: 100px;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        .checkbox-group label {
+            font-weight: normal;
+        }
+        .button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e2f0ff;
+            border-left: 5px solid #007bff;
+            white-space: pre-wrap;
+        }
+        .guidance-text {
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+            margin-top: -5px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Latihan Pengisian Laporan Sesi Kaunseling (Sistem E2PK)</h1>
+    <p>Sila isi borang di bawah untuk melengkapkan laporan sesi kaunseling mengikut format yang serupa dengan sistem E2PK.</p>
+
+    <div class="form-section">
+        <h2>Maklumat Pelaporan Sesi</h2>
+        <label>Klien dirujuk kerana:</label>
+        <div class="checkbox-group">
+            <label><input type="checkbox" name="rujukan" value="Kaunseling"> Kaunseling</label>
+            <label><input type="checkbox" name="rujukan" value="Krisis"> Krisis</label>
+            <label><input type="checkbox" name="rujukan" value="Disciplinary"> Disciplinary</label>
+            <label><input type="checkbox" name="rujukan" value="Psikologi Plus"> Psikologi Plus</label>
+            <label><input type="checkbox" name="rujukan" value="EKKI"> EKKI</label>
+            <label><input type="checkbox" name="rujukan" value="Lain-lain"> Lain-lain</label>
+        </div>
+        
+        <label>Penerokaan:</label>
+        <textarea id="penerokaan" placeholder="Gunakan panduan ini untuk pengisian:
+- Isu atau Situasi Utama
+- Perasaan dan Emosi Klien
+- Sejarah atau Konteks Isu
+- Penemuan atau Kesedaran Baru
+"></textarea>
+        <div class="guidance-text">
+            Sesi ini meneroka isu keyakinan diri yang rendah. Klien meluahkan perasaan sedih dan kecewa yang berpunca dari pengalaman negatif di tempat kerja.
+        </div>
+        
+        <label for="analisis">Menganalisis Masalah:</label>
+        <textarea id="analisis" placeholder="Gunakan panduan ini untuk pengisian:
+- Faktor Penyebab (cth: interpersonal, intrapersonal)
+- Kesan Masalah (cth: emosi, tingkah laku)
+- Kekuatan Klien (yang boleh digunakan untuk berhadapan)
+"></textarea>
+        <div class="guidance-text">
+            Analisis menunjukkan masalah klien berpunca daripada faktor interpersonal, iaitu kesukaran berkomunikasi secara asertif dengan rakan sekerja. Perkara ini memberi kesan kepada prestasi kerja dan emosi klien. Klien memiliki kekuatan dalaman yang tinggi dan mampu mengatasi cabaran masa lalu.
+        </div>
+        
+        <label for="alternatif">Alternatif Tindakan:</label>
+        <textarea id="alternatif" placeholder="Gunakan panduan ini untuk pengisian:
+- Pilihan Intervensi Kaunselor (cth: penggunaan teknik, rujukan)
+- Tindakan yang dicadangkan kepada Klien
+- Jangka masa atau kekerapan sesi akan datang
+"></textarea>
+        <div class="guidance-text">
+            Kaunselor mencadangkan penggunaan teknik 'empty chair' untuk membantu klien meluahkan perasaan yang terpendam. Klien bersetuju untuk mencuba latihan pernafasan sebagai pengurusan emosi. Sesi susulan akan diadakan dalam tempoh dua minggu.
+        </div>
+        
+        <label for="rumusan">Rumusan:</label>
+        <textarea id="rumusan" placeholder="Gunakan panduan ini untuk pengisian:
+- Intipati Sesi (apa yang penting telah dibincangkan)
+- Tahap Motivasi Klien (rendah/sederhana/tinggi)
+- Hasil Sesi (cth: klien lebih tenang, mendapat kesedaran baru)
+"></textarea>
+        <div class="guidance-text">
+            Intipati sesi ini adalah klien telah mencapai kesedaran tentang punca masalahnya. Klien menunjukkan tahap motivasi yang sederhana. Sesi berakhir dengan klien kelihatan lebih tenang.
+        </div>
+
+        <label for="tindakan_susulan">Tindakan:</label>
+        <select id="tindakan_susulan">
+            <option value="Sesi Susulan">Sesi Susulan</option>
+            <option value="Sesi Akhir">Sesi Akhir</option>
+            <option value="Tamat">Tamat</option>
+            <option value="Dirujuk">Dirujuk</option>
+            <option value="Pemantauan">Pemantauan</option>
+            <option value="Lain-lain">Lain-lain</option>
+        </select>
+    </div>
+
+    <button class="button" onclick="generateReport()">Simpan / Kemaskini</button>
+
+    <div id="output">
+        <p>Laporan yang dijana akan dipaparkan di sini.</p>
+    </div>
+</div>
+
+<script>
+    function generateReport() {
+        // Collect data from checkboxes
+        const checkboxesRujukan = document.querySelectorAll('input[name="rujukan"]:checked');
+        const rujukanArray = Array.from(checkboxesRujukan).map(cb => cb.value);
+        const rujukan = rujukanArray.join(', ') || 'Tidak diisi';
+
+        // Collect data from textareas and select
+        const penerokaan = document.getElementById('penerokaan').value || 'Tidak diisi';
+        const analisis = document.getElementById('analisis').value || 'Tidak diisi';
+        const alternatif = document.getElementById('alternatif').value || 'Tidak diisi';
+        const rumusan = document.getElementById('rumusan').value || 'Tidak diisi';
+        const tindakan_susulan = document.getElementById('tindakan_susulan').value || 'Tidak diisi';
+
+        // Generate the report string
+        const report = `
+=== LAPORAN SESI KAUNSELING ===
+
+Klien dirujuk kerana:
+${rujukan}
+
+Penerokaan:
+${penerokaan}
+
+Menganalisis Masalah:
+${analisis}
+
+Alternatif Tindakan:
+${alternatif}
+
+Rumusan:
+${rumusan}
+
+Tindakan:
+${tindakan_susulan}
+        `;
+
+        // Display the generated report
+        document.getElementById('output').textContent = report;
+    }
+</script>
+
+</body>
+</html>
