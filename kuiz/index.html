@@ -3,263 +3,511 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kuiz Interaktif Sistem e2PK (Dengan Sijil PDF)</title>
-    <!-- Library untuk jana PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <title>Kuiz Sistem e-2PK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f2f5;
-            color: #1c1e21;
-            line-height: 1.6;
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #334155;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
-        #quiz-container {
-            background: #ffffff;
-            padding: 2rem 2.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 800px;
-            border-top: 5px solid #007bff;
-        }
-        h1 {
-            color: #0056b3;
+            padding: 2rem;
             text-align: center;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            max-width: 900px;
+            width: 100%;
+            border: 2px solid #e2e8f0;
+        }
+        .question-box {
+            background-color: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
             margin-bottom: 1.5rem;
-            font-size: 1.8rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
         }
-        #name-container { text-align: center; margin-bottom: 2rem; }
-        #name-container label { display: block; margin-bottom: 10px; font-weight: 600; }
-        #participant-name {
-            width: 80%;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-            font-size: 1rem;
+        .question-box.correct {
+            border-color: #22c55e;
+            background-color: #f0fdf4;
         }
-        .question { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #e0e0e0; }
-        .question:last-of-type { border-bottom: none; padding-bottom: 0; }
-        .question p { font-weight: 600; margin-bottom: 0.75rem; font-size: 1.1rem; }
-        .options div { margin-bottom: 0.5rem; padding: 10px 15px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; transition: background-color 0.3s, border-color 0.3s; display: flex; align-items: center; }
-        .options div:hover { background-color: #f8f9fa; border-color: #007bff; }
-        input[type="radio"] { margin-right: 12px; flex-shrink: 0; transform: scale(1.1); }
-        
-        #start-btn, #submit-btn, #download-btn, #retry-btn {
-            color: white; padding: 14px 30px; border: none; border-radius: 8px; cursor: pointer;
-            font-size: 1rem; font-weight: bold; display: block; width: 100%; margin-top: 20px;
-            transition: transform 0.2s, box-shadow 0.2s;
+        .question-box.incorrect {
+            border-color: #ef4444;
+            background-color: #fef2f2;
         }
-        #start-btn { background: linear-gradient(135deg, #6c757d, #5a6268); }
-        #submit-btn { background: linear-gradient(135deg, #007bff, #0056b3); }
-        #download-btn { background: linear-gradient(135deg, #28a745, #218838); }
-        #retry-btn { background: linear-gradient(135deg, #ffc107, #e0a800); }
-        #start-btn:hover, #submit-btn:hover, #download-btn:hover, #retry-btn:hover {
+        .options-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 1rem;
+            display: grid;
+            gap: 0.75rem;
+        }
+        .option-item {
+            cursor: pointer;
+            padding: 0.75rem 1rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+        }
+        .option-item:hover:not(.selected) {
+            background-color: #e2e8f0;
+        }
+        .option-item.selected {
+            background-color: #bfdbfe;
+            border-color: #60a5fa;
+            font-weight: 500;
+        }
+        .option-item.correct {
+            background-color: #dcfce7;
+            border-color: #22c55e;
+            font-weight: 700;
+        }
+        .option-item.incorrect {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+            font-weight: 700;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .btn:hover {
             transform: translateY(-2px);
         }
-
-        /* Styling untuk Sijil */
-        #certificate-wrapper { padding: 20px; background-color: #f8f9fa; border-radius: 8px; margin-top: 2rem; }
-        #certificate {
-            background-color: white;
-            border: 10px solid #0056b3;
-            padding: 30px;
-            text-align: center;
-            font-family: 'Times New Roman', Times, serif;
+        #quiz-container, #result-container {
+            display: none;
         }
-        #certificate h2 { color: #003d82; font-size: 2.2rem; margin: 0; }
-        #certificate h3 { color: #555; font-size: 1.2rem; margin: 5px 0 25px 0; font-weight: normal; }
-        #certificate .cert-text { margin: 15px 0; font-size: 1.1rem; }
-        #certificate .participant-name-cert { font-size: 1.8rem; font-weight: bold; color: #007bff; margin: 20px 0; }
-        #certificate .score-cert { font-size: 1.5rem; font-weight: bold; }
-        #certificate .grade-cert { font-size: 1.2rem; font-style: italic; margin: 10px 0 25px 0; }
-        #certificate .date-cert { font-size: 0.9rem; color: #777; }
-        
-        .correct { border-left: 5px solid #28a745; background-color: #f0fff4; }
-        .incorrect { border-left: 5px solid #dc3545; background-color: #fff6f6; }
-        .correct-answer-text { color: #155724; font-weight: bold; font-size: 0.9em; margin-top: 10px; padding-left: 28px; }
+        #result-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #certificate-card {
+            background-color: #f0fdfa;
+            border: 4px solid #10b981;
+            padding: 2rem;
+            border-radius: 1rem;
+            margin-top: 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.25);
+            width: 100%;
+        }
+        .certificate-header {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #065f46;
+        }
+        .certificate-title {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #047857;
+            text-transform: uppercase;
+            margin: 0.5rem 0;
+        }
+        .certificate-text {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+        .signature-line {
+            border-top: 2px solid #94a3b8;
+            margin: 2rem auto 0.5rem;
+            width: 70%;
+        }
+        .score-text {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #10b981;
+        }
+        .score-value {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #15803d;
+            margin-top: 0.5rem;
+        }
+        @media (min-width: 768px) {
+            .options-list {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
     </style>
 </head>
-<body>
-
-    <div id="quiz-container">
-        <h1>Kuiz Kefahaman Sistem e2PK 🚀</h1>
-        
-        <div id="name-container">
-            <label for="participant-name">Sila masukkan nama penuh anda untuk sijil:</label>
-            <input type="text" id="participant-name" placeholder="Contoh: Ali bin Abu">
-            <button id="start-btn">Mula Kuiz</button>
-            <p id="name-error" style="color: red; display: none; margin-top: 10px;">Sila masukkan nama anda.</p>
+<body class="bg-gray-100 flex items-center justify-center p-4 min-h-screen">
+    <div class="container">
+        <!-- Halaman Utama -->
+        <div id="intro-container" class="text-center">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-gray-800 mb-4">Kuiz Mengenai Sistem e-2PK</h1>
+            <p class="text-lg md:text-xl text-gray-600 mb-6">Uji pengetahuan anda tentang Sistem Pengurusan Perkhidmatan Kaunseling (e-2PK) Kementerian Pendidikan Malaysia.</p>
+            <button id="start-btn" class="btn bg-blue-500 text-white hover:bg-blue-600">Mula Kuiz</button>
         </div>
 
-        <form id="quiz-form" style="display: none;">
-            <!-- SOALAN 1 - 20 DI SINI -->
-            <div class="question" id="q1"><p>1. ...</p><div class="options">...</div></div>
-            <div class="question" id="q2"><p>2. ...</p><div class="options">...</div></div>
-            <div class="question" id="q3"><p>3. ...</p><div class="options">...</div></div>
-            <div class="question" id="q4"><p>4. ...</p><div class="options">...</div></div>
-            <div class="question" id="q5"><p>5. ...</p><div class="options">...</div></div>
-            <div class="question" id="q6"><p>6. ...</p><div class="options">...</div></div>
-            <div class="question" id="q7"><p>7. ...</p><div class="options">...</div></div>
-            <div class="question" id="q8"><p>8. ...</p><div class="options">...</div></div>
-            <div class="question" id="q9"><p>9. ...</p><div class="options">...</div></div>
-            <div class="question" id="q10"><p>10. ...</p><div class="options">...</div></div>
-            <div class="question" id="q11"><p>11. ...</p><div class="options">...</div></div>
-            <div class="question" id="q12"><p>12. ...</p><div class="options">...</div></div>
-            <div class="question" id="q13"><p>13. ...</p><div class="options">...</div></div>
-            <div class="question" id="q14"><p>14. ...</p><div class="options">...</div></div>
-            <div class="question" id="q15"><p>15. ...</p><div class="options">...</div></div>
-            <div class="question" id="q16"><p>16. ...</p><div class="options">...</div></div>
-            <div class="question" id="q17"><p>17. ...</p><div class="options">...</div></div>
-            <div class="question" id="q18"><p>18. ...</p><div class="options">...</div></div>
-            <div class="question" id="q19"><p>19. ...</p><div class="options">...</div></div>
-            <div class="question" id="q20"><p>20. ...</p><div class="options">...</div></div>
-            <!-- (Kod soalan yang sama seperti sebelum ini diringkaskan untuk kepanjangan) -->
-            <button type="submit" id="submit-btn">Hantar Jawapan</button>
-        </form>
+        <!-- Halaman Kuiz -->
+        <div id="quiz-container" class="space-y-6">
+            <h2 class="text-2xl font-bold text-gray-800">Soalan <span id="current-question-number">1</span> daripada <span id="total-questions">20</span></h2>
+            <div id="question-text" class="text-xl font-medium text-gray-700"></div>
+            <ul id="options-container" class="options-list"></ul>
+            <button id="next-btn" class="btn bg-gray-400 text-white cursor-not-allowed mt-4" disabled>Seterusnya</button>
+        </div>
 
-        <div id="certificate-wrapper" style="display: none;">
-             <div id="certificate">
-                <h2>Sijil Pencapaian Kuiz</h2>
-                <h3>Sistem Pengurusan Perkhidmatan Kaunseling (e2PK)</h3>
-                <p class="cert-text">Dengan ini mengesahkan bahawa:</p>
-                <p class="participant-name-cert" id="cert-name"></p>
-                <p class="cert-text">telah berjaya melengkapkan kuiz dengan keputusan:</p>
-                <p class="score-cert" id="cert-score"></p>
-                <p class="grade-cert" id="cert-grade"></p>
-                <p class="date-cert" id="cert-date"></p>
+        <!-- Halaman Keputusan -->
+        <div id="result-container" class="text-center">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4">Keputusan Kuiz</h2>
+            <p class="text-2xl font-semibold text-gray-700 mb-2">Anda telah menjawab dengan betul:</p>
+            <p id="score-display" class="score-value text-green-600 mb-4"></p>
+            <button id="print-btn" class="btn bg-green-500 text-white hover:bg-green-600 mb-4">Cetak Sijil</button>
+            <div id="certificate-card" class="hidden p-8">
+                <p class="text-xl font-bold text-gray-700">Kementerian Pendidikan Malaysia</p>
+                <p class="certificate-header">Sijil Penghargaan</p>
+                <p class="certificate-title">Kuiz Sistem e-2PK</p>
+                <p class="certificate-text">Sijil ini diberikan kepada</p>
+                <input id="participant-name" type="text" placeholder="Masukkan Nama Anda" class="text-center text-2xl font-bold border-b-2 border-gray-400 focus:outline-none focus:border-blue-500 rounded-md p-2 w-full max-w-sm mb-4">
+                <p class="certificate-text">atas penyertaan dan pencapaian cemerlang dalam kuiz ini.</p>
+                <p id="final-score-text" class="score-text"></p>
+                <div class="signature-line"></div>
+                <p class="text-gray-600 font-medium">Kuiz Bengkel e-2PK IPG KPM 2025</p>
             </div>
         </div>
-        <button id="download-btn" style="display: none;">Muat Turun Sijil (PDF)</button>
-        <button id="retry-btn" style="display: none;">Jawab Semula</button>
     </div>
 
     <script>
-        // Mengisi semula kod soalan yang diringkaskan
-        const quizForm = document.getElementById('quiz-form');
-        const questionsHTML = `
-            <div class="question" id="q1"> <p>1. Teras "Pembangunan Sistem Penyampaian Perkhidmatan" mempunyai satu strategi utama. Apakah strategi tersebut?</p> <div class="options"> <div><input type="radio" name="q1" value="a"> A) Membangunkan aplikasi mudah alih sahaja</div><div><input type="radio" name="q1" value="b"> B) Mewujudkan sistem perkhidmatan berpusat (1 stop Centre) dan mesra pengguna</div><div><input type="radio" name="q1" value="c"> C) Menyediakan latihan kepada semua kaunselor</div><div><input type="radio" name="q1" value="d"> D) Mengurangkan penggunaan borang fizikal</div></div></div>
-            <div class="question" id="q2"> <p>2. Siapakah yang dikategorikan sebagai Ketua Jabatan di peringkat JPN?</p> <div class="options"> <div><input type="radio" name="q2" value="a"> A) Semua Kaunselor di JPN</div><div><input type="radio" name="q2" value="b"> B) Pegawai Pendidikan Daerah sahaja</div><div><input type="radio" name="q2" value="c"> C) Pengarah, Timbalan, dan Ketua Sektor/Unit</div><div><input type="radio" name="q2" value="d"> D) Hanya Pengarah JPN</div></div></div>
-            <div class="question" id="q3"> <p>3. Apakah tanggungjawab pertama seorang Ketua Jabatan berkaitan pelaksanaan sistem e2PK di bawah seliaannya?</p> <div class="options"> <div><input type="radio" name="q3" value="a"> A) Mendaftar semua staf ke dalam sistem</div><div><input type="radio" name="q3" value="b"> B) Melaporkan statistik penggunaan kepada KPM</div><div><input type="radio" name="q3" value="c"> C) Memberi taklimat kepada staf mengenai cara membuat temujanji</div><div><input type="radio" name="q3" value="d"> D) Menjadi kaunselor bagi kes-kes mudah</div></div></div>
-            <div class="question" id="q4"> <p>4. Sistem e2PK memastikan setiap aktiviti perkhidmatan kaunseling dijalankan dan dilaporkan pada satu sistem di semua peringkat organisasi KECUALI...</p> <div class="options"> <div><input type="radio" name="q4" value="a"> A) JPN dan PPD</div><div><input type="radio" name="q4" value="b"> B) Institut Pendidikan</div><div><input type="radio" name="q4" value="c"> C) Bahagian-bahagian di KPM</div><div><input type="radio" name="q4" value="d"> D) Agensi luar KPM</div></div></div>
-            <div class="question" id="q5"> <p>5. Atas sebab apakah seorang Ketua Jabatan perlu menggunakan sistem e2PK untuk merujuk staf kepada kaunselor?</p> <div class="options"> <div><input type="radio" name="q5" value="a"> A) Untuk isu kenaikan pangkat</div><div><input type="radio" name="q5" value="b"> B) Untuk isu tatatertib dan perkhidmatan</div><div><input type="radio" name="q5" value="c"> C) Untuk permohonan cuti tahunan</div><div><input type="radio" name="q5" value="d"> D) Untuk masalah peribadi yang tidak berkaitan kerja</div></div></div>
-            <div class="question" id="q6"> <p>6. Yang manakah antara berikut BUKAN salah satu daripada 5 teras dalam Dasar Kaunseling KPM?</p> <div class="options"> <div><input type="radio" name="q6" value="a"> A) Pembangunan Manusiawi</div><div><input type="radio" name="q6" value="b"> B) Pembangunan Infrastruktur dan Teknologi</div><div><input type="radio" name="q6" value="c"> C) Pembangunan Kompetensi dan Latihan</div><div><input type="radio" name="q6" value="d"> D) Profesionalisme dan Perakuan Kaunselor</div></div></div>
-            <div class="question" id="q7"> <p>7. Maklumat apakah yang boleh dilihat oleh Ketua Jabatan selepas membuat rujukan staf dalam sistem e2PK?</p> <div class="options"> <div><input type="radio" name="q7" value="a"> A) Butiran perbualan sesi kaunseling</div><div><input type="radio" name="q7" value="b"> B) Status tindakan bagi staf yang dirujuk</div><div><input type="radio" name="q7" value="c"> C) Laporan penuh psikologi staf</div><div><input type="radio" name="q7" value="d"> D) Rekod kehadiran staf ke sesi kaunseling</div></div></div>
-            <div class="question" id="q8"> <p>8. Pembangunan sistem e2PK adalah berasaskan satu dokumen dasar yang sedang digubal. Apakah nama dokumen tersebut?</p> <div class="options"> <div><input type="radio" name="q8" value="a"> A) Dasar Perkhidmatan Awam KPM</div><div><input type="radio" name="q8" value="b"> B) Polisi Keselamatan Siber KPM</div><div><input type="radio" name="q8" value="c"> C) Dasar Kaunseling KPM</div><div><input type="radio" name="q8" value="d"> D) Pelan Strategik Pendidikan Digital</div></div></div>
-            <div class="question" id="q9"> <p>9. Teras "Keseragaman dan Keselarasan Perkhidmatan" berkemungkinan besar bertujuan untuk memastikan...</p> <div class="options"> <div><input type="radio" name="q9" value="a"> A) Semua kaunselor menerima gaji yang sama</div><div><input type="radio" name="q9" value="b"> B) Perkhidmatan kaunseling yang diberikan mempunyai standard yang sama di semua lokasi</div><div><input type="radio" name="q9" value="c"> C) Waktu bekerja kaunselor adalah seragam di seluruh negara</div><div><input type="radio" name="q9" value="d"> D) Semua pejabat kaunseling mempunyai reka bentuk yang sama</div></div></div>
-            <div class="question" id="q10"> <p>10. Apakah tujuan utama sistem e2PK diwujudkan sebagai "1 stop center"?</p> <div class="options"> <div><input type="radio" name="q10" value="a"> A) Untuk menggantikan sepenuhnya interaksi bersemuka</div><div><input type="radio" name="q10" value="b"> B) Untuk mengurangkan bilangan kaunselor di KPM</div><div><input type="radio" name="q10" value="c"> C) Untuk memusatkan dan mempermudahkan akses kepada perkhidmatan kaunseling</div><div><input type="radio" name="q10" value="d"> D) Untuk memantau pergerakan semua staf KPM</div></div></div>
-            <div class="question" id="q11"> <p>11. Apakah skop organisasi yang diliputi oleh sistem pelaporan e2PK?</p> <div class="options"> <div><input type="radio" name="q11" value="a"> A) Bahagian KPM dan JPN sahaja</div><div><input type="radio" name="q11" value="b"> B) JPN, PPD, dan Sekolah sahaja</div><div><input type="radio" name="q11" value="c"> C) Bahagian KPM, JPN, PPD, dan Institut Pendidikan</div><div><input type="radio" name="q11" value="d"> D) Peringkat sekolah sahaja</div></div></div>
-            <div class="question" id="q12"> <p>12. Menurut taklimat, siapakah yang BUKAN dikategorikan sebagai Ketua Jabatan di peringkat JPN?</p> <div class="options"> <div><input type="radio" name="q12" value="a"> A) Pengarah</div><div><input type="radio" name="q12" value="b"> B) Timbalan Pengarah</div><div><input type="radio" name="q12" value="c"> C) Ketua Sektor</div><div><input type="radio" name="q12" value="d"> D) Kaunselor Organisasi Daerah</div></div></div>
-            <div class="question" id="q13"> <p>13. Seorang staf didapati kerap datang lewat ke pejabat. Mengikut taklimat, apakah tindakan yang boleh diambil oleh Ketua Jabatan menggunakan e2PK?</p> <div class="options"> <div><input type="radio" name="q13" value="a"> A) Memotong gaji staf tersebut melalui sistem</div><div><input type="radio" name="q13" value="b"> B) Merujuk staf tersebut kepada kaunselor untuk isu perkhidmatan</div><div><input type="radio" name="q13" value="c"> C) Menghantar surat amaran secara automatik</div><div><input type="radio" name="q13" value="d"> D) Menyekat akses staf kepada sistem</div></div></div>
-            <div class="question" id="q14"> <p>14. Teras "Pembangunan Manusiawi" dalam Dasar Kaunseling KPM memberi penekanan kepada...</p> <div class="options"> <div><input type="radio" name="q14" value="a"> A) Pembangunan fizikal pejabat kaunseling</div><div><input type="radio" name="q14" value="b"> B) Pembangunan kesejahteraan dan potensi diri individu</div><div><input type="radio" name="q14" value="c"> C) Pembangunan kemahiran teknikal IT untuk kaunselor</div><div><input type="radio" name="q14" value="d"> D) Pembangunan modul latihan untuk pentadbir</div></div></div>
-            <div class="question" id="q15"> <p>15. Apakah maklumat yang TIDAK boleh diakses oleh Ketua Jabatan dalam sistem e2PK untuk menjaga kerahsiaan?</p> <div class="options"> <div><input type="radio" name="q15" value="a"> A) Status rujukan yang telah dibuat</div><div><input type="radio" name="q15" value="b"> B) Nama staf yang dirujuk</div><div><input type="radio" name="q15" value="c"> C) Kandungan perbincangan sesi kaunseling</div><div><input type="radio" name="q15" value="d"> D) Tarikh rujukan dibuat</div></div></div>
-            <div class="question" id="q16"> <p>16. Mengapakah penting bagi sistem e2PK untuk bersifat "mesra pengguna"?</p> <div class="options"> <div><input type="radio" name="q16" value="a"> A) Supaya ia kelihatan moden dan canggih</div><div><input type="radio" name="q16" value="b"> B) Untuk menggalakkan penggunaannya tanpa halangan teknikal</div><div><input type="radio" name="q16" value="c"> C) Kerana ia adalah syarat daripada pembekal sistem</div><div><input type="radio" name="q16" value="d"> D) Untuk mengurangkan kos penyelenggaraan tahunan</div></div></div>
-            <div class="question" id="q17"> <p>17. Apakah matlamat utama di sebalik Teras "Profesionalisme dan Perakuan Kaunselor"?</p> <div class="options"> <div><input type="radio" name="q17" value="a"> A) Memastikan semua kaunselor mempunyai sijil IT</div><div><input type="radio" name="q17" value="b"> B) Menetapkan standard etika dan kelayakan yang tinggi untuk kaunselor</div><div><input type="radio" name="q17" value="c"> C) Memastikan kaunselor sentiasa berada di pejabat</div><div><input type="radio" name="q17" value="d"> D) Mengurangkan jumlah kaunselor di KPM</div></div></div>
-            <div class="question" id="q18"> <p>18. Sistem e2PK adalah manifestasi digital bagi teras mana dalam Dasar Kaunseling KPM?</p> <div class="options"> <div><input type="radio" name="q18" value="a"> A) Pembangunan Manusiawi</div><div><input type="radio" name="q18" value="b"> B) Pembangunan Sistem Penyampaian Perkhidmatan</div><div><input type="radio" name="q18" value="c"> C) Pembangunan Kompetensi dan Latihan</div><div><input type="radio" name="q18" value="d"> D) Keseragaman dan Keselarasan Perkhidmatan</div></div></div>
-            <div class="question" id="q19"> <p>19. Seorang staf ingin berjumpa kaunselor secara sukarela. Apakah langkah pertama yang perlu dilakukannya melalui sistem e2PK?</p> <div class="options"> <div><input type="radio" name="q19" value="a"> A) Memaklumkan kepada Ketua Jabatan untuk kelulusan</div><div><input type="radio" name="q19" value="b"> B) Mengisi borang manual dan menghantarnya ke JPN</div><div><input type="radio" name="q19" value="c"> C) Membuat temujanji terus dengan kaunselor melalui sistem</div><div><input type="radio" name="q19" value="d"> D) Menunggu sehingga Ketua Jabatan merujuknya</div></div></div>
-            <div class="question" id="q20"> <p>20. Apakah peranan yang paling sesuai bagi seorang Jurulatih Utama (JU) Negeri berkaitan sistem e2PK?</p> <div class="options"> <div><input type="radio" name="q20" value="a"> A) Memberi kaunseling kepada semua staf di negerinya</div><div><input type="radio" name="q20" value="b"> B) Melatih pengguna dan memastikan kelancaran pelaksanaan sistem</div><div><input type="radio" name="q20" value="c"> C) Membangunkan dan menambah ciri baharu pada sistem</div><div><input type="radio" name="q20" value="d"> D) Meluluskan semua permohonan temujanji kaunseling</div></div></div>
-            `;
-        quizForm.insertAdjacentHTML('afterbegin', questionsHTML);
-
-        let participantName = '';
-        
-        document.getElementById('start-btn').addEventListener('click', function() {
-            participantName = document.getElementById('participant-name').value;
-            const nameError = document.getElementById('name-error');
-            if (participantName.trim() === '') {
-                nameError.style.display = 'block';
-            } else {
-                nameError.style.display = 'none';
-                document.getElementById('name-container').style.display = 'none';
-                document.getElementById('quiz-form').style.display = 'block';
+        const questions = [
+            {
+                q: "Apakah maksud e-2PK?",
+                a: "Sistem Pengurusan Perkhidmatan Kaunseling",
+                options: [
+                    "Sistem Pengurusan Pelajar KPM",
+                    "Sistem Perkhidmatan Kaunseling Pendidikan",
+                    "Sistem Pengurusan Perkhidmatan Kaunseling",
+                    "Sistem Pengurusan Kaunselor KPM"
+                ]
+            },
+            {
+                q: "Sistem e-2PK dibangunkan berdasarkan salah satu daripada lima teras di dalam kertas Dasar Kaunseling KPM. Apakah teras tersebut?",
+                a: "Pembangunan Sistem Penyampaian Perkhidmatan",
+                options: [
+                    "Profesionalisme dan Perakuan Kaunselor",
+                    "Pembangunan Sistem Penyampaian Perkhidmatan",
+                    "Pembangunan Kompetensi dan Latihan",
+                    "Keseragaman dan Keselarasan Perkhidmatan"
+                ]
+            },
+            {
+                q: "Apakah fungsi utama Modul Profil Kaunselor?",
+                a: "Mengumpul dan mengesan kepakaran serta keperluan kompetensi kaunselor",
+                options: [
+                    "Merekod pengurusan harian kaunselor",
+                    "Menguruskan rujukan dan janji temu klien",
+                    "Melaksanakan perkhidmatan ujian psikologi",
+                    "Mengumpul dan mengesan kepakaran serta keperluan kompetensi kaunselor"
+                ]
+            },
+            {
+                q: "Berapa lamakah tempoh masa yang diberikan kepada kaunselor untuk membuat pelaporan sesi selepas mendaftar klien?",
+                a: "7 hari",
+                options: [
+                    "1 hari",
+                    "3 hari",
+                    "5 hari",
+                    "7 hari"
+                ]
+            },
+            {
+                q: "Apakah yang akan berlaku jika kaunselor membuat pelaporan sesi selepas tempoh KPI yang ditetapkan?",
+                a: "Pelaporan akan direkod dengan status 'lewat'",
+                options: [
+                    "Pelaporan akan dibatalkan",
+                    "Kaunselor perlu membuat semula pelaporan",
+                    "Pelaporan akan direkod dengan status 'lewat'",
+                    "Tiada tindakan yang diambil"
+                ]
+            },
+            {
+                q: "Apakah fungsi utama Modul Pengurusan Kaunselor?",
+                a: "Berfungsi sebagai diari atau rekod pengurusan harian kaunselor",
+                options: [
+                    "Mendaftar klien untuk sesi individu dan kelompok",
+                    "Menguruskan permohonan janji temu",
+                    "Berfungsi sebagai diari atau rekod pengurusan harian kaunselor",
+                    "Menganalisis statistik perkhidmatan psikologi"
+                ]
+            },
+            {
+                q: "Siapakah yang perlu mengemaskini Kompetensi Kaunselor pada setiap bulan Disember?",
+                a: "Semua kaunselor",
+                options: [
+                    "Ketua Jabatan",
+                    "Pegawai Meja",
+                    "Semua kaunselor",
+                    "Pentadbir Sistem"
+                ]
+            },
+            {
+                q: "Apakah salah satu peranan Ketua Jabatan dalam sistem e-2PK?",
+                a: "Membuat rujukan staf kepada kaunselor melalui sistem",
+                options: [
+                    "Membuat pelaporan sesi kaunseling",
+                    "Melaksanakan ujian psikometrik",
+                    "Menganalisis statistik klien",
+                    "Membuat rujukan staf kepada kaunselor melalui sistem"
+                ]
+            },
+            {
+                q: "Modul manakah yang membolehkan kaunselor melakukan ujian psikologi secara atas talian?",
+                a: "Modul Psikometrik",
+                options: [
+                    "Modul Profil Kaunselor",
+                    "Modul Pengurusan Kaunselor",
+                    "Modul Psikometrik",
+                    "Modul Perkhidmatan Kaunseling"
+                ]
+            },
+            {
+                q: "Bagaimanakah kaunselor baharu boleh mendapatkan laporan sesi klien daripada kaunselor lama?",
+                a: "Meminta kebenaran dari klien dan pihak BPsK melalui borang Arkib",
+                options: [
+                    "Melakukan carian terus dalam sistem",
+                    "Menghubungi kaunselor lama secara terus",
+                    "Meminta kebenaran dari klien dan pihak BPsK melalui borang Arkib",
+                    "Memohon kepada Ketua Jabatan"
+                ]
+            },
+            {
+                q: "Laporan analisis data berkaitan statistik pengurusan kaunselor boleh dipaparkan secara:",
+                a: "Individu, organisasi dan keseluruhan (negara)",
+                options: [
+                    "Individu sahaja",
+                    "Individu dan organisasi sahaja",
+                    "Organisasi dan keseluruhan (negara)",
+                    "Individu, organisasi dan keseluruhan (negara)"
+                ]
+            },
+            {
+                q: "Jika seorang klien ingin membuat janji temu dengan kaunselor, modul manakah yang akan digunakan?",
+                a: "Modul Rujukan dan Janji Temu",
+                options: [
+                    "Modul Profil Kaunselor",
+                    "Modul Pengurusan Kaunselor",
+                    "Modul Perkhidmatan Kaunseling",
+                    "Modul Rujukan dan Janji Temu"
+                ]
+            },
+            {
+                q: "Apakah tujuan utama ujian pengukuhan seperti yang dinyatakan dalam dokumen latihan?",
+                a: "Melihat tahap kefahaman dan kemahiran pengguna",
+                options: [
+                    "Menilai prestasi kaunselor",
+                    "Mengukur kepuasan klien",
+                    "Melihat tahap kefahaman dan kemahiran pengguna",
+                    "Menganalisis data perkhidmatan"
+                ]
+            },
+            {
+                q: "Siapakah yang boleh menggunakan instrumen i2PK pada sistem e-2PK?",
+                a: "Warga KPM",
+                options: [
+                    "Semua kaunselor sahaja",
+                    "Semua warga KPM",
+                    "Semua kaunselor dan klien",
+                    "Warga KPM"
+                ]
+            },
+            {
+                q: "Apakah status tindakan yang perlu dikemaskini oleh kaunselor selepas menerima rujukan kes klien?",
+                a: "Dalam Tindakan/ Selesai",
+                options: [
+                    "Belum Ambil Tindakan",
+                    "Selesai",
+                    "Dalam Tindakan/ Selesai",
+                    "Tidak Berkaitan"
+                ]
+            },
+            {
+                q: "Modul manakah yang membolehkan kaunselor mendaftar dan menguruskan maklumat ahli AKRAB?",
+                a: "Modul AKRAB",
+                options: [
+                    "Modul Profil Kaunselor",
+                    "Modul Pengurusan Kaunselor",
+                    "Modul AKRAB",
+                    "Modul Perkhidmatan Kaunseling"
+                ]
+            },
+            {
+                q: "Menurut dokumen, bilakah kaunselor pendidikan perlu mengemaskini profil kompetensi mereka?",
+                a: "Bulan Oktober setiap tahun",
+                options: [
+                    "Bulan Disember setiap tahun",
+                    "Bulan Oktober setiap tahun",
+                    "Setiap kali ada perubahan",
+                    "Setiap 6 bulan"
+                ]
+            },
+            {
+                q: "Apakah salah satu maklumat yang boleh dicetak oleh kaunselor daripada Modul Laporan Analisis?",
+                a: "Laporan Tahunan Tugas Pengurusan Kaunselor",
+                options: [
+                    "Senarai Nama Klien",
+                    "Laporan Tahunan Tugas Pengurusan Kaunselor",
+                    "Laporan Kehadiran Mesyuarat",
+                    "Senarai Rujukan Kes"
+                ]
+            },
+            {
+                q: "Apakah yang perlu dilakukan oleh kaunselor sekiranya terdapat perubahan pada bahagian Perkhidmatan dan Kepakaran dalam profil mereka?",
+                a: "Kemaskini Profil Kaunselor",
+                options: [
+                    "Melaporkan kepada Ketua Jabatan",
+                    "Menerbitkan maklumat baharu",
+                    "Kemaskini Profil Kaunselor",
+                    "Menghubungi Unit Data dan Maklumat"
+                ]
+            },
+            {
+                q: "Siapakah yang merupakan pengguna utama sistem e-2PK?",
+                a: "Kaunselor Pendidikan",
+                options: [
+                    "Semua warga KPM",
+                    "Ketua Jabatan",
+                    "Kaunselor Pendidikan",
+                    "Pegawai Meja"
+                ]
             }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        const userAnswers = {};
+
+        const introContainer = document.getElementById('intro-container');
+        const startBtn = document.getElementById('start-btn');
+        const quizContainer = document.getElementById('quiz-container');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const nextBtn = document.getElementById('next-btn');
+        const currentQuestionNumberSpan = document.getElementById('current-question-number');
+        const totalQuestionsSpan = document.getElementById('total-questions');
+        const resultContainer = document.getElementById('result-container');
+        const scoreDisplay = document.getElementById('score-display');
+        const printBtn = document.getElementById('print-btn');
+        const certificateCard = document.getElementById('certificate-card');
+        const participantNameInput = document.getElementById('participant-name');
+        const finalScoreText = document.getElementById('final-score-text');
+
+        // Initially hide result container and certificate card
+        resultContainer.style.display = 'none';
+        certificateCard.style.display = 'none';
+
+        totalQuestionsSpan.textContent = questions.length;
+
+        startBtn.addEventListener('click', () => {
+            introContainer.style.display = 'none';
+            quizContainer.style.display = 'block';
+            showQuestion();
         });
 
-        quizForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-
-            const answers = {
-                q1: 'b', q2: 'c', q3: 'c', q4: 'd', q5: 'b', q6: 'b', q7: 'b', q8: 'c', q9: 'b', q10: 'c',
-                q11: 'c', q12: 'd', q13: 'b', q14: 'b', q15: 'c', q16: 'b', q17: 'b', q18: 'b', q19: 'c', q20: 'b'
-            };
-
-            let score = 0;
-            const totalQuestions = Object.keys(answers).length;
-            
-            for (const [questionId, correctAnswer] of Object.entries(answers)) {
-                const selectedOption = quizForm.querySelector(`input[name="${questionId}"]:checked`);
-                if (selectedOption && selectedOption.value === correctAnswer) {
+        nextBtn.addEventListener('click', () => {
+            const selectedOption = document.querySelector('.option-item.selected');
+            if (selectedOption) {
+                const questionData = questions[currentQuestionIndex];
+                const isCorrect = selectedOption.textContent.trim() === questionData.a.trim();
+                
+                if (isCorrect) {
                     score++;
                 }
+
+                userAnswers[currentQuestionIndex] = {
+                    question: questionData.q,
+                    selected: selectedOption.textContent.trim(),
+                    correct: questionData.a.trim(),
+                    isCorrect: isCorrect
+                };
+                
+                currentQuestionIndex++;
+                if (currentQuestionIndex < questions.length) {
+                    showQuestion();
+                } else {
+                    showResult();
+                }
             }
-
-            // Paparkan Sijil
-            quizForm.style.display = 'none';
-            document.getElementById('certificate-wrapper').style.display = 'block';
-            document.getElementById('download-btn').style.display = 'block';
-            document.getElementById('retry-btn').style.display = 'block';
-
-            document.getElementById('cert-name').textContent = participantName;
-            document.getElementById('cert-score').textContent = `Skor: ${score} / ${totalQuestions}`;
-            
-            const percentage = (score / totalQuestions) * 100;
-            let grade = '';
-            if (percentage >= 80) grade = 'Tahniah, pencapaian Cemerlang!';
-            else if (percentage >= 60) grade = 'Pencapaian yang Baik!';
-            else grade = 'Teruskan Usaha, anda boleh lakukan lebih baik!';
-            document.getElementById('cert-grade').textContent = grade;
-            
-            document.getElementById('cert-date').textContent = `Tarikh: ${new Date().toLocaleDateString('ms-MY')}`;
         });
 
-        document.getElementById('download-btn').addEventListener('click', function() {
-            const downloadBtn = this;
-            downloadBtn.textContent = 'Menjana PDF...';
-            downloadBtn.disabled = true;
+        function showQuestion() {
+            const questionData = questions[currentQuestionIndex];
+            currentQuestionNumberSpan.textContent = currentQuestionIndex + 1;
+            questionText.textContent = questionData.q;
+            optionsContainer.innerHTML = '';
+            
+            const shuffledOptions = [...questionData.options].sort(() => Math.random() - 0.5);
 
-            const { jsPDF } = window.jspdf;
-            const certificateElement = document.getElementById("certificate");
-
-            html2canvas(certificateElement, { scale: 2 }).then(canvas => {
-                const imgData = canvas.toDataURL('image/png');
-                const pdf = new jsPDF('l', 'mm', 'a4'); // l for landscape
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = pdf.internal.pageSize.getHeight();
-                
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-                pdf.save(`Sijil_Kuiz_e2PK_${participantName.replace(/ /g,"_")}.pdf`);
-                
-                downloadBtn.textContent = 'Muat Turun Sijil (PDF)';
-                downloadBtn.disabled = false;
+            shuffledOptions.forEach(option => {
+                const li = document.createElement('li');
+                li.textContent = option;
+                li.classList.add('option-item');
+                li.addEventListener('click', () => selectOption(li));
+                optionsContainer.appendChild(li);
             });
-        });
 
-        document.getElementById('retry-btn').addEventListener('click', function() {
-            // Sembunyikan sijil dan butang
-            document.getElementById('certificate-wrapper').style.display = 'none';
-            document.getElementById('download-btn').style.display = 'none';
-            this.style.display = 'none';
+            nextBtn.disabled = true;
+            nextBtn.classList.add('cursor-not-allowed', 'bg-gray-400');
+            nextBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600', 'cursor-pointer');
+        }
 
-            // Reset dan tunjukkan semula bahagian nama
-            document.getElementById('participant-name').value = '';
-            document.getElementById('name-container').style.display = 'block';
+        function selectOption(selectedLi) {
+            document.querySelectorAll('.option-item').forEach(li => {
+                li.classList.remove('selected');
+            });
+            selectedLi.classList.add('selected');
             
-            // Reset borang kuiz
-            quizForm.reset();
-            
-            // Sembunyikan borang kuiz sehingga nama dimasukkan semula
-            quizForm.style.display = 'none';
+            nextBtn.disabled = false;
+            nextBtn.classList.remove('cursor-not-allowed', 'bg-gray-400');
+            nextBtn.classList.add('bg-blue-500', 'hover:bg-blue-600', 'cursor-pointer');
+        }
 
-            // Tatal ke atas
-            document.getElementById('quiz-container').scrollIntoView({ behavior: 'smooth' });
+        function showResult() {
+            quizContainer.style.display = 'none';
+            resultContainer.style.display = 'flex';
+            scoreDisplay.textContent = `${score} / ${questions.length}`;
+            finalScoreText.textContent = `dengan markah ${score} daripada ${questions.length}`;
+            certificateCard.style.display = 'block'; // Make certificate card visible on the result page
+        }
+        
+        printBtn.addEventListener('click', () => {
+            const name = participantNameInput.value.trim() || 'Peserta Kuiz';
+            finalScoreText.textContent = `dengan markah ${score} daripada ${questions.length}`;
+
+            // Create a temporary print window
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write('<html><head><title>Sijil Penghargaan</title>' + document.querySelector('style').outerHTML + '</head><body>');
+            printWindow.document.write('<div id="certificate-to-print" class="container" style="box-shadow: none; border: none; padding: 2rem;">');
+            printWindow.document.write(certificateCard.innerHTML.replace('placeholder="Masukkan Nama Anda"', `value="${name}"`).replace('Sijil Penghargaan', '<p class="text-xl font-bold text-gray-700">Kementerian Pendidikan Malaysia</p><p class="certificate-header">Sijil Penghargaan</p>').replace('Masukkan Nama Anda', name));
+            printWindow.document.write('</div></body></html>');
+            printWindow.document.close();
+
+            // Replace input with text for printing
+            const nameInputInPrint = printWindow.document.getElementById('participant-name');
+            if(nameInputInPrint) {
+                const nameText = printWindow.document.createElement('p');
+                nameText.textContent = name;
+                nameText.classList.add('text-2xl', 'font-bold', 'mb-4', 'text-center');
+                nameInputInPrint.parentNode.replaceChild(nameText, nameInputInPrint);
+            }
+            
+            printWindow.onload = () => {
+                printWindow.focus();
+                printWindow.print();
+                printWindow.close();
+                // certificateCard.classList.add('hidden');
+            };
         });
     </script>
 </body>
 </html>
-
