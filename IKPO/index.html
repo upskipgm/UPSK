@@ -10,15 +10,14 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* Custom styles for better radio button appearance and feedback */
         .form-radio {
             -webkit-appearance: none;
             -moz-appearance: none;
             appearance: none;
             display: inline-block;
             position: relative;
-            background-color: #f9fafb; /* gray-50 */
-            border: 1px solid #d1d5db; /* gray-300 */
+            background-color: #f9fafb;
+            border: 1px solid #d1d5db;
             border-radius: 50%;
             width: 1.5rem;
             height: 1.5rem;
@@ -26,8 +25,8 @@
             transition: background-color 0.2s, border-color 0.2s;
         }
         .form-radio:checked {
-            background-color: #3b82f6; /* blue-500 */
-            border-color: #3b82f6; /* blue-500 */
+            background-color: #3b82f6;
+            border-color: #3b82f6;
         }
         .form-radio:checked::after {
             content: '';
@@ -44,19 +43,17 @@
         .form-radio:focus {
             outline: 2px solid transparent;
             outline-offset: 2px;
-            box-shadow: 0 0 0 2px #60a5fa; /* blue-300 */
+            box-shadow: 0 0 0 2px #60a5fa;
         }
-        /* Style for validation errors */
         .error-question {
-            background-color: #fee2e2; /* red-100 */
+            background-color: #fee2e2;
         }
         .error-title {
-            color: #ef4444; /* red-500 */
+            color: #ef4444;
         }
-        /* Loading spinner */
         .loader {
-            border: 4px solid #f3f3f3; /* Light grey */
-            border-top: 4px solid #3498db; /* Blue */
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
             border-radius: 50%;
             width: 24px;
             height: 24px;
@@ -97,56 +94,51 @@
             </div>
         </div>
         
-        <!-- Validation Error Message Area -->
         <div id="errorMessage" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6" role="alert">
             <p class="font-bold">Sila Lengkapkan Borang</p>
             <p>Terdapat soalan yang belum dijawab. Sila lengkapkan semua soalan yang ditandakan.</p>
         </div>
         
-        <!-- Submission Error Message Area -->
         <div id="submissionError" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6" role="alert">
             <p class="font-bold">Penghantaran Gagal</p>
             <p>Maaf, terdapat ralat semasa menghantar jawapan anda. Sila cuba lagi.</p>
         </div>
 
         <form id="questionnaireForm">
-            <!-- Section B: Demographic Information -->
-            <div id="sectionB" class="bg-white p-6 rounded-xl shadow-md mb-8">
-                <h2 class="section-title text-xl font-bold text-gray-900 border-b pb-3 mb-6 transition-colors duration-300">BAHAGIAN B: MAKLUMAT DEMOGRAFI</h2>
+            <!-- Section A: Demographic Information -->
+            <div id="sectionA" class="bg-white p-6 rounded-xl shadow-md mb-8">
+                <h2 class="section-title text-xl font-bold text-gray-900 border-b pb-3 mb-6 transition-colors duration-300">BAHAGIAN A: MAKLUMAT DEMOGRAFI</h2>
                 
-                <!-- Question b1: Jawatan -->
-                <div data-question="b1" class="mb-6 p-4 rounded-lg transition-colors duration-300">
+                <div data-question="a1" class="mb-6 p-4 rounded-lg transition-colors duration-300">
                     <label class="block text-gray-800 font-semibold mb-3 text-lg">1. Jawatan</label>
                     <div class="space-y-2">
-                        <div><label class="flex items-center"><input type="radio" name="b1" value="Pegawai" class="form-radio mr-3"><span class="text-gray-700">Pegawai</span></label></div>
-                        <div><label class="flex items-center"><input type="radio" name="b1" value="Pensyarah" class="form-radio mr-3"><span class="text-gray-700">Pensyarah</span></label></div>
-                        <div><label class="flex items-center"><input type="radio" name="b1" value="Staf Sokongan" class="form-radio mr-3"><span class="text-gray-700">Staf Sokongan</span></label></div>
+                        <div><label class="flex items-center"><input type="radio" name="a1" value="Pegawai" class="form-radio mr-3"><span class="text-gray-700">Pegawai</span></label></div>
+                        <div><label class="flex items-center"><input type="radio" name="a1" value="Pensyarah" class="form-radio mr-3"><span class="text-gray-700">Pensyarah</span></label></div>
+                        <div><label class="flex items-center"><input type="radio" name="a1" value="Staf Sokongan" class="form-radio mr-3"><span class="text-gray-700">Staf Sokongan</span></label></div>
                     </div>
                 </div>
 
-                <!-- Question b2: Tempoh Perkhidmatan -->
-                <div data-question="b2" class="mb-6 p-4 rounded-lg transition-colors duration-300">
+                <div data-question="a2" class="mb-6 p-4 rounded-lg transition-colors duration-300">
                     <label class="block text-gray-800 font-semibold mb-3 text-lg">2. Tempoh Perkhidmatan</label>
                     <div class="space-y-2">
-                        <div><label class="flex items-center"><input type="radio" name="b2" value="Kurang dari 5 tahun" class="form-radio mr-3"><span class="text-gray-700">Kurang dari 5 tahun</span></label></div>
-                        <div><label class="flex items-center"><input type="radio" name="b2" value="5 - 10 tahun" class="form-radio mr-3"><span class="text-gray-700">5 - 10 tahun</span></label></div>
-                        <div><label class="flex items-center"><input type="radio" name="b2" value="Lebih dari 10 tahun" class="form-radio mr-3"><span class="text-gray-700">Lebih dari 10 tahun</span></label></div>
+                        <div><label class="flex items-center"><input type="radio" name="a2" value="Kurang dari 5 tahun" class="form-radio mr-3"><span class="text-gray-700">Kurang dari 5 tahun</span></label></div>
+                        <div><label class="flex items-center"><input type="radio" name="a2" value="5 - 10 tahun" class="form-radio mr-3"><span class="text-gray-700">5 - 10 tahun</span></label></div>
+                        <div><label class="flex items-center"><input type="radio" name="a2" value="Lebih dari 10 tahun" class="form-radio mr-3"><span class="text-gray-700">Lebih dari 10 tahun</span></label></div>
                     </div>
                 </div>
 
-                <!-- Question b3: Jantina -->
-                <div data-question="b3" class="mb-4 p-4 rounded-lg transition-colors duration-300">
+                <div data-question="a3" class="mb-4 p-4 rounded-lg transition-colors duration-300">
                      <label class="block text-gray-800 font-semibold mb-3 text-lg">3. Jantina</label>
                     <div class="space-y-2">
-                        <div><label class="flex items-center"><input type="radio" name="b3" value="Lelaki" class="form-radio mr-3"><span class="text-gray-700">Lelaki</span></label></div>
-                        <div><label class="flex items-center"><input type="radio" name="b3" value="Perempuan" class="form-radio mr-3"><span class="text-gray-700">Perempuan</span></label></div>
+                        <div><label class="flex items-center"><input type="radio" name="a3" value="Lelaki" class="form-radio mr-3"><span class="text-gray-700">Lelaki</span></label></div>
+                        <div><label class="flex items-center"><input type="radio" name="a3" value="Perempuan" class="form-radio mr-3"><span class="text-gray-700">Perempuan</span></label></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Section A: Perception -->
-            <div id="sectionA" class="bg-white p-6 rounded-xl shadow-md mb-8">
-                <h2 class="section-title text-xl font-bold text-gray-900 border-b pb-3 mb-4 transition-colors duration-300">BAHAGIAN A: PERSEPSI TERHADAP KEPERLUAN PEMBINAAN INSTRUMEN KETAHANAN PSIKOLOGI ORGANISASI</h2>
+            <!-- Section B: Perception -->
+            <div id="sectionB" class="bg-white p-6 rounded-xl shadow-md mb-8">
+                <h2 class="section-title text-xl font-bold text-gray-900 border-b pb-3 mb-4 transition-colors duration-300">BAHAGIAN B: PERSEPSI TERHADAP KEPERLUAN PEMBINAAN INSTRUMEN</h2>
                 <p class="text-gray-600 mt-2 mb-4">Sila nyatakan tahap persetujuan anda bagi setiap pernyataan di bawah. <br>
                     <span class="font-medium">Skala: 1 = Sangat Tidak Setuju, 2 = Tidak Setuju, 3 = Neutral, 4 = Setuju, 5 = Sangat Setuju</span>
                 </p>
@@ -164,95 +156,250 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr data-question="a1" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                            <!-- Dimensi 1 -->
+                            <tr class="bg-gray-100">
+                                <td colspan="7" class="p-3 font-bold text-gray-800">Dimensi 1: Menilai persepsi umum warga IPG tentang kepentingan kesejahteraan psikologi</td>
+                            </tr>
+                            <tr data-question="b1" class="border-b transition-colors duration-300 hover:bg-gray-50">
                                 <td class="p-3 font-medium">1.</td>
-                                <td class="p-3">Wujud keperluan membangunkan instrumen kesejahteraan psikologi untuk warga IPG.</td>
-                                <td class="p-3 text-center"><input type="radio" name="a1" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a1" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a1" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a1" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a1" value="5" class="form-radio"></td>
+                                <td class="p-3">Kesejahteraan psikologi adalah penting dalam meningkatkan prestasi kerja warga IPG.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b1" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b1" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b1" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b1" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b1" value="5" class="form-radio"></td>
                             </tr>
-                            <tr data-question="a2" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                            <tr data-question="b2" class="border-b transition-colors duration-300 hover:bg-gray-50">
                                 <td class="p-3 font-medium">2.</td>
-                                <td class="p-3">Mengukur keperluan asas psikologi (autonomi, kecekapan, hubungan).</td>
-                                <td class="p-3 text-center"><input type="radio" name="a2" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a2" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a2" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a2" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a2" value="5" class="form-radio"></td>
+                                <td class="p-3">Kesejahteraan psikologi membantu mengurangkan tekanan kerja dalam kalangan staf IPG.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b2" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b2" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b2" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b2" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b2" value="5" class="form-radio"></td>
                             </tr>
-                            <tr data-question="a3" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                            <tr data-question="b3" class="border-b transition-colors duration-300 hover:bg-gray-50">
                                 <td class="p-3 font-medium">3.</td>
-                                <td class="p-3">Menilai tahap resiliens (daya tahan) warga IPG.</td>
-                                <td class="p-3 text-center"><input type="radio" name="a3" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a3" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a3" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a3" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a3" value="5" class="form-radio"></td>
+                                <td class="p-3">Kesejahteraan psikologi perlu diberi perhatian sama seperti kesejahteraan fizikal.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b3" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b3" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b3" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b3" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b3" value="5" class="form-radio"></td>
                             </tr>
-                            <tr data-question="a4" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                            <tr data-question="b4" class="border-b transition-colors duration-300 hover:bg-gray-50">
                                 <td class="p-3 font-medium">4.</td>
-                                <td class="p-3">Mengenal pasti warga IPG yang memerlukan intervensi.</td>
-                                <td class="p-3 text-center"><input type="radio" name="a4" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a4" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a4" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a4" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a4" value="5" class="form-radio"></td>
+                                <td class="p-3">Kesejahteraan psikologi mempunyai hubungan rapat dengan motivasi kerja.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b4" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b4" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b4" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b4" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b4" value="5" class="form-radio"></td>
                             </tr>
-                             <tr data-question="a5" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                            <tr data-question="b5" class="border-b transition-colors duration-300 hover:bg-gray-50">
                                 <td class="p-3 font-medium">5.</td>
-                                <td class="p-3">Membantu kaunselor merancang program kesejahteraan psikologi dengan lebih berkesan.</td>
-                                <td class="p-3 text-center"><input type="radio" name="a5" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a5" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a5" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a5" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a5" value="5" class="form-radio"></td>
+                                <td class="p-3">Pihak pengurusan IPG wajar memberi penekanan terhadap aspek kesejahteraan psikologi.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b5" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b5" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b5" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b5" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b5" value="5" class="form-radio"></td>
                             </tr>
-                            <tr data-question="a6" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                             <!-- Dimensi 2 -->
+                            <tr class="bg-gray-100">
+                                <td colspan="7" class="p-3 font-bold text-gray-800">Dimensi 2: Mengenal pasti keperluan membangunkan instrumen kesejahteraan psikologi</td>
+                            </tr>
+                            <tr data-question="b6" class="border-b transition-colors duration-300 hover:bg-gray-50">
                                 <td class="p-3 font-medium">6.</td>
-                                <td class="p-3">Tiada instrumen yang sesuai untuk mengukur kesejahteraan psikologi warga IPG.</td>
-                                <td class="p-3 text-center"><input type="radio" name="a6" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a6" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a6" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a6" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a6" value="5" class="form-radio"></td>
+                                <td class="p-3">Warga IPG memerlukan instrumen khusus untuk menilai tahap kesejahteraan psikologi.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b6" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b6" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b6" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b6" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b6" value="5" class="form-radio"></td>
                             </tr>
-                            <tr data-question="a7" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                            <tr data-question="b7" class="border-b transition-colors duration-300 hover:bg-gray-50">
                                 <td class="p-3 font-medium">7.</td>
-                                <td class="p-3">Instrumen adalah satu penafsiran umum untuk kesejahteraan psikologi warga.</td>
-                                <td class="p-3 text-center"><input type="radio" name="a7" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a7" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a7" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a7" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a7" value="5" class="form-radio"></td>
+                                <td class="p-3">Instrumen kesejahteraan psikologi dapat membantu mengenal pasti isu-isu psikologi di tempat kerja.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b7" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b7" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b7" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b7" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b7" value="5" class="form-radio"></td>
                             </tr>
-                            <tr data-question="a8" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                            <tr data-question="b8" class="border-b transition-colors duration-300 hover:bg-gray-50">
                                 <td class="p-3 font-medium">8.</td>
-                                <td class="p-3">Saya bersedia menjadi responden untuk instrumen kesejahteraan psikologi ini dan memberi maklum balas jika diperlukan.</td>
-                                <td class="p-3 text-center"><input type="radio" name="a8" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a8" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a8" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a8" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a8" value="5" class="form-radio"></td>
+                                <td class="p-3">Instrumen ini penting untuk menyokong program intervensi kesejahteraan warga IPG.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b8" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b8" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b8" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b8" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b8" value="5" class="form-radio"></td>
                             </tr>
-                            <tr data-question="a9" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                            <tr data-question="b9" class="border-b transition-colors duration-300 hover:bg-gray-50">
                                 <td class="p-3 font-medium">9.</td>
-                                <td class="p-3">Instrumen kesejahteraan psikologi ini perlu dibangunkan agar selaras dengan keperluan kerja sebenar warga IPG.</td>
-                                <td class="p-3 text-center"><input type="radio" name="a9" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a9" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a9" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a9" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a9" value="5" class="form-radio"></td>
+                                <td class="p-3">Pembangunan instrumen dapat menyediakan data saintifik untuk kegunaan pihak pengurusan IPG.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b9" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b9" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b9" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b9" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b9" value="5" class="form-radio"></td>
                             </tr>
-                            <tr data-question="a10" class="transition-colors duration-300 hover:bg-gray-50">
+                            <tr data-question="b10" class="border-b transition-colors duration-300 hover:bg-gray-50">
                                 <td class="p-3 font-medium">10.</td>
-                                <td class="p-3">Instrumen ini boleh membantu pihak pengurusan membuat keputusan yang lebih tepat berkaitan program sokongan psikologi di IPG.</td>
-                                <td class="p-3 text-center"><input type="radio" name="a10" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a10" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a10" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a10" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="a10" value="5" class="form-radio"></td>
+                                <td class="p-3">Instrumen kesejahteraan psikologi akan menjadi panduan dalam merancang program pembangunan staf.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b10" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b10" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b10" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b10" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b10" value="5" class="form-radio"></td>
+                            </tr>
+                            <!-- Dimensi 3 -->
+                            <tr class="bg-gray-100">
+                                <td colspan="7" class="p-3 font-bold text-gray-800">Dimensi 3: Mengenal pasti komponen yang wajar dimasukkan dalam instrumen kesejahteraan psikologi</td>
+                            </tr>
+                            <tr data-question="b11" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">11.</td>
+                                <td class="p-3">Instrumen wajar merangkumi aspek keseimbangan kerja dan kehidupan.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b11" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b11" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b11" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b11" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b11" value="5" class="form-radio"></td>
+                            </tr>
+                            <tr data-question="b12" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">12.</td>
+                                <td class="p-3">Instrumen perlu mengukur tahap sokongan sosial di tempat kerja.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b12" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b12" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b12" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b12" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b12" value="5" class="form-radio"></td>
+                            </tr>
+                            <tr data-question="b13" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">13.</td>
+                                <td class="p-3">Instrumen harus menilai tahap pengurusan emosi dan daya tindak (coping skills).</td>
+                                <td class="p-3 text-center"><input type="radio" name="b13" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b13" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b13" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b13" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b13" value="5" class="form-radio"></td>
+                            </tr>
+                            <tr data-question="b14" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">14.</td>
+                                <td class="p-3">Instrumen perlu mengukur tahap motivasi dan kepuasan kerja.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b14" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b14" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b14" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b14" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b14" value="5" class="form-radio"></td>
+                            </tr>
+                            <tr data-question="b15" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">15.</td>
+                                <td class="p-3">Instrumen wajar memasukkan elemen daya tahan (resilience) terhadap tekanan.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b15" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b15" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b15" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b15" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b15" value="5" class="form-radio"></td>
+                            </tr>
+                            <!-- Dimensi 4 -->
+                             <tr class="bg-gray-100">
+                                <td colspan="7" class="p-3 font-bold text-gray-800">Dimensi 4: Menilai tahap kesediaan warga IPG dalam memberikan maklum balas berkaitan instrumen</td>
+                            </tr>
+                            <tr data-question="b16" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">16.</td>
+                                <td class="p-3">Saya bersedia untuk memberikan maklum balas terhadap instrumen kesejahteraan psikologi.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b16" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b16" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b16" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b16" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b16" value="5" class="form-radio"></td>
+                            </tr>
+                            <tr data-question="b17" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">17.</td>
+                                <td class="p-3">Saya tidak keberatan berkongsi pandangan mengenai kesejahteraan psikologi saya.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b17" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b17" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b17" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b17" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b17" value="5" class="form-radio"></td>
+                            </tr>
+                            <tr data-question="b18" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">18.</td>
+                                <td class="p-3">Saya yakin maklumat yang diberikan akan digunakan secara beretika dan sulit.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b18" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b18" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b18" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b18" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b18" value="5" class="form-radio"></td>
+                            </tr>
+                            <tr data-question="b19" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">19.</td>
+                                <td class="p-3">Saya berasa selesa menjawab soal selidik berkaitan kesejahteraan psikologi.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b19" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b19" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b19" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b19" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b19" value="5" class="form-radio"></td>
+                            </tr>
+                            <tr data-question="b20" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">20.</td>
+                                <td class="p-3">Saya percaya maklum balas saya akan memberi manfaat kepada pembangunan organisasi.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b20" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b20" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b20" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b20" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b20" value="5" class="form-radio"></td>
+                            </tr>
+                            <!-- Dimensi 5 -->
+                             <tr class="bg-gray-100">
+                                <td colspan="7" class="p-3 font-bold text-gray-800">Dimensi 5: Menyediakan asas bagi pembinaan instrumen yang sah dan praktikal</td>
+                            </tr>
+                            <tr data-question="b21" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">21.</td>
+                                <td class="p-3">Instrumen kesejahteraan psikologi perlu dibina berasaskan teori dan kajian empirikal.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b21" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b21" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b21" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b21" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b21" value="5" class="form-radio"></td>
+                            </tr>
+                            <tr data-question="b22" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">22.</td>
+                                <td class="p-3">Instrumen yang sahih boleh membantu menghasilkan data yang boleh dipercayai.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b22" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b22" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b22" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b22" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b22" value="5" class="form-radio"></td>
+                            </tr>
+                            <tr data-question="b23" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">23.</td>
+                                <td class="p-3">Instrumen yang praktikal memudahkan pentadbiran dan pengumpulan data.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b23" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b23" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b23" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b23" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b23" value="5" class="form-radio"></td>
+                            </tr>
+                            <tr data-question="b24" class="border-b transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">24.</td>
+                                <td class="p-3">Instrumen yang sistematik dapat membantu mengenal pasti intervensi yang sesuai.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b24" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b24" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b24" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b24" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b24" value="5" class="form-radio"></td>
+                            </tr>
+                            <tr data-question="b25" class="transition-colors duration-300 hover:bg-gray-50">
+                                <td class="p-3 font-medium">25.</td>
+                                <td class="p-3">Instrumen yang baik akan menyumbang kepada pembinaan dasar kesejahteraan psikologi di IPG.</td>
+                                <td class="p-3 text-center"><input type="radio" name="b25" value="1" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b25" value="2" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b25" value="3" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b25" value="4" class="form-radio"></td>
+                                <td class="p-3 text-center"><input type="radio" name="b25" value="5" class="form-radio"></td>
                             </tr>
                         </tbody>
                     </table>
@@ -291,7 +438,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzUpTczuF-ZRbXW7q1i8-B_v1TDW81SIWcxYkKtiYeumawAIgK324rNnUU1lm0kizky/exec'; // <-- URL ANDA TELAH DIMASUKKAN
+            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzUpTczuF-ZRbXW7q1i8-B_v1TDW81SIWcxYkKtiYeumawAIgK324rNnUU1lm0kizky/exec'; // <-- PASTIKAN URL INI BETUL
             
             const form = document.getElementById('questionnaireForm');
             const submitButton = document.getElementById('submitButton');
@@ -306,7 +453,6 @@
                 event.preventDefault(); 
                 
                 if (validateForm()) {
-                    // Disable button and show loading state
                     submitButton.disabled = true;
                     submitButtonText.textContent = 'Menghantar...';
                     submitButtonSpinner.classList.remove('hidden');
@@ -329,7 +475,6 @@
                             submissionError.classList.remove('hidden');
                         })
                         .finally(() => {
-                            // Re-enable button
                             submitButton.disabled = false;
                             submitButtonText.textContent = 'Hantar';
                             submitButtonSpinner.classList.add('hidden');
