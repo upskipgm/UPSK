@@ -3,528 +3,838 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Soal Selidik Analisis Keperluan Pembinaan Instrumen Ketahanan Psikologi Organisasi</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Inventori Keperluan Asas Psikologi & Organisasi (IKPO)</title>
+    <!-- HANYA CSS di sini untuk pemuatan pantas. Semua JS dipindahkan ke bawah <body> -->
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
+            /* Formal: White Background */
+            background-color: #f8fafc; /* light white/off-white */
+            min-height: 100vh;
+            color: #1e293b; /* Dark text */
         }
-        .form-radio {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            display: inline-block;
-            position: relative;
-            background-color: #f9fafb;
-            border: 1px solid #d1d5db;
-            border-radius: 50%;
-            width: 1.5rem;
-            height: 1.5rem;
+        .section-icon-container {
+            /* Ensures equal width for all four navigation sections */
+            flex-grow: 1; 
+            max-width: 25%; /* Max 25% width for each item */
+            padding: 0 4px; /* Slight horizontal padding for separation */
+        }
+        .section-icon {
+            transition: all 0.3s ease;
             cursor: pointer;
-            transition: background-color 0.2s, border-color 0.2s;
+            padding: 0.75rem 0.5rem; /* Adjusted padding for better vertical balance */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%; /* Fill container height */
+            text-align: center;
         }
-        .form-radio:checked {
-            background-color: #3b82f6;
-            border-color: #3b82f6;
+        .section-icon p {
+            white-space: normal;
+            line-height: 1.2;
+            margin-top: 0.5rem; /* Increased margin for better separation from icon */
+            font-size: 0.68rem; /* Slightly smaller font for long labels */
+            font-weight: 600; /* Semi-bold for legibility */
         }
-        .form-radio:checked::after {
-            content: '';
-            display: block;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0.75rem;
-            height: 0.75rem;
-            border-radius: 50%;
+        /* Primary accent color: Blue (Formal) */
+        .primary-accent {
+            background-color: #1e40af; /* Blue-700 */
+        }
+        .primary-text-accent {
+            color: #1e40af; /* Blue-700 */
+        }
+        .section-icon.active {
+            /* Formal Glow: Blue */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1), 0 0 0 4px #1e40af; /* Blue-700 */
+            transform: scale(1.05);
+            background-color: #1e40af;
+        }
+        .section-icon:not(.active) {
+            background-color: #e2e8f0; /* Slate-200 for subtle contrast */
+        }
+        .section-icon:not(.active) svg, .section-icon:not(.active) p {
+            color: #334155; /* Slate-700 */
+        }
+        .section-icon.active svg, .section-icon.active p {
+            color: white; 
+        }
+
+        .radio-label {
+            transition: all 0.2s;
+            border: 1px solid #cbd5e1; /* Subtle border for definition */
+            color: #334155;
             background-color: white;
-            transform: translate(-50%, -50%);
         }
-        .form-radio:focus {
-            outline: 2px solid transparent;
-            outline-offset: 2px;
-            box-shadow: 0 0 0 2px #60a5fa;
+        .radio-label:hover {
+            background-color: #f1f5f9;
         }
-        .error-question {
-            background-color: #fee2e2;
+        input[type="radio"]:checked + .radio-label {
+            /* Formal fill: Blue */
+            background-color: #1e40af; /* Blue-700 */
+            color: white;
+            font-weight: 700;
+            transform: scale(1.05);
+            border-color: #1e40af;
         }
-        .error-title {
-            color: #ef4444;
+        .result-card {
+            /* Formal white card with soft shadow/border */
+            background: white; 
+            border: 1px solid #e2e8f0; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-            display: inline-block;
-            margin-right: 10px;
+        
+        /* Custom scrollbar (minimalist) */
+        ::-webkit-scrollbar {
+            width: 8px;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        ::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Print Styles */
+        .print-only { display: none; }
+        @media print {
+            body { 
+                background: white; 
+                color: #000; 
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            #survey-container { box-shadow: none; border: none; padding: 0; }
+            #controls, .flex.justify-end, .flex.justify-start, #message-box { display: none; }
+            .section-content, #result-output { 
+                display: block !important; 
+                background: white !important; 
+                color: #000 !important; 
+                border: none !important;
+                box-shadow: none !important;
+            }
+            .result-card { 
+                background: white !important; 
+                border: 1px solid #ccc !important; 
+                color: #000 !important; 
+            }
+            .primary-text-accent, h2, h3 { color: #1e293b !important; } /* Ensure dark text on white */
+            table thead { background-color: #f1f5f9 !important; }
+            .bg-gray-700, .bg-gray-600 { background-color: #f1f5f9 !important; color: #1e293b !important; }
+            
+            /* Print Chart for PDF/Print */
+            #radarChart { margin-top: 1rem; }
+            canvas { background: white !important; }
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="p-4 sm:p-8">
 
-    <div class="container mx-auto max-w-4xl p-4 sm:p-8">
-        <!-- Header -->
-        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
-            <h1 class="text-center text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Soal Selidik Analisis Keperluan Pembinaan Instrumen Ketahanan Psikologi Organisasi</h1>
+    <div id="survey-container" class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-6 sm:p-10">
+        <h1 class="text-3xl sm:text-4xl font-extrabold primary-text-accent text-center mb-8">
+            Inventori Keperluan Asas Psikologi & Organisasi (IKPO)
+        </h1>
+
+        <!-- Navigation Tabs (Icons) -->
+        <div id="controls" class="flex justify-around items-stretch mb-10 border-b border-gray-200 pb-4">
+            <!-- Seksyen 1: Demografi (User) -->
+            <div class="section-icon-container">
+                <div id="nav-1" data-section="1" class="section-icon rounded-xl primary-accent active transform hover:primary-accent">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    <p class="text-xs text-center">Demografi</p>
+                </div>
+            </div>
             
-            <div class="text-left">
-                <h2 class="text-xl font-bold text-gray-800 mb-2">Latar Belakang</h2>
-                <p class="mb-4 text-gray-600">
-                    Kesejahteraan psikologi merupakan aspek penting yang mempengaruhi prestasi kerja, motivasi, dan kepuasan individu di tempat kerja, termasuk dalam kalangan pegawai, pensyarah, dan staf sokongan di Institut Pendidikan Guru (IPG). Buat masa ini, masih belum wujud instrumen standard yang dibangunkan khusus untuk mengukur kesejahteraan psikologi warga IPG yang merangkumi keperluan asas psikologi dan tahap resiliens. Oleh itu, kajian analisis keperluan ini dijalankan bagi mendapatkan maklumat awal sebelum pembinaan instrumen kesejahteraan psikologi yang sah dan sesuai untuk digunakan oleh kaunselor pendidikan di IPG.
-                </p>
+            <!-- Seksyen 2: Keperluan Asas Psikologi (Scale / Balance) -->
+            <div class="section-icon-container">
+                <div id="nav-2" data-section="2" class="section-icon rounded-xl bg-gray-700 hover:bg-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M5 10l-2 10h18l-2-10M5 10h14M12 21v-8m-7 0h14"/></svg>
+                    <p class="text-xs text-center">Keperluan Asas Psikologi</p>
+                </div>
+            </div>
 
-                <h2 class="text-xl font-bold text-gray-800 mb-2">Tujuan</h2>
-                <p class="mb-4 text-gray-600">
-                    Analisis keperluan (need analysis) ini dijalankan adalah bertujuan untuk:
-                </p>
-                <ul class="list-disc list-inside text-gray-600 space-y-1">
-                    <li>Menilai persepsi umum warga IPG tentang kepentingan kesejahteraan psikologi.</li>
-                    <li>Mengenal pasti keperluan membangunkan instrumen kesejahteraan psikologi.</li>
-                    <li>Mengenal pasti komponen yang wajar dimasukkan dalam instrumen kesejahteraan psikologi.</li>
-                    <li>Menilai tahap kesediaan warga IPG dalam memberikan maklum balas berkaitan instrumen.</li>
-                    <li>Menyediakan asas bagi pembinaan instrumen yang sah dan praktikal.</li>
-                </ul>
+            <!-- Seksyen 3: Resiliens (Lightning Bolt / Energy) -->
+            <div class="section-icon-container">
+                <div id="nav-3" data-section="3" class="section-icon rounded-xl bg-gray-700 hover:bg-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <p class="text-xs text-center">Resiliens</p>
+                </div>
+            </div>
+            
+            <!-- Seksyen 4: Keputusan (Bar Chart) -->
+            <div class="section-icon-container">
+                <div id="nav-4" data-section="4" class="section-icon rounded-xl bg-gray-700 hover:bg-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0h6"/></svg>
+                    <p class="text-xs text-center">Keputusan</p>
+                </div>
             </div>
         </div>
-        
-        <div id="errorMessage" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6" role="alert">
-            <p class="font-bold">Sila Lengkapkan Borang</p>
-            <p>Terdapat soalan yang belum dijawab. Sila lengkapkan semua soalan yang ditandakan.</p>
-        </div>
-        
-        <div id="submissionError" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6" role="alert">
-            <p class="font-bold">Penghantaran Gagal</p>
-            <p>Maaf, terdapat ralat semasa menghantar jawapan anda. Sila cuba lagi.</p>
-        </div>
 
-        <form id="questionnaireForm">
-            <!-- Section A: Demographic Information -->
-            <div id="sectionA" class="bg-white p-6 rounded-xl shadow-md mb-8">
-                <h2 class="section-title text-xl font-bold text-gray-900 border-b pb-3 mb-6 transition-colors duration-300">BAHAGIAN A: MAKLUMAT DEMOGRAFI</h2>
+        <form id="ikpo-form" class="space-y-6">
+
+            <!-- Seksyen 1: Demografi Responden -->
+            <div id="section-1" class="section-content">
+                <h2 class="text-2xl font-bold primary-text-accent mb-6 border-b border-gray-300 pb-2">Seksyen 1: Demografi Responden</h2>
                 
-                <div data-question="a1" class="mb-6 p-4 rounded-lg transition-colors duration-300">
-                    <label class="block text-gray-800 font-semibold mb-3 text-lg">1. Jawatan</label>
-                    <div class="space-y-2">
-                        <div><label class="flex items-center"><input type="radio" name="a1" value="Pegawai" class="form-radio mr-3"><span class="text-gray-700">Pegawai</span></label></div>
-                        <div><label class="flex items-center"><input type="radio" name="a1" value="Pensyarah" class="form-radio mr-3"><span class="text-gray-700">Pensyarah</span></label></div>
-                        <div><label class="flex items-center"><input type="radio" name="a1" value="Staf Sokongan" class="form-radio mr-3"><span class="text-gray-700">Staf Sokongan</span></label></div>
-                    </div>
-                </div>
+                <div class="space-y-4">
+                    <!-- Jantina -->
+                    <label for="jantina" class="block text-sm font-medium text-gray-700">1. Jantina</label>
+                    <select id="jantina" name="jantina" required class="w-full p-3 bg-white border border-gray-400 rounded-lg text-gray-800 focus:ring-blue-700 focus:border-blue-700">
+                        <option value="">Sila Pilih</option>
+                        <option value="Lelaki">Lelaki</option>
+                        <option value="Perempuan">Perempuan</option>
+                    </select>
 
-                <div data-question="a2" class="mb-6 p-4 rounded-lg transition-colors duration-300">
-                    <label class="block text-gray-800 font-semibold mb-3 text-lg">2. Tempoh Perkhidmatan</label>
-                    <div class="space-y-2">
-                        <div><label class="flex items-center"><input type="radio" name="a2" value="Kurang dari 5 tahun" class="form-radio mr-3"><span class="text-gray-700">Kurang dari 5 tahun</span></label></div>
-                        <div><label class="flex items-center"><input type="radio" name="a2" value="5 - 10 tahun" class="form-radio mr-3"><span class="text-gray-700">5 - 10 tahun</span></label></div>
-                        <div><label class="flex items-center"><input type="radio" name="a2" value="Lebih dari 10 tahun" class="form-radio mr-3"><span class="text-gray-700">Lebih dari 10 tahun</span></label></div>
-                    </div>
-                </div>
+                    <!-- Umur -->
+                    <label for="umur" class="block text-sm font-medium text-gray-700 pt-4">2. Umur</label>
+                    <input type="number" id="umur" name="umur" required min="18" class="w-full p-3 bg-white border border-gray-400 rounded-lg text-gray-800 focus:ring-blue-700 focus:border-blue-700" placeholder="Masukkan umur anda">
 
-                <div data-question="a3" class="mb-4 p-4 rounded-lg transition-colors duration-300">
-                     <label class="block text-gray-800 font-semibold mb-3 text-lg">3. Jantina</label>
-                    <div class="space-y-2">
-                        <div><label class="flex items-center"><input type="radio" name="a3" value="Lelaki" class="form-radio mr-3"><span class="text-gray-700">Lelaki</span></label></div>
-                        <div><label class="flex items-center"><input type="radio" name="a3" value="Perempuan" class="form-radio mr-3"><span class="text-gray-700">Perempuan</span></label></div>
-                    </div>
-                </div>
-            </div>
+                    <!-- Jawatan (Revised) -->
+                    <label for="jawatan" class="block text-sm font-medium text-gray-700 pt-4">3. Jawatan</label>
+                    <select id="jawatan" name="jawatan" required class="w-full p-3 bg-white border border-gray-400 rounded-lg text-gray-800 focus:ring-blue-700 focus:border-blue-700">
+                        <option value="">Sila Pilih</option>
+                        <option value="Pengurusan tertinggi kampus/IPGM">a. Pengurusan tertinggi kampus/IPGM</option>
+                        <option value="Pensyarah">b. Pensyarah</option>
+                        <option value="Pegawai Pengurusan">c. Pegawai Pengurusan</option>
+                        <option value="Staf sokongan">d. Staf sokongan</option>
+                        <option value="Lain-lain">e. Lain-lain</option>
+                    </select>
 
-            <!-- Section B: Perception -->
-            <div id="sectionB" class="bg-white p-6 rounded-xl shadow-md mb-8">
-                <h2 class="section-title text-xl font-bold text-gray-900 border-b pb-3 mb-4 transition-colors duration-300">BAHAGIAN B: PERSEPSI TERHADAP KEPERLUAN PEMBINAAN INSTRUMEN</h2>
-                <p class="text-gray-600 mt-2 mb-4">Sila nyatakan tahap persetujuan anda bagi setiap pernyataan di bawah. <br>
-                    <span class="font-medium">Skala: 1 = Sangat Tidak Setuju, 2 = Tidak Setuju, 3 = Neutral, 4 = Setuju, 5 = Sangat Setuju</span>
-                </p>
-                <div class="overflow-x-auto">
-                    <table class="w-full min-w-[600px]">
-                        <thead>
-                            <tr class="bg-gray-50">
-                                <th class="p-3 text-left font-semibold text-gray-700 w-12">Bil.</th>
-                                <th class="p-3 text-left font-semibold text-gray-700">Pernyataan</th>
-                                <th class="w-12 text-center font-semibold text-gray-700">1</th>
-                                <th class="w-12 text-center font-semibold text-gray-700">2</th>
-                                <th class="w-12 text-center font-semibold text-gray-700">3</th>
-                                <th class="w-12 text-center font-semibold text-gray-700">4</th>
-                                <th class="w-12 text-center font-semibold text-gray-700">5</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Dimensi 1 -->
-                            <tr class="bg-gray-100">
-                                <td colspan="7" class="p-3 font-bold text-gray-800">Dimensi 1: Menilai persepsi umum warga IPG tentang kepentingan kesejahteraan psikologi</td>
-                            </tr>
-                            <tr data-question="b1" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">1.</td>
-                                <td class="p-3">Kesejahteraan psikologi adalah penting dalam meningkatkan prestasi kerja warga IPG.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b1" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b1" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b1" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b1" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b1" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b2" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">2.</td>
-                                <td class="p-3">Kesejahteraan psikologi membantu mengurangkan tekanan kerja dalam kalangan staf IPG.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b2" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b2" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b2" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b2" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b2" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b3" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">3.</td>
-                                <td class="p-3">Kesejahteraan psikologi perlu diberi perhatian sama seperti kesejahteraan fizikal.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b3" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b3" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b3" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b3" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b3" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b4" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">4.</td>
-                                <td class="p-3">Kesejahteraan psikologi mempunyai hubungan rapat dengan motivasi kerja.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b4" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b4" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b4" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b4" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b4" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b5" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">5.</td>
-                                <td class="p-3">Pihak pengurusan IPG wajar memberi penekanan terhadap aspek kesejahteraan psikologi.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b5" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b5" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b5" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b5" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b5" value="5" class="form-radio"></td>
-                            </tr>
-                             <!-- Dimensi 2 -->
-                            <tr class="bg-gray-100">
-                                <td colspan="7" class="p-3 font-bold text-gray-800">Dimensi 2: Mengenal pasti keperluan membangunkan instrumen kesejahteraan psikologi</td>
-                            </tr>
-                            <tr data-question="b6" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">6.</td>
-                                <td class="p-3">Warga IPG memerlukan instrumen khusus untuk menilai tahap kesejahteraan psikologi.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b6" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b6" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b6" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b6" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b6" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b7" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">7.</td>
-                                <td class="p-3">Instrumen kesejahteraan psikologi dapat membantu mengenal pasti isu-isu psikologi di tempat kerja.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b7" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b7" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b7" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b7" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b7" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b8" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">8.</td>
-                                <td class="p-3">Instrumen ini penting untuk menyokong program intervensi kesejahteraan warga IPG.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b8" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b8" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b8" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b8" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b8" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b9" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">9.</td>
-                                <td class="p-3">Pembangunan instrumen dapat menyediakan data saintifik untuk kegunaan pihak pengurusan IPG.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b9" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b9" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b9" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b9" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b9" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b10" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">10.</td>
-                                <td class="p-3">Instrumen kesejahteraan psikologi akan menjadi panduan dalam merancang program pembangunan staf.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b10" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b10" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b10" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b10" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b10" value="5" class="form-radio"></td>
-                            </tr>
-                            <!-- Dimensi 3 -->
-                            <tr class="bg-gray-100">
-                                <td colspan="7" class="p-3 font-bold text-gray-800">Dimensi 3: Mengenal pasti komponen yang wajar dimasukkan dalam instrumen kesejahteraan psikologi</td>
-                            </tr>
-                            <tr data-question="b11" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">11.</td>
-                                <td class="p-3">Instrumen wajar merangkumi aspek keseimbangan kerja dan kehidupan.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b11" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b11" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b11" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b11" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b11" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b12" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">12.</td>
-                                <td class="p-3">Instrumen perlu mengukur tahap sokongan sosial di tempat kerja.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b12" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b12" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b12" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b12" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b12" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b13" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">13.</td>
-                                <td class="p-3">Instrumen harus menilai tahap pengurusan emosi dan daya tindak (coping skills).</td>
-                                <td class="p-3 text-center"><input type="radio" name="b13" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b13" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b13" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b13" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b13" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b14" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">14.</td>
-                                <td class="p-3">Instrumen perlu mengukur tahap motivasi dan kepuasan kerja.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b14" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b14" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b14" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b14" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b14" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b15" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">15.</td>
-                                <td class="p-3">Instrumen wajar memasukkan elemen daya tahan (resilience) terhadap tekanan.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b15" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b15" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b15" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b15" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b15" value="5" class="form-radio"></td>
-                            </tr>
-                            <!-- Dimensi 4 -->
-                             <tr class="bg-gray-100">
-                                <td colspan="7" class="p-3 font-bold text-gray-800">Dimensi 4: Menilai tahap kesediaan warga IPG dalam memberikan maklum balas berkaitan instrumen</td>
-                            </tr>
-                            <tr data-question="b16" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">16.</td>
-                                <td class="p-3">Saya bersedia untuk memberikan maklum balas terhadap instrumen kesejahteraan psikologi.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b16" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b16" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b16" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b16" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b16" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b17" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">17.</td>
-                                <td class="p-3">Saya tidak keberatan berkongsi pandangan mengenai kesejahteraan psikologi saya.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b17" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b17" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b17" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b17" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b17" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b18" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">18.</td>
-                                <td class="p-3">Saya yakin maklumat yang diberikan akan digunakan secara beretika dan sulit.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b18" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b18" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b18" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b18" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b18" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b19" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">19.</td>
-                                <td class="p-3">Saya berasa selesa menjawab soal selidik berkaitan kesejahteraan psikologi.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b19" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b19" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b19" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b19" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b19" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b20" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">20.</td>
-                                <td class="p-3">Saya percaya maklum balas saya akan memberi manfaat kepada pembangunan organisasi.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b20" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b20" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b20" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b20" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b20" value="5" class="form-radio"></td>
-                            </tr>
-                            <!-- Dimensi 5 -->
-                             <tr class="bg-gray-100">
-                                <td colspan="7" class="p-3 font-bold text-gray-800">Dimensi 5: Menyediakan asas bagi pembinaan instrumen yang sah dan praktikal</td>
-                            </tr>
-                            <tr data-question="b21" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">21.</td>
-                                <td class="p-3">Instrumen kesejahteraan psikologi perlu dibina berasaskan teori dan kajian empirikal.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b21" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b21" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b21" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b21" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b21" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b22" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">22.</td>
-                                <td class="p-3">Instrumen yang sahih boleh membantu menghasilkan data yang boleh dipercayai.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b22" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b22" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b22" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b22" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b22" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b23" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">23.</td>
-                                <td class="p-3">Instrumen yang praktikal memudahkan pentadbiran dan pengumpulan data.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b23" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b23" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b23" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b23" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b23" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b24" class="border-b transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">24.</td>
-                                <td class="p-3">Instrumen yang sistematik dapat membantu mengenal pasti intervensi yang sesuai.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b24" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b24" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b24" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b24" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b24" value="5" class="form-radio"></td>
-                            </tr>
-                            <tr data-question="b25" class="transition-colors duration-300 hover:bg-gray-50">
-                                <td class="p-3 font-medium">25.</td>
-                                <td class="p-3">Instrumen yang baik akan menyumbang kepada pembinaan dasar kesejahteraan psikologi di IPG.</td>
-                                <td class="p-3 text-center"><input type="radio" name="b25" value="1" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b25" value="2" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b25" value="3" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b25" value="4" class="form-radio"></td>
-                                <td class="p-3 text-center"><input type="radio" name="b25" value="5" class="form-radio"></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <!-- Tahun Perkhidmatan (NEW ITEM 4) -->
+                    <label for="tahun_perkhidmatan" class="block text-sm font-medium text-gray-700 pt-4">4. Tahun perkhidmatan</label>
+                    <input type="number" id="tahun_perkhidmatan" name="tahun_perkhidmatan" required min="0" max="50" class="w-full p-3 bg-white border border-gray-400 rounded-lg text-gray-800 focus:ring-blue-700 focus:border-blue-700" placeholder="Masukkan bilangan tahun perkhidmatan">
+                </div>
+                
+                <div class="flex justify-end mt-8">
+                    <button type="button" onclick="goToSection(2)" class="primary-accent text-white font-semibold py-2 px-6 rounded-xl hover:bg-blue-600 transition duration-200 shadow-md">
+                        Seterusnya
+                    </button>
                 </div>
             </div>
 
-            <!-- Submit Button -->
-            <div class="text-center">
-                <button id="submitButton" type="submit" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 transition-all duration-300 shadow-lg w-full sm:w-auto flex items-center justify-center mx-auto">
-                    <span id="submitButtonText">Hantar</span>
-                    <span id="submitButtonSpinner" class="hidden loader"></span>
-                </button>
+            <!-- Seksyen 2: Keperluan Asas Psikologi (24 item) -->
+            <div id="section-2" class="section-content hidden">
+                <h2 class="text-2xl font-bold primary-text-accent mb-6 border-b border-gray-300 pb-2">Seksyen 2: Keperluan Asas Psikologi</h2>
+                <p class="text-gray-600 mb-6">Arahan: Sila bulatkan satu nombor yang mewakili skala paling sesuai dengan apa yang anda fikir dan rasa secara umum. (1 = Sangat tidak setuju, 5 = Sangat setuju)</p>
+                
+                <div id="kap-items" class="space-y-8">
+                    <!-- Items will be generated by JavaScript -->
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" onclick="goToSection(1)" class="bg-gray-500 text-white font-semibold py-2 px-6 rounded-xl hover:bg-gray-400 transition duration-200 shadow-md">
+                        Sebelumnya
+                    </button>
+                    <button type="button" onclick="goToSection(3)" class="primary-accent text-white font-semibold py-2 px-6 rounded-xl hover:bg-blue-600 transition duration-200 shadow-md">
+                        Seterusnya
+                    </button>
+                </div>
             </div>
+
+            <!-- Seksyen 3: Resiliens (6 item) -->
+            <div id="section-3" class="section-content hidden">
+                <h2 class="text-2xl font-bold primary-text-accent mb-6 border-b border-gray-300 pb-2">Seksyen 3: Resiliens</h2>
+                <p class="text-gray-600 mb-6">Arahan: Sila bulatkan satu nombor yang mewakili skala paling sesuai dengan apa yang anda fikir dan rasa secara umum. (1 = Sangat tidak setuju, 5 = Sangat setuju)</p>
+
+                <div id="resilience-items" class="space-y-8">
+                    <!-- Items will be generated by JavaScript -->
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" onclick="goToSection(2)" class="bg-gray-500 text-white font-semibold py-2 px-6 rounded-xl hover:bg-gray-400 transition duration-200 shadow-md">
+                        Sebelumnya
+                    </button>
+                    <!-- Submit button uses a clean success color (Green) for clarity -->
+                    <button type="button" id="submit-button" class="bg-green-600 text-white font-semibold py-2 px-6 rounded-xl hover:bg-green-500 transition duration-200 shadow-md">
+                        Hantar & Lihat Keputusan
+                    </button>
+                </div>
+            </div>
+
+            <!-- Seksyen 4: Keputusan -->
+            <div id="section-4" class="section-content hidden">
+                <h2 class="text-2xl font-bold primary-text-accent mb-6 border-b border-gray-300 pb-2">Seksyen 4: Keputusan IKPO Anda</h2>
+                
+                <!-- Output Container for Print/PDF -->
+                <div id="result-output" class="result-card p-6 rounded-xl space-y-8">
+                    <h3 class="text-xl font-bold primary-text-accent border-b border-gray-200 pb-2">Ringkasan Skor Sub-konstruk</h3>
+                    
+                    <div class="flex flex-wrap md:flex-nowrap gap-6">
+                        <!-- Chart Container -->
+                        <div class="w-full md:w-1/2 p-4 bg-gray-50 rounded-lg shadow-inner border border-gray-200">
+                            <!-- UPDATED LABEL HERE -->
+                            <h4 class="text-lg font-semibold text-gray-800 mb-2 text-center">Profil Keperluan Asas Psikologi dan Organisasi (IKPO)</h4>
+                            <canvas id="radarChart"></canvas>
+                        </div>
+
+                        <!-- Table/Summary Container -->
+                        <div class="w-full md:w-1/2 overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-300 text-sm border border-gray-300 rounded-lg">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="p-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Sub-konstruk</th>
+                                        <th class="p-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">Purata</th>
+                                        <th class="p-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">Tahap</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="score-summary-table" class="divide-y divide-gray-200 bg-white">
+                                    <!-- Results populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Interpretation -->
+                    <div class="space-y-6">
+                        <h3 class="text-xl font-bold primary-text-accent pt-4 border-b border-gray-200 pb-2">Interpretasi Terperinci</h3>
+                        <div id="detailed-interpretation" class="space-y-4 text-gray-700">
+                            <!-- Interpretations populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-4 mt-8">
+                    <!-- Print: Secondary action, neutral color -->
+                    <button type="button" onclick="printResults()" class="bg-gray-500 text-white font-semibold py-2 px-6 rounded-xl hover:bg-gray-400 transition duration-200 shadow-md flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-2a2 2 0 00-2-2H9a2 2 0 00-2 2v2a2 2 0 002 2zM9 14v-4"/></svg>
+                        Cetak Keputusan
+                    </button>
+                    <!-- PDF: Primary action, formal color -->
+                    <button type="button" onclick="downloadPdf()" class="primary-accent text-white font-semibold py-2 px-6 rounded-xl hover:bg-blue-600 transition duration-200 shadow-md flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        Muat Turun PDF
+                    </button>
+                </div>
+                <div class="flex justify-start mt-8">
+                    <button type="button" onclick="goToSection(3)" class="bg-gray-500 text-white font-semibold py-2 px-6 rounded-xl hover:bg-gray-400 transition duration-200 shadow-md">
+                        Kembali ke Soal Selidik
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Message box for errors/notifications -->
+            <div id="message-box" class="fixed bottom-4 right-4 bg-red-600 text-white p-3 rounded-lg shadow-xl hidden transition-opacity duration-300 z-50"></div>
         </form>
     </div>
 
-    <!-- Modal for submission confirmation -->
-    <div id="successModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-white p-8 rounded-xl shadow-2xl text-center max-w-sm mx-auto">
-            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-            </div>
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Terima Kasih!</h3>
-            <div class="mt-2 px-7 py-3">
-                <p class="text-sm text-gray-500">
-                    Jawapan anda telah berjaya dihantar.
-                </p>
-            </div>
-            <div class="mt-4">
-                <button id="closeModal" type="button" class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    Tutup
-                </button>
-            </div>
-        </div>
+    <!-- Print/PDF friendly container (hidden by default) -->
+    <div id="pdf-content" class="print-only">
+        <!-- Content will be mirrored here for clean PDF generation -->
     </div>
 
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzUpTczuF-ZRbXW7q1i8-B_v1TDW81SIWcxYkKtiYeumawAIgK324rNnUU1lm0kizky/exec'; // <-- PASTIKAN URL INI BETUL
-            
-            const form = document.getElementById('questionnaireForm');
-            const submitButton = document.getElementById('submitButton');
-            const submitButtonText = document.getElementById('submitButtonText');
-            const submitButtonSpinner = document.getElementById('submitButtonSpinner');
-            const modal = document.getElementById('successModal');
-            const closeModalButton = document.getElementById('closeModal');
-            const errorMessage = document.getElementById('errorMessage');
-            const submissionError = document.getElementById('submissionError');
+        // *** PENTING: URL GOOGLE APPS SCRIPT ANDA ***
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwzxpJh_1Lg40SNqKNImPFPdhyAEju_opbRLWFrLxkEdnV3aLZ9rEbY82uG7TJrm5kILA/exec"; 
+        // -----------------------------------------------------------------
 
-            form.addEventListener('submit', function(event) {
-                event.preventDefault(); 
-                
-                if (validateForm()) {
-                    submitButton.disabled = true;
-                    submitButtonText.textContent = 'Menghantar...';
-                    submitButtonSpinner.classList.remove('hidden');
-                    submissionError.classList.add('hidden');
+        // Data Struktur untuk Soal Selidik
+        const KAP_ITEMS = [
+            { id: 1, text: "Saya berasa mempunyai pilihan dan kebebasan dalam melakukan sesuatu.", construct: "KA" },
+            { id: 2, text: "Kebanyakan tugasan yang saya lakukan adalah kerana terpaksa.", construct: "KKA" },
+            { id: 3, text: "Saya berasa orang yang saya sayangi juga mengambil berat terhadap saya.", construct: "KH" },
+            { id: 4, text: "Saya berasa tersisih daripada kumpulan sendiri.", construct: "KKH" },
+            { id: 5, text: "Saya berasa yakin saya dapat melakukan sesuatu dengan baik.", construct: "KKC" },
+            { id: 6, text: "Saya sangat meragui kemampuan saya untuk melakukan sesuatu dengan baik.", construct: "KKKC" },
+            { id: 7, text: "Saya berasa keputusan saya menggambarkan perkara yang diinginkan.", construct: "KA" },
+            { id: 8, text: "Saya rasa terpaksa melakukan banyak tugasan yang bukan kerja saya.", construct: "KKA" },
+            { id: 9, text: "Saya selesa dengan orang yang mengambil berat terhadap saya dan orang yang saya peduli.", construct: "KH" },
+            { id: 10, text: "Saya berasa orang yang penting dalam hidup saya bersikap dingin dan menjauhkan diri daripada saya.", construct: "KKH" },
+            { id: 11, text: "Saya berasa saya berkebolehan dalam melakukan sesuatu.", construct: "KKC" },
+            { id: 12, text: "Saya berasa kecewa dengan kebanyakan prestasi saya.", construct: "KKKC" },
+            { id: 13, text: "Saya berasa pilihan saya mencerminkan diri saya yang sebenar.", construct: "KA" },
+            { id: 14, text: "Saya berasa tertekan untuk melakukan terlalu banyak tugasan.", construct: "KKA" },
+            { id: 15, text: "Saya berasa rapat dan berhubungan baik dengan orang yang penting dalam hidup saya.", construct: "KH" },
+            { id: 16, text: "Saya beranggapan bahawa mereka yang meluangkan masa bersama saya tidak menyukai saya.", construct: "KKH" },
+            { id: 17, text: "Saya berasa cekap untuk mencapai matlamat saya.", construct: "KKC" },
+            { id: 18, text: "Saya berasa tidak yakin dengan keupayaan sendiri.", construct: "KKKC" },
+            { id: 19, text: "Saya berasa saya melakukan perkara yang sangat saya minati.", construct: "KA" },
+            { id: 20, text: "Saya berasa tugasan harian saya dipenuhi dengan pelbagai tanggungjawab.", construct: "KKA" },
+            { id: 21, text: "Saya berasa gembira dengan orang yang meluangkan masa bersama-sama saya.", construct: "KH" },
+            { id: 22, text: "Saya berasa hubungan yang saya ada hanya bersifat luaran sahaja.", construct: "KKH" },
+            { id: 23, text: "Saya berasa saya boleh menyelesaikan sesuatu tugas yang sukar dengan jayanya.", construct: "KKC" },
+            { id: 24, text: "Saya berasa gagal kerana kesilapan yang saya lakukan.", construct: "KKKC" },
+        ];
 
-                    const formData = new FormData(form);
-                    
-                    fetch(SCRIPT_URL, { method: 'POST', body: formData})
-                        .then(response => {
-                            if (response.ok) {
-                                modal.classList.remove('hidden');
-                                errorMessage.classList.add('hidden');
-                                form.reset();
-                            } else {
-                                throw new Error('Network response was not ok.');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error!', error.message);
-                            submissionError.classList.remove('hidden');
-                        })
-                        .finally(() => {
-                            submitButton.disabled = false;
-                            submitButtonText.textContent = 'Hantar';
-                            submitButtonSpinner.classList.add('hidden');
-                        });
+        const RESILIENCE_ITEMS = [
+            { id: 1, text: "Saya melihat masalah sebagai peluang.", construct: "R" },
+            { id: 2, text: "Saya boleh menanggung kegagalan.", construct: "R" },
+            { id: 3, text: "Saya boleh mengurus situasi yang sukar.", construct: "R" },
+            { id: 4, text: "Saya boleh merancang langkah-langkah untuk terus maju ke hadapan dalam situasi yang sukar.", construct: "R" },
+            { id: 5, text: "Saya berani untuk mengambil risiko apabila saya percaya akan ada hasil yang positif.", construct: "R" },
+            { id: 6, text: "Saya berani menghadapi cabaran daripada mengelaknya.", construct: "R" },
+        ];
 
-                } else {
-                    errorMessage.classList.remove('hidden');
-                    const firstError = document.querySelector('.error-question, .error-title');
-                    if (firstError) {
-                        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
+        const CONSTRUCT_LABELS = {
+            "KA": "Kepuasan Autonomi",
+            "KKA": "Kekecewaan Autonomi",
+            "KH": "Kepuasan Hubungan",
+            "KKH": "Kekecewaan Hubungan",
+            "KKC": "Kepuasan Kecekapan",
+            "KKKC": "Kekecewaan Kecekapan",
+            "R": "Resiliens",
+        };
+
+        const INTERPRETATIONS = {
+            "KA": {
+                desc: "Individu berasa bebas memilih dan melakukan sesuatu mengikut kehendak dan nilai diri sendiri, tanpa sebarang paksaan atau tekanan.",
+                Tinggi: "Individu mempunyai kebebasan dalam membuat pilihan dan keputusan tanpa sekatan dan paksaan. Individu akan berasa lebih yakin terhadap tindakan sendiri.",
+                Sederhana: "Kadangkala individu merasakan diri mempunyai kebebasan dalam membuat keputusan namun ada masa keputusan masih dipengaruhi oleh pihak lain dalam beberapa keadaan.",
+                Rendah: "Individu merasa terpaksa mengikut arahan dan tidak mempunyai kebebasan untuk membuat pilihan sendiri dalam kehidupan."
+            },
+            "KKA": {
+                desc: "Individu merasakan diri mereka dipaksa, dikongkong dan ditekan bagi melakukan sesuatu.",
+                Tinggi: "Individu merasakan diri dikawal dan dipaksa untuk melakukan sesuatu. Akibatnya mereka mengalami tekanan akibat kekurangan kebebasan dalam membuat keputusan.",
+                Sederhana: "Individu hilang kawalan terhadap tindakan sendiri namun masih mempunyai ruang untuk membuat beberapa keputusan secara bebas.",
+                Rendah: "Individu merasakan mereka mempunyai kebebasan dalam membuat keputusan dan tidak terkesan dengan kawalan luaran yang dikenakan ke atas diri."
+            },
+            "KH": {
+                desc: "Situasi di mana individu merasakan diri disayangi, dihargai, dan berhubungan secara positif dengan orang sekeliling.",
+                Tinggi: "Individu mempunyai hubungan sosial yang kukuh, merasakan diri diterima oleh keluarga, rakan dan komuniti. Selain itu, individu juga merasakan diri mereka mendapat sokongan daripada individu penting dalam hidup.",
+                Sederhana: "Kadangkala individu merasakan diri mereka dihargai dan mendapat sokongan daripada orang lain. Namun begitu, individu menghadapi kesukaran dalam membina hubungan dengan lebih mendalaman.",
+                Rendah: "Individu mudah terasing, kurang mendapat sokongan sosial, mengalami masalah untuk menjalin hubungan yang bermakna dengan orang lain."
+            },
+            "KKH": {
+                desc: "Individu mudah berasa tidak dihargai dan terasing dalam hubungan sosial.",
+                Tinggi: "Mudah berasa terasing, tidak dihargai oleh orang sekeliling, dan mengalami kesukaran dalam membina hubungan yang bermakna.",
+                Sederhana: "Individu merasa tidak diterima oleh orang lain, namun masih mempunyai beberapa hubungan yang menyokong.",
+                Rendah: "Invidu merasakan diri diterima dan disokong dalam hubungan sosial dan tidak mengalami perasaan terasing mahupun kesunyian."
+            },
+            "KKC": {
+                desc: "Individu merasai dirinya mempunyai kemahiran, boleh menyelesaikan tugas dengan sempurna, mampu menghadapi cabaran dalam berkerjaya.",
+                Tinggi: "Individu berkemampuan untuk menyelesaikan tugas, mempunyai kebolehan dan yakin dengan diri sendiri. Hal ini mendorong individu bersikap berdaya saing dalam pelbagai situasi.",
+                Sederhana: "Individu merasakan diri memiliki kecekapan dalam beberapa aspek namun masih mempunyai perasaan ketidakpastian terhadap kebolehan diri dalam situasi tertentu.",
+                Rendah: "Kebiasaanya kerap meragui kebolehan dalam diri, mengalami masalah untuk mencapai matlamat, serta sering merasakan diri kurang berupaya bagi melaksanakan tugasan yang diberikan."
+            },
+            "KKKC": {
+                desc: "Seseorang individu mempunyai perasaan lemah kerana tidak mampu atau gagal menguasai tugasan dan cabaran dalam kehidupan.",
+                Tinggi: "Individu merasakan diri tidak berupaya, sering gagal dalam tugasan serta kurang mempunyai keyakinan pada diri sendiri dan mengalami kesukaran untuk mencapai sesuatu matlamat.",
+                Sederhana: "Individu mempunyai kesukaran untuk menyelesaikan tugasan dan berasa kurang kompeten dalam beberapa situasi tertentu.",
+                Rendah: "Individu jarang merasakan kegagalan itu sebagai sesuatu yang menghalang sebaliknya mereka berasa yakin terhadap kebolehan diri untuk menyelesaikan tugas yang diberikan."
+            },
+            "R": {
+                desc: "Resiliens merujuk kepada keupayaan individu untuk menyesuaikan diri, bangkit semula, dan berfungsi dengan baik selepas berdepan dengan tekanan, cabaran, kesukaran atau kegagalan dalam kehidupan.",
+                Tinggi: "Individu menunjukkan keupayaan tinggi untuk menyesuaikan diri, bangkit dan terus berfungsi dengan baik walaupun berdepan tekanan atau kegagalan. Mereka berfikir secara positif, mengawal emosi dengan matang, menggunakan strategi penyelesaian masalah secara berkesan, dan menjadikan cabaran sebagai peluang untuk berkembang.",
+                Sederhana: "Individu mampu menyesuaikan diri secara sederhana dalam menghadapi cabaran. Mereka masih mengalami tekanan, namun dapat menggunakan strategi tertentu seperti mendapatkan sokongan sosial, berfikir secara positif, atau berehat seketika sebelum bangkit semula.",
+                Rendah: "Individu sukar menyesuaikan diri apabila berdepan tekanan atau kegagalan. Mereka cenderung mudah putus asa, berasa lemah, hilang motivasi dan mungkin menyalahkan keadaan atau orang lain."
+            }
+        };
+
+        let currentSection = 1;
+        let radarChartInstance = null;
+        const totalSections = 4;
+
+        // --- Helper Functions ---
+
+        /** Menjana item soal selidik (radio buttons) */
+        function createItem(item, index, namePrefix) {
+            const itemNumber = index + 1;
+            const container = document.createElement('div');
+            container.className = 'p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-200';
+            container.innerHTML = `
+                <p class="text-base font-medium text-gray-800 mb-4">${itemNumber}. ${item.text}</p>
+                <div class="flex flex-wrap sm:flex-nowrap justify-between text-center gap-2">
+                    <span class="text-xs text-gray-500 w-full sm:w-auto">Sangat tidak setuju</span>
+                    <div class="flex w-full justify-between max-w-lg mx-auto">
+                        ${[1, 2, 3, 4, 5].map(val => `
+                            <input type="radio" id="${namePrefix}-${itemNumber}-${val}" name="${namePrefix}-${itemNumber}" value="${val}" class="hidden" required>
+                            <label for="${namePrefix}-${itemNumber}-${val}" class="radio-label w-10 h-10 flex items-center justify-center rounded-full bg-white text-gray-600 cursor-pointer">
+                                ${val}
+                            </label>
+                        `).join('')}
+                    </div>
+                    <span class="text-xs text-gray-500 w-full sm:w-auto">Sangat setuju</span>
+                </div>
+            `;
+            return container;
+        }
+
+        /** Memaparkan mesej notifikasi/ralat */
+        function showMessage(message, type = 'error') {
+            const box = document.getElementById('message-box');
+            box.textContent = message;
+            box.className = `fixed bottom-4 right-4 p-3 rounded-lg shadow-xl transition-opacity duration-300 z-50 ${type === 'error' ? 'bg-red-600' : 'bg-green-600'} block`;
+            setTimeout(() => {
+                box.classList.add('hidden');
+            }, 5000);
+        }
+
+        /** Navigasi antara seksyen */
+        function goToSection(sectionNumber) {
+            // Validate demographics before leaving Section 1
+            if (currentSection === 1 && sectionNumber === 2) {
+                const jantina = document.getElementById('jantina').value;
+                const umur = document.getElementById('umur').value;
+                const jawatan = document.getElementById('jawatan').value;
+                const tahunPerkhidmatan = document.getElementById('tahun_perkhidmatan').value;
+                if (!jantina || !umur || !jawatan || tahunPerkhidmatan === "") {
+                    showMessage("Sila lengkapkan semua maklumat demografi sebelum meneruskan.", 'error');
+                    return;
                 }
-            });
-
-            function validateForm() {
-                let isFormValid = true;
-                document.querySelectorAll('.error-question').forEach(el => el.classList.remove('error-question'));
-                document.querySelectorAll('.error-title').forEach(el => el.classList.remove('error-title'));
-
-                const questionGroups = form.querySelectorAll('[data-question]');
-                questionGroups.forEach(group => {
-                    const groupName = group.dataset.question;
-                    const radios = form.querySelectorAll(`input[name="${groupName}"]`);
-                    if (radios.length > 0) {
-                        const isAnswered = Array.from(radios).some(radio => radio.checked);
-                        if (!isAnswered) {
-                            isFormValid = false;
-                            group.classList.add('error-question');
-                            const sectionTitle = group.closest('div[id^="section"]').querySelector('.section-title');
-                            if(sectionTitle) sectionTitle.classList.add('error-title');
-                        }
-                    }
-                });
-                return isFormValid;
             }
 
-            closeModalButton.addEventListener('click', function() {
-                modal.classList.add('hidden');
-                document.querySelectorAll('.error-question').forEach(el => el.classList.remove('error-question'));
-                document.querySelectorAll('.error-title').forEach(el => el.classList.remove('error-title'));
+            currentSection = sectionNumber;
+            document.querySelectorAll('.section-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`section-${sectionNumber}`).classList.remove('hidden');
+
+            document.querySelectorAll('.section-icon-container .section-icon').forEach(el => {
+                el.classList.remove('active', 'primary-accent');
+                el.classList.add('bg-gray-700', 'hover:bg-gray-600');
+                el.querySelector('svg').style.color = 'white'; // Set inactive icon color to white (tailwind gray-700 background)
+                el.querySelector('p').style.color = 'white'; // Set inactive text color to white
             });
             
-            modal.addEventListener('click', function(event) {
-                if (event.target === modal) {
-                    closeModalButton.click();
+            // Set active styles
+            const currentNav = document.getElementById(`nav-${sectionNumber}`);
+            if (currentNav) {
+                currentNav.classList.add('active', 'primary-accent');
+                currentNav.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+                currentNav.querySelector('svg').style.color = 'white'; // Ensure active icon color is white
+                currentNav.querySelector('p').style.color = 'white'; // Ensure active text color is white
+            }
+
+
+            // Scroll to top of the survey container
+            document.getElementById('survey-container').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        /** Mendapatkan tahap berdasarkan skor purata (Tertiary Split 1-5) */
+        function getLevel(score) {
+            if (score >= 3.67) return { level: "Tinggi", color: "text-green-600" };
+            if (score >= 2.34) return { level: "Sederhana", color: "text-yellow-600" };
+            return { level: "Rendah", color: "text-red-600" };
+        }
+
+        /** Fungsi Memaparkan Keputusan (Dipanggil selepas data dihantar) */
+        function displayResults(finalResults) {
+            // Update Table
+            const tableBody = document.getElementById('score-summary-table');
+            const detailedInterpretationDiv = document.getElementById('detailed-interpretation');
+            tableBody.innerHTML = '';
+            detailedInterpretationDiv.innerHTML = '';
+
+            const chartLabels = [];
+            const chartData = [];
+            
+            Object.keys(finalResults).forEach(key => {
+                const result = finalResults[key];
+                chartLabels.push(result.label.split(" ").join("\n")); // For better radar chart labeling
+                chartData.push(parseFloat(result.average));
+
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition duration-150';
+                row.innerHTML = `
+                    <td class="p-3 font-semibold text-gray-800">${result.label}</td>
+                    <td class="p-3 text-center font-mono bg-gray-100 rounded-md text-gray-700">${result.average}</td>
+                    <td class="p-3 text-center font-bold ${result.level.color}">${result.level.level.toUpperCase()}</td>
+                `;
+                tableBody.appendChild(row);
+
+                const interpretation = INTERPRETATIONS[key];
+                const detail = interpretation[result.level.level];
+
+                const interpretationBlock = document.createElement('div');
+                interpretationBlock.className = 'p-4 bg-gray-50 border-l-4 border-blue-700 rounded-r-lg shadow-inner'; // Blue border
+                interpretationBlock.innerHTML = `
+                    <h4 class="text-lg font-bold text-blue-700">${result.label} (${result.level.level.toUpperCase()})</h4>
+                    <p class="text-sm italic text-gray-500 mb-2">${interpretation.desc}</p>
+                    <p>${detail}</p>
+                `;
+                detailedInterpretationDiv.appendChild(interpretationBlock);
+            });
+
+            // Update Radar Chart
+            updateRadarChart(chartLabels, chartData);
+
+            // Mirror content for PDF
+            document.getElementById('pdf-content').innerHTML = document.getElementById('result-output').innerHTML;
+
+            // Go to Results Section
+            goToSection(4);
+        }
+
+        /** Fungsi Menghantar Data ke Google Sheet */
+        async function submitDataToSheet(formData, finalResults) {
+            // Gabungkan Demografi dan Skor yang dikira ke dalam FormData
+            formData.append('jantina', document.getElementById('jantina').value);
+            formData.append('umur', document.getElementById('umur').value);
+            formData.append('jawatan', document.getElementById('jawatan').value);
+            formData.append('tahun_perkhidmatan', document.getElementById('tahun_perkhidmatan').value);
+            
+            // Tambah skor purata dan tahap interpretasi
+            Object.keys(finalResults).forEach(key => {
+                formData.append(`${key}_Skor`, finalResults[key].average);
+                formData.append(`${key}_Tahap`, finalResults[key].level.level);
+            });
+
+            // Tunjukkan loading/penghantaran
+            const submitButton = document.getElementById('submit-button');
+            const originalText = submitButton.textContent;
+            submitButton.disabled = true;
+            submitButton.textContent = 'Menghantar Data...';
+
+            try {
+                // Perhatikan: fetch() dengan mode: 'no-cors' adalah standard untuk Google Apps Script
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    body: formData,
+                    mode: 'no-cors' 
+                });
+                
+                showMessage("Data berjaya dihantar ke Google Sheet! (Penyegerakan Aktif)", 'success');
+                displayResults(finalResults); // Paparkan keputusan selepas berjaya
+            } catch (error) {
+                console.error('Error submitting data:', error);
+                showMessage("Ralat semasa menghantar data. Sila semak Apps Script URL.", 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = originalText;
+            }
+        }
+
+        /** Mengira skor dan memaparkan keputusan (Main logic handler) */
+        function calculateAndDisplayResults() {
+            if (!validateQuestionnaire()) {
+                showMessage("Sila jawab semua soalan dalam Seksyen 2 dan 3.", 'error');
+                return;
+            }
+
+            const scores = {};
+            // Guna FormData untuk mengumpul semua item borang secara automatik
+            const formData = new FormData(document.getElementById('ikpo-form'));
+            
+            // Inisialisasi skor
+            Object.keys(CONSTRUCT_LABELS).forEach(key => scores[key] = { sum: 0, count: 0 });
+
+            // KAP (Seksyen 2) - Kira skor purata
+            KAP_ITEMS.forEach((item, index) => {
+                const name = `kap-${index + 1}`;
+                const value = parseInt(formData.get(name) || '0');
+                if (value > 0) {
+                    scores[item.construct].sum += value;
+                    scores[item.construct].count += 1;
                 }
             });
-        });
-    </script>
 
+            // Resiliens (Seksyen 3) - Kira skor purata
+            RESILIENCE_ITEMS.forEach((item, index) => {
+                const name = `res-${index + 1}`;
+                const value = parseInt(formData.get(name) || '0');
+                if (value > 0) {
+                    scores[item.construct].sum += value;
+                    scores[item.construct].count += 1;
+                }
+            });
+
+            // Kirakan Purata Akhir
+            const finalResults = {};
+            Object.keys(scores).forEach(key => {
+                const score = scores[key].count > 0 ? (scores[key].sum / scores[key].count) : 0;
+                finalResults[key] = {
+                    average: score.toFixed(2),
+                    level: getLevel(score),
+                    label: CONSTRUCT_LABELS[key]
+                };
+            });
+
+            // LANGKAH PENTING: Hantar data mentah, skor, dan tahap ke Apps Script
+            submitDataToSheet(formData, finalResults);
+        }
+        
+        /** Memaparkan Graf Radar */
+        function updateRadarChart(labels, data) {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            
+            // Destroy existing chart instance if it exists
+            if (radarChartInstance) {
+                radarChartInstance.destroy();
+            }
+
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Skor Purata',
+                        data: data,
+                        backgroundColor: 'rgba(30, 64, 175, 0.4)', /* Blue-700 with opacity */
+                        borderColor: 'rgba(30, 64, 175, 1)',      /* Blue-700 solid */
+                        pointBackgroundColor: 'rgba(30, 64, 175, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(30, 64, 175, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                            pointLabels: { 
+                                color: '#1e293b', 
+                                font: { size: 10, weight: 'bold' }
+                            },
+                            suggestedMin: 1,
+                            suggestedMax: 5,
+                            ticks: { 
+                                backdropColor: 'white', 
+                                color: '#1e293b',
+                                stepSize: 1,
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#1e293b'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /** Fungsi Validasi Soal Selidik */
+        function validateQuestionnaire() {
+            // Check Demografi is validated in goToSection(2)
+
+            // Check Section 2 (KAP)
+            for (let i = 1; i <= 24; i++) {
+                if (!document.querySelector(`input[name="kap-${i}"]:checked`)) return false;
+            }
+
+            // Check Section 3 (Resiliens)
+            for (let i = 1; i <= 6; i++) {
+                if (!document.querySelector(`input[name="res-${i}"]:checked`)) return false;
+            }
+
+            return true;
+        }
+
+        /** Fungsi Muat Turun PDF */
+        async function downloadPdf() {
+            const jsPDF = window.jspdf.jsPDF; 
+            const element = document.getElementById('result-output');
+
+            showMessage("Menjana fail PDF, sila tunggu sebentar...", 'success');
+
+            // Gunakan html2canvas untuk menangkap kandungan HTML
+            const canvas = await html2canvas(element, {
+                scale: 2, // Meningkatkan resolusi
+                useCORS: true,
+                logging: true,
+                backgroundColor: 'white' // White background for PDF
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgWidth = 210; // A4 width in mm
+            const pageHeight = 295; // A4 height in mm
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 0;
+
+            // Tambah tajuk di atas
+            pdf.setFontSize(16);
+            pdf.setTextColor(30, 64, 175); // Blue-700
+            pdf.setFillColor(241, 245, 249); // Gray-100
+            pdf.rect(0, 0, imgWidth, 15, 'F');
+            pdf.text("Laporan Keputusan Inventori Keperluan Asas Psikologi & Organisasi (IKPO)", imgWidth / 2, 10, { align: 'center' });
+            
+            position = 20; // Mulakan selepas tajuk
+
+            // Tambah maklumat demografi ringkas
+            const jantina = document.getElementById('jantina').value;
+            const umur = document.getElementById('umur').value;
+            const jawatan = document.getElementById('jawatan').value;
+            const tahunPerkhidmatan = document.getElementById('tahun_perkhidmatan').value; // New Demographics
+            
+            pdf.setFontSize(10);
+            pdf.setTextColor(71, 85, 105); // Gray-600
+            pdf.text(`Demografi: Jantina - ${jantina}, Umur - ${umur}, Jawatan - ${jawatan}, Tahun Perkhidmatan - ${tahunPerkhidmatan}`, 10, position);
+            position += 5;
+
+            // Tambah imej (chart dan table) ke PDF
+            if (heightLeft < pageHeight) {
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            } else {
+                while (heightLeft > 0) {
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                    position -= pageHeight;
+                    if (heightLeft > -1) {
+                        pdf.addPage();
+                    }
+                }
+            }
+
+            pdf.save('Keputusan_IKPO.pdf');
+            showMessage("Fail PDF berjaya dimuat turun!", 'success');
+        }
+
+        /** Fungsi Cetak Keputusan */
+        function printResults() {
+            // Sembunyikan elemen yang tidak perlu dalam cetakan
+            document.getElementById('survey-container').classList.add('hidden');
+            
+            // Salin dan paparkan kandungan keputusan ke kontena cetakan
+            document.getElementById('pdf-content').innerHTML = document.getElementById('result-output').innerHTML;
+            document.getElementById('pdf-content').classList.remove('print-only');
+            document.getElementById('pdf-content').classList.add('block');
+
+            // Cetak
+            window.print();
+
+            // Kembalikan paparan asal selepas cetak
+            document.getElementById('survey-container').classList.remove('hidden');
+            document.getElementById('pdf-content').classList.remove('block');
+            document.getElementById('pdf-content').classList.add('print-only');
+        }
+
+        // --- Initialization ---
+
+        window.onload = function() {
+            // Generate KAP Items (Section 2)
+            const kapContainer = document.getElementById('kap-items');
+            KAP_ITEMS.forEach((item, index) => {
+                kapContainer.appendChild(createItem(item, index, 'kap'));
+            });
+
+            // Generate Resilience Items (Section 3)
+            const resilienceContainer = document.getElementById('resilience-items');
+            RESILIENCE_ITEMS.forEach((item, index) => {
+                resilienceContainer.appendChild(createItem(item, index, 'res'));
+            });
+
+            // Set up event listeners
+            document.querySelectorAll('.section-icon-container').forEach(navContainer => {
+                const nav = navContainer.querySelector('.section-icon');
+                nav.addEventListener('click', () => {
+                    if (nav.dataset.section < currentSection) {
+                         goToSection(parseInt(nav.dataset.section));
+                    }
+                });
+            });
+
+            document.getElementById('submit-button').addEventListener('click', calculateAndDisplayResults);
+
+            // Initial view
+            goToSection(1);
+        };
+
+    </script>
 </body>
 </html>
-
