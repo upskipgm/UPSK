@@ -13,7 +13,7 @@ const Layout: React.FC<LayoutProps> = ({ view, setView, children, logoUrl }) => 
   return (
     <div className="min-h-screen flex flex-col">
       <header className={`py-4 px-6 flex justify-between items-center shadow-sm sticky top-0 z-50 ${view === 'Admin' ? 'bg-indigo-900 text-white' : 'bg-white text-indigo-900'}`}>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3" onClick={() => setView('Public')} style={{ cursor: 'pointer' }}>
           {logoUrl ? (
             <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm border border-slate-200 bg-white flex items-center justify-center">
               <img src={logoUrl} alt="Logo Unit" className="w-full h-full object-contain" />
