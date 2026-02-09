@@ -26,7 +26,7 @@ const AdminView: React.FC<AdminViewProps> = ({
 }) => {
   const [activeMenu, setActiveMenu] = useState<'Stats' | 'Appointments' | 'DataManagement' | 'Documents' | 'Settings'>('Stats');
   
-  // Resources state (could also be lifted if needed)
+  // Resources state
   const [posters, setPosters] = useState(POSTERS);
   const [worksheets, setWorksheets] = useState(WORKSHEETS);
 
