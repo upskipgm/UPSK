@@ -1,132 +1,36 @@
+
 <!DOCTYPE html>
 <html lang="ms">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unit Psikologi dan Kaunseling, IPGM</title>
-    <!-- Tailwind CSS CDN for styling -->
+    <title>Unit Psikologi & Kaunseling, IPGM</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts - Inter for consistent typography -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Custom styles for the Inter font and background */
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Tailwind gray-100 */
-        }
-        /* Styling for the active tab button */
-        .tab-button.active {
-            border-bottom-color: #2563eb; /* Tailwind blue-600 */
-            color: #2563eb; /* Tailwind blue-600 */
-            font-weight: 600;
-        }
-        /* Card hover effect for a more interactive feel */
-        .card {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            font-family: 'Plus Jakarta Sans', sans-serif;
         }
     </style>
+
+<link rel="stylesheet" href="/index.css">
+<script type="importmap">
+{
+  "imports": {
+    "recharts": "https://esm.sh/recharts@^3.7.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "react": "https://esm.sh/react@19.0.0",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/Percubaan/assets/index-aAAMBCqF.js"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-
-    <div class="bg-white rounded-lg shadow-xl overflow-hidden max-w-4xl w-full mx-auto">
-        <!-- Header Section: Welcoming message and IPGM Unit name -->
-        <div class="bg-blue-700 text-white p-6 text-center rounded-t-lg">
-            <h1 class="text-3xl sm:text-4xl font-extrabold mb-2">Selamat Datang</h1>
-            <p class="text-lg sm:text-xl font-medium">Laman Unit Psikologi dan Kaunseling, IPGM</p>
-        </div>
-
-        <!-- Main Content Area -->
-        <div class="p-6 sm:p-8">
-            <p class="text-gray-700 text-base sm:text-lg mb-6 leading-relaxed">
-                Unit Psikologi dan Kaunseling IPGM komited dalam menyediakan perkhidmatan sokongan psikologi dan kaunseling bagi kesejahteraan warga IPGM. Anda boleh pilih ujian psikologi di bawah yang bersesuaian dengan anda.
-            </p>
-
-            <!-- Tabs Navigation: Allows switching between PKPW and PKPP -->
-            <div class="flex border-b border-gray-200 mb-6 rounded-md">
-                <button id="tab-pkpw" class="tab-button active flex-1 py-3 px-4 text-center text-gray-600 border-b-2 border-transparent hover:border-blue-500 hover:text-blue-500 transition-colors duration-200 rounded-tl-md" onclick="showTab('pkpw')">
-                    Profil Kesejahteraan & Personaliti Warga (PKPW)
-                </button>
-                <button id="tab-pkpp" class="tab-button flex-1 py-3 px-4 text-center text-gray-600 border-b-2 border-transparent hover:border-blue-500 hover:text-blue-500 transition-colors duration-200 rounded-tr-md" onclick="showTab('pkpp')">
-                    Profil Kesejahteraan & Personaliti Pelajar (PKPP)
-                </button>
-            </div>
-
-            <!-- Tab Content for pkpp (Initially visible) -->
-            <div id="content-pkpw" class="tab-content">
-                <div class="card bg-blue-50 p-6 rounded-lg border border-blue-200 shadow-md flex flex-col sm:flex-row items-center justify-between gap-6">
-                    <div class="text-center sm:text-left">
-                        <h2 class="text-2xl font-bold text-blue-800 mb-2">Ujian PKPW</h2>
-                        <p class="text-blue-700 leading-relaxed">
-                            Ujian ini direka khas untuk mengenal pasti tahap kesejahteraan psikologi, tret personaliti, dan daya tahan warga kerja di IPGK/IPGM.
-                        </p>
-                        <p class="text-blue-700 mt-2 font-medium">
-                            Anggaran masa menjawab: 20-25 minit.
-                        </p>
-                    </div>
-                    <!-- Link to the pkpw subpage. Assumes it will be in a /PKPW/ directory. -->
-                    <a href="/PKPW/" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-blue-700 transition-colors shadow-lg whitespace-nowrap">
-                        Mula Ujian PKPW
-                    </a>
-                </div>
-            </div>
-
-            <!-- Tab Content for pkpp (Initially hidden) -->
-            <div id="content-pkpp" class="tab-content hidden">
-                <div class="card bg-green-50 p-6 rounded-lg border border-green-200 shadow-md flex flex-col sm:flex-row items-center justify-between gap-6">
-                    <div class="text-center sm:text-left">
-                        <h2 class="text-2xl font-bold text-green-800 mb-2">Ujian PKPP</h2>
-                        <p class="text-green-700 leading-relaxed">
-                            Ujian ini adalah untuk mengukur tahap kesejahteraan psikologi dan tret personaliti pelajar IPGKPM.
-                        </p>
-                        <p class="text-green-700 mt-2 font-medium">
-                            Anggaran masa menjawab: 15-20 minit.
-                        </p>
-                    </div>
-                    <!-- Link to the PKPP subpage. Assumes it will be in a /pkpp/ directory. -->
-                    <!-- This link should be updated to the actual PKPP test page when it's ready -->
-                    <a href="/PKPP/" class="bg-green-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-green-700 transition-colors shadow-lg whitespace-nowrap">
-                        Mula Ujian PKPP
-                    </a>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Footer Section -->
-        <div class="bg-gray-100 p-4 text-center text-gray-500 text-sm rounded-b-lg">
-            &copy; 2024 Unit Psikologi dan Kaunseling, IPGM
-        </div>
-    </div>
-
-    <script>
-        // JavaScript function to handle tab switching
-        function showTab(tabId) {
-            // Hide all tab content elements
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.add('hidden');
-            });
-
-            // Deactivate all tab buttons (remove the 'active' class)
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.classList.remove('active');
-            });
-
-            // Show the content for the selected tab
-            document.getElementById(`content-${tabId}`).classList.remove('hidden');
-
-            // Activate the button for the selected tab (add the 'active' class)
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-        }
-
-        // Set the default tab (PKPW) to be visible when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            showTab('pkpw');
-        });
-    </script>
-
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+    <!-- Pastikan fail index.tsx diimport secara eksplisit -->
 </body>
 </html>
