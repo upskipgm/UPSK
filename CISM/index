@@ -317,14 +317,14 @@
                 ikon.className = "mx-auto w-24 h-24 rounded-full flex items-center justify-center text-4xl mb-6 bg-amber-50 text-amber-600";
                 ikon.innerHTML = "😐";
                 adv.className = "text-left p-6 rounded-2xl mb-8 bg-amber-50 text-amber-900 border-l-4 border-amber-500 shadow-sm";
-                adv.innerHTML = "<strong>Saranan:</strong> Kesejahteraan emosi anda berada pada tahap sederhana. Anda digalakkan untuk berbincang dengan Unit Psikologi dan Kaunseling IPGKPM bagi mendapatkan sokongan awal.";
+                adv.innerHTML = "<strong>Saranan:</strong> Tahap gangguan emosi anda berada pada tahap sederhana. Anda akan disantuni oleh pasukan CISM IPGKPM dengan kadar segera. Sekiranya memerlukan perkhidmatan lebih cepat, anda dialu-alukan ke bilik gerakan CISM.";
             } else {
                 st.innerText = "TINGGI (BERISIKO)";
                 st.className = "inline-block px-6 py-2 rounded-full font-bold text-lg bg-red-100 text-red-700";
                 ikon.className = "mx-auto flex h-24 w-24 rounded-full mb-6 bg-red-50 text-red-600 items-center justify-center text-4xl font-bold";
                 ikon.innerHTML = "🚨";
                 adv.className = "text-left p-6 rounded-2xl mb-8 bg-red-50 text-red-900 border-l-4 border-red-500 font-bold shadow-md";
-                adv.innerHTML = "INTERVENSI SEGERA: Skor anda menunjukkan tahap emosi yang tinggi. Sila hubungi Unit Psikologi dan Kaunseling IPGKPM dengan kadar SEGERA untuk bantuan profesional dan sokongan emosi.";
+                adv.innerHTML = "<strong>INTERVENSI SEGERA:</strong> Skor anda menunjukkan tahap gangguan emosi yang tinggi. Anda akan disantuni oleh pasukan CISM IPGKPM dengan kadar segera. Sekiranya memerlukan perkhidmatan lebih cepat, anda dialu-alukan ke bilik gerakan CISM.";
             }
             keLangkah(3);
         }
