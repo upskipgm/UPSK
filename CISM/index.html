@@ -59,7 +59,7 @@
         <!-- Pengepala (Header) -->
         <header class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 text-center">
             <h1 class="text-3xl font-extrabold text-blue-900 tracking-tight">CISM IPGKPM</h1>
-            <p class="text-slate-500 font-medium mt-1">Saringan Kesejahteraan Emosi Digital</p>
+            <p class="text-slate-500 font-medium mt-1 uppercase">Soal Selidik Kesejahteraan Emosi</p>
         </header>
 
         <!-- Langkah 1: Demografi -->
@@ -85,7 +85,7 @@
                     </select>
                 </div>
 
-                <!-- Ruangan Pelajar (Disorok jika bukan pelajar) -->
+                <!-- Ruangan Pelajar -->
                 <div id="ruangan-pelajar" class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 mb-1">Tahun Ambilan</label>
@@ -120,20 +120,23 @@
                     <h2 class="text-xl font-bold text-slate-800">Saringan Emosi</h2>
                 </div>
                 
-                <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-100 text-left">
-                    <p class="text-xs font-bold text-indigo-800 uppercase mb-2 tracking-wider underline">Petunjuk Skala Jawapan:</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-indigo-900">
-                        <div>1: Tidak Pernah</div>
+                <div class="bg-indigo-50 rounded-xl p-5 border border-indigo-100 text-left">
+                    <p class="font-bold text-indigo-900 mb-2">Arahan:</p>
+                    <p class="text-sm text-indigo-800 mb-4">Tandakan tahap yang menggambarkan keadaan anda dalam beberapa hari kebelakangan ini.</p>
+                    
+                    <p class="text-xs font-bold text-indigo-800 uppercase mb-2 tracking-wider underline">Skala:</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs font-semibold text-indigo-900">
+                        <div>1: Tidak pernah</div>
                         <div>2: Jarang</div>
                         <div>3: Kadang-kadang</div>
                         <div>4: Kerap</div>
-                        <div>5: Sangat Kerap</div>
+                        <div>5: Sangat kerap</div>
                     </div>
                 </div>
             </div>
 
             <div id="container-soalan" class="space-y-12">
-                <!-- Kandungan soalan akan dijanakan secara dinamik oleh binaSoalan() -->
+                <!-- Dijana Dinamik -->
             </div>
 
             <button onclick="prosesDanHantar()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-5 rounded-xl shadow-lg shadow-emerald-100 transition-all mt-10 uppercase tracking-widest">
@@ -149,7 +152,7 @@
             <p id="info-pengguna" class="text-slate-600 font-medium mb-8"></p>
 
             <div class="bg-slate-50 rounded-3xl p-8 mb-8 border border-slate-100">
-                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Skor Kesejahteraan</span>
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center block">Skor Kesejahteraan</span>
                 <div id="skor-akhir" class="text-7xl font-black text-slate-900 my-4 leading-none">0</div>
                 <div id="status-tahap" class="inline-block px-6 py-2 rounded-full font-bold text-lg"></div>
             </div>
@@ -165,7 +168,6 @@
     </div>
 
     <script>
-        // URL Google Script anda
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_WcMKfQO98LCAiZzI4AhldQ2FFHhtGO2c_xobFGUlZoMm9KwMAHWC8QvBpd8ElXBjGg/exec";
 
         const setA = ["Saya berasa gelisah tanpa sebab jelas", "Saya mudah rasa sedih atau kosong", "Saya cepat rasa marah atau terganggu", "Saya sukar menenangkan diri"];
@@ -248,12 +250,9 @@
             let skor = 0;
             let lengkap = true;
 
-            // Pengiraan skor A+B+C
             for(let i=0; i<setA.length; i++) if(jawapan[`a${i}`]) skor += jawapan[`a${i}`]; else lengkap = false;
             for(let i=0; i<setB.length; i++) if(jawapan[`b${i}`]) skor += jawapan[`b${i}`]; else lengkap = false;
             for(let i=0; i<setC.length; i++) if(jawapan[`c${i}`]) skor += jawapan[`c${i}`]; else lengkap = false;
-            
-            // Semakan soalan Ya/Tidak
             for(let i=0; i<setD.length; i++) if(!jawapan[`d${i}`]) lengkap = false;
 
             if (!lengkap) return alert("Sila pastikan SEMUA soalan dijawab sebelum menghantar.");
@@ -277,7 +276,6 @@
             document.getElementById('loader').style.display = 'flex';
 
             try {
-                // Menghantar data ke Google Sheets menggunakan fetch
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -329,7 +327,6 @@
             keLangkah(3);
         }
 
-        // Mulakan proses penjanaan soalan
         binaSoalan();
     </script>
 </body>
