@@ -31,6 +31,7 @@
         .btn { display: inline-block; padding: 12px 24px; border-radius: 12px; border: none; cursor: pointer; font-weight: 600; text-align: center; width: 100%; margin-bottom: 10px; font-size: 1rem; transition: 0.2s; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-secondary { background: var(--secondary); color: white; }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
         .btn-ghost { background: transparent; color: var(--text-muted); font-size: 0.9rem; }
         .btn:disabled { background: #ced4da; cursor: not-allowed; }
 
@@ -41,6 +42,7 @@
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; }
         input, textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #dee2e6; font-size: 1rem; }
+        input:read-only { background-color: #f1f3f5; }
 
         .view { display: none; }
         .view.active { display: block; animation: fadeIn 0.4s ease; }
@@ -60,13 +62,20 @@
         .opt-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
         #loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; flex-direction: column; }
+        
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: var(--text-muted); }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
 <div id="loading-overlay">
     <div style="width: 40px; height: 40px; border: 4px solid #eee; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
-    <p style="margin-top: 10px; font-weight: 600;">Sila tunggu...</p>
+    <p style="margin-top: 10px; font-weight: 600;">Menghubungkan ke Cloud...</p>
 </div>
 
 <div class="container">
@@ -76,12 +85,12 @@
         <div class="text-center" style="margin-top: 40px;">
             <div style="font-size: 3.5rem;">🌱</div>
             <h1>IPG Sejahtera</h1>
-            <p style="color:var(--primary); font-weight:600;">Pantau, Sokong, Pulih Bersama (Cloud)</p>
+            <p style="color:var(--primary); font-weight:600;">Pantau, Sokong, Pulih Bersama (Cloud Edition)</p>
         </div>
 
         <div class="tab-wrapper">
-            <button class="tab-btn active" onclick="switchAuthTab('pelajar')">Pelajar</button>
-            <button class="tab-btn" onclick="switchAuthTab('kaunselor')">Kaunselor</button>
+            <button class="tab-btn active" id="btn-tab-pelajar">Pelajar</button>
+            <button class="tab-btn" id="btn-tab-kaunselor">Kaunselor</button>
         </div>
 
         <div id="auth-pelajar" class="auth-content">
@@ -89,9 +98,9 @@
                 <h3>Log Masuk Pelajar</h3>
                 <div class="form-group">
                     <label>Angka Giliran</label>
-                    <input type="text" id="login-student-id" placeholder="2023xxxxxx">
+                    <input type="text" id="login-student-id" placeholder="Masukkan Angka Giliran">
                 </div>
-                <button class="btn btn-primary" onclick="studentSync()">Masuk & Sinkronisasi</button>
+                <button class="btn btn-primary" id="btn-student-sync">Masuk & Sinkronisasi</button>
             </div>
         </div>
 
@@ -106,7 +115,8 @@
                     <label>Kata Laluan</label>
                     <input type="password" id="login-counselor-pwd" placeholder="********">
                 </div>
-                <button class="btn btn-secondary" onclick="counselorLogin()">Log Masuk</button>
+                <button class="btn btn-secondary" id="btn-counselor-login">Log Masuk</button>
+                <p class="text-center text-small" style="color:var(--text-muted)">Demo: KAUNSELOR / admin123</p>
             </div>
         </div>
     </section>
@@ -115,7 +125,7 @@
     <section id="view-student-dash" class="view">
         <nav style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <div style="font-weight:bold; color:var(--primary);">IPG Sejahtera</div>
-            <button class="btn-ghost" onclick="logout()">Log Keluar</button>
+            <button class="btn-ghost btn-logout">Log Keluar</button>
         </nav>
         
         <div class="card" id="student-profile-card"></div>
@@ -123,24 +133,24 @@
         <div class="card">
             <h3>Status Kemajuan</h3>
             <div id="student-progress-area"></div>
-            <button class="btn btn-ghost" style="margin-top:10px;" onclick="advanceDay()">Simulasi Hari Seterusnya (Debug)</button>
+            <button class="btn btn-ghost" style="margin-top:10px;" id="btn-debug-advance">Simulasi Hari Seterusnya (Debug)</button>
         </div>
 
         <div id="student-action-area"></div>
     </section>
 
-    <!-- FULL ASSESSMENT -->
+    <!-- ASSESSMENT VIEW -->
     <section id="view-assessment" class="view">
         <div class="card">
             <h3 id="assessment-title">Saringan Keadaan Emosi</h3>
             <div id="assessment-items-container"></div>
-            <button class="btn btn-primary" style="margin-top:20px;" onclick="submitAssessment()">Hantar Saringan</button>
+            <button class="btn btn-primary" style="margin-top:20px;" id="btn-submit-assessment">Hantar Saringan</button>
         </div>
     </section>
 
     <!-- ACTIVITY VIEW -->
     <section id="view-activity" class="view">
-        <nav style="margin-bottom:20px;"><button class="btn-ghost" onclick="showView('view-student-dash')">← Batal</button></nav>
+        <nav style="margin-bottom:20px;"><button class="btn-ghost btn-back-to-dash">← Batal</button></nav>
         <div id="activity-container"></div>
     </section>
 
@@ -148,29 +158,53 @@
     <section id="view-counselor-dash" class="view">
         <nav style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <div style="font-weight:bold;">Portal Kaunselor (Real-time)</div>
-            <button class="btn-ghost" onclick="logout()">Keluar</button>
+            <button class="btn-ghost btn-logout">Keluar</button>
         </nav>
-        <button class="btn btn-primary" onclick="openAddStudent()">+ Tambah Pelajar</button>
+        <button class="btn btn-primary" id="btn-open-add-student">+ Tambah Pelajar Baharu</button>
         <div class="card">
-            <h3>Senarai Klien Berisiko</h3>
-            <div style="overflow-x:auto;">
-                <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
-                    <thead><tr style="text-align:left; border-bottom:1px solid #eee;"><th>ID</th><th>Risiko</th><th>Hari</th><th>Skor</th></tr></thead>
+            <h3>Senarai Pemantauan Klien</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Angka Giliran & Nama</th>
+                            <th>Risiko</th>
+                            <th>Hari</th>
+                            <th>Tindakan</th>
+                        </tr>
+                    </thead>
                     <tbody id="counselor-student-list"></tbody>
                 </table>
             </div>
         </div>
     </section>
 
-    <!-- FORM ADD -->
+    <!-- STUDENT FORM (ADD/EDIT) -->
     <section id="view-edit-student" class="view">
-        <nav style="margin-bottom:20px;"><button class="btn-ghost" onclick="showView('view-counselor-dash')">← Batal</button></nav>
+        <nav style="margin-bottom:20px;"><button class="btn-ghost btn-back-to-counselor">← Batal</button></nav>
         <div class="card">
-            <h3>Daftar Pelajar Baharu</h3>
-            <div class="form-group"><label>Angka Giliran (Sebagai ID)</label><input type="text" id="edit-id"></div>
-            <div class="form-group"><label>Nama Penuh</label><input type="text" id="edit-name"></div>
-            <div class="form-group"><label>Program</label><input type="text" id="edit-program"></div>
-            <button class="btn btn-secondary" onclick="saveNewStudent()">Daftar ke Firestore</button>
+            <h3 id="form-title">Daftar Pelajar Baharu</h3>
+            <div class="form-group">
+                <label>Angka Giliran (Sebagai ID)</label>
+                <input type="text" id="edit-id" placeholder="Contoh: 2023xxxxxx">
+            </div>
+            <div class="form-group">
+                <label>Nama Penuh</label>
+                <input type="text" id="edit-name" placeholder="Nama Klien">
+            </div>
+            <div class="form-group">
+                <label>Tahun / Semester</label>
+                <input type="text" id="edit-year" placeholder="Contoh: Tahun 2 / Sem 1">
+            </div>
+            <div class="form-group">
+                <label>Program</label>
+                <input type="text" id="edit-program" placeholder="Contoh: PISMP">
+            </div>
+            <div class="form-group">
+                <label>Kelas</label>
+                <input type="text" id="edit-class" placeholder="Contoh: BM1">
+            </div>
+            <button class="btn btn-secondary" id="btn-save-student">Simpan ke Firestore</button>
         </div>
     </section>
 
@@ -186,10 +220,11 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'ipg-sejahtera-demo';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'ipg-sejahtera-production';
 
     let currentUserData = null;
     let unsubscribeCounselor = null;
+    let isEditing = false;
 
     const QUESTIONS = [
         "Sentiasa teringat kejadian itu secara tiba-tiba.",
@@ -208,8 +243,8 @@
         "Cepat marah, mudah naik angin."
     ];
 
-    // --- AUTH INITIALIZATION ---
-    async function startApp() {
+    // --- INITIALIZATION ---
+    async function init() {
         toggleLoading(true);
         try {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -218,79 +253,168 @@
                 await signInAnonymously(auth);
             }
         } catch (e) {
-            console.error("Auth Error", e);
+            console.error("Firebase Auth Error:", e);
         }
         toggleLoading(false);
     }
-    startApp();
+    init();
 
-    // --- UI HELPERS ---
-    window.switchAuthTab = (tab) => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.auth-content').forEach(c => c.style.display = 'none');
-        if(tab==='pelajar') {
-            document.querySelector('.tab-btn:first-child').classList.add('active');
-            document.getElementById('auth-pelajar').style.display = 'block';
-        } else {
-            document.querySelector('.tab-btn:last-child').classList.add('active');
-            document.getElementById('auth-kaunselor').style.display = 'block';
-        }
-    };
-
-    window.showView = (id) => {
+    // --- VIEW CONTROLLER ---
+    function showView(viewId) {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
+        const target = document.getElementById(viewId);
+        if(target) target.classList.add('active');
         window.scrollTo(0,0);
-    };
+    }
 
     function toggleLoading(show) {
         document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
     }
 
-    // --- STUDENT CLOUD LOGIC ---
-    window.studentSync = async () => {
+    function switchAuthTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.auth-content').forEach(c => c.style.display = 'none');
+        
+        if(tab === 'pelajar') {
+            document.getElementById('btn-tab-pelajar').classList.add('active');
+            document.getElementById('auth-pelajar').style.display = 'block';
+        } else {
+            document.getElementById('btn-tab-kaunselor').classList.add('active');
+            document.getElementById('auth-kaunselor').style.display = 'block';
+        }
+    }
+
+    // --- EVENT LISTENERS (Stabler for live domains) ---
+    document.getElementById('btn-tab-pelajar').addEventListener('click', () => switchAuthTab('pelajar'));
+    document.getElementById('btn-tab-kaunselor').addEventListener('click', () => switchAuthTab('kaunselor'));
+    
+    document.getElementById('btn-student-sync').addEventListener('click', async () => {
         const id = document.getElementById('login-student-id').value.trim();
         if(!id) return alert("Sila isi Angka Giliran.");
         
         toggleLoading(true);
-        const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', id);
-        const snap = await getDoc(studentRef);
-
-        if(snap.exists()) {
-            currentUserData = { id, ...snap.data() };
-            renderDashboard();
-            showView('view-student-dash');
-        } else {
-            alert("ID Pelajar tidak dijumpai dalam rekod Firestore.");
-        }
+        try {
+            const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', id);
+            const snap = await getDoc(studentRef);
+            if(snap.exists()) {
+                currentUserData = { id, ...snap.data() };
+                renderStudentDashboard();
+                showView('view-student-dash');
+            } else {
+                alert("Angka Giliran tidak dijumpai. Hubungi kaunselor anda.");
+            }
+        } catch(e) { alert("Ralat sinkronisasi. Sila cuba lagi."); }
         toggleLoading(false);
-    };
+    });
 
-    function renderDashboard() {
+    document.getElementById('btn-counselor-login').addEventListener('click', () => {
+        const id = document.getElementById('login-counselor-id').value;
+        const pwd = document.getElementById('login-counselor-pwd').value;
+        if(id === "KAUNSELOR" && pwd === "admin123") {
+            startCounselorListener();
+            showView('view-counselor-dash');
+        } else alert("Akses Ditolak.");
+    });
+
+    document.querySelectorAll('.btn-logout').forEach(b => b.addEventListener('click', () => {
+        if(unsubscribeCounselor) unsubscribeCounselor();
+        currentUserData = null;
+        showView('view-auth');
+    }));
+
+    document.getElementById('btn-open-add-student').addEventListener('click', () => {
+        isEditing = false;
+        document.getElementById('form-title').innerText = "Daftar Pelajar Baharu";
+        document.getElementById('edit-id').value = "";
+        document.getElementById('edit-id').readOnly = false;
+        document.getElementById('edit-name').value = "";
+        document.getElementById('edit-year').value = "";
+        document.getElementById('edit-program').value = "";
+        document.getElementById('edit-class').value = "";
+        showView('view-edit-student');
+    });
+
+    document.getElementById('btn-save-student').addEventListener('click', async () => {
+        const id = document.getElementById('edit-id').value.trim();
+        const name = document.getElementById('edit-name').value.trim();
+        if(!id || !name) return alert("Angka Giliran dan Nama wajib diisi.");
+
+        toggleLoading(true);
+        try {
+            const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', id);
+            const data = {
+                name,
+                nickname: name.split(' ')[0],
+                yearSemester: document.getElementById('edit-year').value,
+                program: document.getElementById('edit-program').value,
+                class: document.getElementById('edit-class').value,
+                lastUpdated: new Date()
+            };
+
+            if(!isEditing) {
+                Object.assign(data, {
+                    currentDay: 1,
+                    risk: "Belum Disaring",
+                    score: 0,
+                    completedActivities: [],
+                    createdAt: new Date()
+                });
+                await setDoc(studentRef, data);
+            } else {
+                await updateDoc(studentRef, data);
+            }
+            alert("Data berjaya disimpan ke Firestore!");
+            showView('view-counselor-dash');
+        } catch(e) { alert("Ralat menyimpan data."); }
+        toggleLoading(false);
+    });
+
+    document.querySelector('.btn-back-to-counselor').addEventListener('click', () => showView('view-counselor-dash'));
+    document.querySelector('.btn-back-to-dash').addEventListener('click', () => showView('view-student-dash'));
+    document.getElementById('btn-debug-advance').addEventListener('click', advanceDay);
+
+    // --- STUDENT DASHBOARD LOGIC ---
+    function renderStudentDashboard() {
         const s = currentUserData;
-        document.getElementById('student-profile-card').innerHTML = `<h2>Hai, ${s.nickname || s.name}</h2><p class="text-small">ID: ${s.id}</p>`;
-        
+        const card = document.getElementById('student-profile-card');
+        card.innerHTML = `
+            <h2>Selamat Datang, ${s.nickname || s.name}</h2>
+            <div style="font-size:0.9rem; margin-top:10px; background:var(--bg-soft); padding:10px; border-radius:8px;">
+                <div><strong>Angka Giliran:</strong> ${s.id}</div>
+                <div><strong>Program:</strong> ${s.program || '-'} (${s.class || '-'})</div>
+                <div><strong>Semester:</strong> ${s.yearSemester || '-'}</div>
+            </div>
+        `;
+
+        const progressPct = (s.currentDay / 14) * 100;
         let rClass = s.risk === 'Stabil' ? 'badge-green' : (s.risk === 'Sederhana' ? 'badge-yellow' : (s.risk === 'Tinggi' ? 'badge-red' : 'badge-ghost'));
+        
         document.getElementById('student-progress-area').innerHTML = `
-            <div style="display:flex; justify-content:space-between;"><span class="badge ${rClass}">${s.risk}</span><span class="text-small">Hari ${s.currentDay}/14</span></div>
-            <div class="progress-bar-container"><div class="progress-bar-fill" style="width:${(s.currentDay/14)*100}%"></div></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span class="badge ${rClass}">${s.risk}</span>
+                <span class="text-small">Hari ${s.currentDay} / 14</span>
+            </div>
+            <div class="progress-bar-container"><div class="progress-bar-fill" style="width:${progressPct}%"></div></div>
         `;
 
         const action = document.getElementById('student-action-area');
         if(s.currentDay === 1 && s.risk === "Belum Disaring") {
-            action.innerHTML = `<button class="btn btn-primary" onclick="initAssessment('pra')">Mula Saringan Pra (Hari 1)</button>`;
+            action.innerHTML = `<button class="btn btn-primary" id="btn-start-pra">Mula Saringan Pra (Hari 1)</button>`;
+            document.getElementById('btn-start-pra').addEventListener('click', () => initAssessment('pra'));
         } else if(s.currentDay === 14) {
-            action.innerHTML = `<button class="btn btn-primary" onclick="initAssessment('pasca')">Mula Saringan Pasca (Hari 14)</button>`;
+            action.innerHTML = `<button class="btn btn-primary" id="btn-start-pasca">Mula Saringan Pasca (Hari 14)</button>`;
+            document.getElementById('btn-start-pasca').addEventListener('click', () => initAssessment('pasca'));
         } else if(s.currentDay % 2 === 0 && (!s.completedActivities || !s.completedActivities.includes(s.currentDay))) {
-            action.innerHTML = `<button class="btn btn-primary" onclick="loadActivity(${s.currentDay})">Teruskan Aktiviti Hari ${s.currentDay}</button>`;
+            action.innerHTML = `<button class="btn btn-primary" id="btn-start-act">Teruskan Aktiviti Hari ${s.currentDay}</button>`;
+            document.getElementById('btn-start-act').addEventListener('click', () => loadActivity(s.currentDay));
         } else {
             action.innerHTML = `<div class="card text-center"><p>Tiada aktiviti khusus hari ini. Amalkan penjagaan kendiri.</p></div>`;
         }
     }
 
-    // --- ASSESSMENT LOGIC (Cloud Write) ---
+    // --- ASSESSMENT LOGIC ---
     let tempAnswers = [];
-    window.initAssessment = (type) => {
+    function initAssessment(type) {
         showView('view-assessment');
         document.getElementById('assessment-title').innerText = type === 'pra' ? "Saringan Pra (Hari 1)" : "Saringan Pasca (Hari 14)";
         const container = document.getElementById('assessment-items-container');
@@ -302,42 +426,43 @@
             item.style.marginBottom = "15px";
             item.innerHTML = `<p class="text-small"><strong>${i+1}.</strong> ${q}</p>
                 <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:5px;">
-                    ${[0,1,2,3].map(v => `<button class="opt-btn" id="full_${i}_${v}" onclick="setFullAns(${i},${v})">${['Tak','Sikit','Kerap','S.Kerap'][v]}</button>`).join('')}
+                    ${[0,1,2,3].map(v => `<button class="opt-btn btn-ans-${i}" data-q="${i}" data-v="${v}">${['Tak','Sikit','Kerap','S.Kerap'][v]}</button>`).join('')}
                 </div>`;
             container.appendChild(item);
         });
-    };
 
-    window.setFullAns = (q, v) => {
-        tempAnswers[q] = v;
-        for(let i=0; i<4; i++) {
-            const el = document.getElementById(`full_${q}_${i}`);
-            if(el) el.classList.remove('active');
-        }
-        document.getElementById(`full_${q}_${v}`).classList.add('active');
-    };
+        document.querySelectorAll('.opt-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const qIdx = parseInt(e.target.dataset.q);
+                const val = parseInt(e.target.dataset.v);
+                tempAnswers[qIdx] = val;
+                document.querySelectorAll(`.btn-ans-${qIdx}`).forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+            });
+        });
+    }
 
-    window.submitAssessment = async () => {
+    document.getElementById('btn-submit-assessment').addEventListener('click', async () => {
         if(tempAnswers.includes(null)) return alert("Sila lengkapkan semua soalan.");
         toggleLoading(true);
         const score = tempAnswers.reduce((a,b)=>a+b, 0);
         let risk = score >= 27 ? "Tinggi" : (score >= 13 ? "Sederhana" : "Stabil");
         
-        const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', currentUserData.id);
-        await updateDoc(studentRef, { risk, score, lastUpdated: new Date() });
-        
-        currentUserData.risk = risk;
-        currentUserData.score = score;
-        
+        try {
+            const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', currentUserData.id);
+            await updateDoc(studentRef, { risk, score, lastUpdated: new Date() });
+            currentUserData.risk = risk;
+            currentUserData.score = score;
+            alert(`Keputusan disimpan: ${risk.toUpperCase()} (${score}/42)`);
+            renderStudentDashboard();
+            showView('view-student-dash');
+        } catch(e) { alert("Ralat menyimpan keputusan."); }
         toggleLoading(false);
-        alert(`Berjaya! Keputusan: ${risk.toUpperCase()} (Skor: ${score}/42)`);
-        renderDashboard();
-        showView('view-student-dash');
-    };
+    });
 
-    // --- ACTIVITY LOGIC (Cloud Write) ---
+    // --- ACTIVITY LOGIC ---
     let miniAnswers = [];
-    window.loadActivity = (day) => {
+    function loadActivity(day) {
         showView('view-activity');
         miniAnswers = new Array(3).fill(null);
         const container = document.getElementById('activity-container');
@@ -347,7 +472,7 @@
             <div class="card">
                 <h3>Ujian Ringkas (Hari ${day})</h3>
                 <div id="mini-survey-area"></div>
-                <button class="btn btn-primary" id="btn-start-act" disabled onclick="startTherapy(${day})">Teruskan ke Aktiviti</button>
+                <button class="btn btn-primary" id="btn-start-therapy" disabled>Teruskan ke Aktiviti</button>
             </div>
         `;
 
@@ -357,122 +482,116 @@
             div.className = "mini-survey-item";
             div.innerHTML = `<p class="text-small"><strong>${i+1}.</strong> ${QUESTIONS[qIdx]}</p>
                 <div class="options-row">
-                    ${[0,1,2,3].map(v => `<button class="opt-btn" id="mini_${i}_${v}" onclick="setMiniAns(${i},${v})">${['Tak','Sikit','Kerap','S.Kerap'][v]}</button>`).join('')}
+                    ${[0,1,2,3].map(v => `<button class="opt-btn btn-mini-${i}" data-m="${i}" data-v="${v}">${['Tak','Sikit','Kerap','S.Kerap'][v]}</button>`).join('')}
                 </div>`;
             surveyArea.appendChild(div);
         });
-    };
 
-    window.setMiniAns = (q, v) => {
-        miniAnswers[q] = v;
-        for(let i=0; i<4; i++) {
-            const el = document.getElementById(`mini_${q}_${i}`);
-            if(el) el.classList.remove('active');
-        }
-        document.getElementById(`mini_${q}_${v}`).classList.add('active');
-        if(!miniAnswers.includes(null)) document.getElementById('btn-start-act').disabled = false;
-    };
+        document.querySelectorAll('.btn-mini-0, .btn-mini-1, .btn-mini-2').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const mIdx = parseInt(e.target.dataset.m);
+                const val = parseInt(e.target.dataset.v);
+                miniAnswers[mIdx] = val;
+                document.querySelectorAll(`.btn-mini-${mIdx}`).forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                if(!miniAnswers.includes(null)) document.getElementById('btn-start-therapy').disabled = false;
+            });
+        });
 
-    window.startTherapy = (day) => {
-        const container = document.getElementById('activity-container');
-        const acts = {
-            2: { t: "Pernafasan 4-4-6", d: "Stabilkan emosi dengan bernafas secara teratur." },
-            4: { t: "Mengenal Fikiran", d: "Tuliskan fikiran yang mengganggu anda." },
-            6: { t: "Reframe Minda", d: "Cari sudut positif dalam situasi sukar." },
-            8: { t: "Pilihan Tindakan", d: "Pilih satu aktiviti yang memberi ketenangan." },
-            10: { t: "Label Emosi", d: "Namakan apa yang anda rasa hari ini." },
-            12: { t: "Hubungan Sosial", d: "Tegur rakan yang anda percayai." }
-        };
-        const active = acts[day] || { t: "Latihan Kendiri", d: "Teruskan pemulihan." };
-        container.innerHTML = `
-            <div class="card">
-                <h3>${active.t}</h3><p>${active.d}</p>
-                <textarea id="ref-text" style="margin-top:15px;" placeholder="Tulis refleksi anda..."></textarea>
-                <button class="btn btn-secondary" style="margin-top:10px;" onclick="finishActivity(${day})">Simpan & Selesai</button>
-            </div>
-        `;
-    };
+        document.getElementById('btn-start-therapy').addEventListener('click', () => {
+            const acts = {
+                2: { t: "Pernafasan 4-4-6", d: "Fokus pada aliran nafas untuk ketenangan." },
+                4: { t: "Mengenal Fikiran", d: "Tulis satu fikiran yang mengganggu anda." },
+                6: { t: "Reframe Minda", d: "Tukar satu ayat negatif kepada positif." },
+                8: { t: "Tindakan Kecil", d: "Pilih satu hobi ringan hari ini." },
+                10: { t: "Label Emosi", d: "Namakan emosi dominan anda sekarang." },
+                12: { t: "Hubungan Sosial", d: "Hantar pesanan ringkas kepada rakan baik." }
+            };
+            const active = acts[day] || { t: "Latihan Kendiri", d: "Teruskan pemulihan." };
+            container.innerHTML = `
+                <div class="card">
+                    <h3>${active.t}</h3><p>${active.d}</p>
+                    <textarea id="ref-text" style="margin-top:15px;" placeholder="Tulis refleksi anda..."></textarea>
+                    <button class="btn btn-secondary" id="btn-finish-act">Simpan & Selesai</button>
+                </div>
+            `;
+            document.getElementById('btn-finish-act').addEventListener('click', () => finishActivity(day));
+        });
+    }
 
-    window.finishActivity = async (day) => {
+    async function finishActivity(day) {
         const ref = document.getElementById('ref-text').value;
         if(ref.length < 5) return alert("Sila tulis refleksi ringkas.");
         toggleLoading(true);
-        const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', currentUserData.id);
-        const completed = currentUserData.completedActivities || [];
-        if(!completed.includes(day)) completed.push(day);
-        
-        await updateDoc(studentRef, { completedActivities: completed });
-        currentUserData.completedActivities = completed;
+        try {
+            const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', currentUserData.id);
+            const completed = currentUserData.completedActivities || [];
+            if(!completed.includes(day)) completed.push(day);
+            await updateDoc(studentRef, { completedActivities: completed });
+            currentUserData.completedActivities = completed;
+            renderStudentDashboard();
+            showView('view-student-dash');
+        } catch(e) { alert("Ralat menyimpan aktiviti."); }
         toggleLoading(false);
-        renderDashboard();
-        showView('view-student-dash');
-    };
+    }
 
-    window.advanceDay = async () => {
-        currentUserData.currentDay++;
-        if(currentUserData.currentDay > 14) currentUserData.currentDay = 14;
-        const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', currentUserData.id);
-        await updateDoc(studentRef, { currentDay: currentUserData.currentDay });
-        renderDashboard();
-    };
+    async function advanceDay() {
+        toggleLoading(true);
+        try {
+            currentUserData.currentDay++;
+            if(currentUserData.currentDay > 14) currentUserData.currentDay = 14;
+            const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', currentUserData.id);
+            await updateDoc(studentRef, { currentDay: currentUserData.currentDay });
+            renderStudentDashboard();
+        } catch(e) {}
+        toggleLoading(false);
+    }
 
-    // --- COUNSELOR CLOUD LOGIC (Real-time) ---
-    window.counselorLogin = () => {
-        if(document.getElementById('login-counselor-id').value==='KAUNSELOR' && document.getElementById('login-counselor-pwd').value==='admin123') {
-            startCounselorListener();
-            showView('view-counselor-dash');
-        } else alert("Salah ID/Kata Laluan.");
-    };
-
+    // --- COUNSELOR REAL-TIME LISTENER ---
     function startCounselorListener() {
         const q = collection(db, 'artifacts', appId, 'public', 'data', 'students');
         unsubscribeCounselor = onSnapshot(q, (snap) => {
             const tbody = document.getElementById('counselor-student-list');
             tbody.innerHTML = '';
-            snap.forEach(doc => {
-                const s = doc.data();
-                const id = doc.id;
-                let rClass = s.risk === 'Stabil' ? 'badge-green' : (s.risk === 'Sederhana' ? 'badge-yellow' : 'badge-red');
-                tbody.innerHTML += `<tr style="border-bottom:1px solid #eee;">
-                    <td style="padding:10px;">${id}</td>
+            snap.forEach(docSnap => {
+                const s = docSnap.data();
+                const id = docSnap.id;
+                let rClass = s.risk === 'Stabil' ? 'badge-green' : (s.risk === 'Sederhana' ? 'badge-yellow' : (s.risk === 'Tinggi' ? 'badge-red' : 'badge-ghost'));
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="padding:10px;"><strong>${id}</strong><br><span class="text-small">${s.name}</span></td>
                     <td><span class="badge ${rClass}">${s.risk}</span></td>
                     <td>H${s.currentDay}</td>
-                    <td>${s.score || 0}/42</td>
-                </tr>`;
-            }, (err) => console.error(err));
+                    <td><button class="btn-ghost btn-edit-cli" data-id="${id}" style="color:var(--primary); padding:0;">Edit</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.querySelectorAll('.btn-edit-cli').forEach(b => b.addEventListener('click', (e) => {
+                openEditStudent(e.target.dataset.id);
+            }));
         });
     }
 
-    window.openAddStudent = () => showView('view-edit-student');
-
-    window.saveNewStudent = async () => {
-        const id = document.getElementById('edit-id').value.trim();
-        const name = document.getElementById('edit-name').value;
-        if(!id || !name) return alert("Sila lengkapkan maklumat.");
-        
+    async function openEditStudent(id) {
+        isEditing = true;
         toggleLoading(true);
         const studentRef = doc(db, 'artifacts', appId, 'public', 'data', 'students', id);
-        await setDoc(studentRef, { 
-            name, nickname: name.split(' ')[0], currentDay: 1, 
-            risk: "Belum Disaring", score: 0, completedActivities: [],
-            program: document.getElementById('edit-program').value,
-            createdAt: new Date() 
-        });
+        const snap = await getDoc(studentRef);
+        if(snap.exists()) {
+            const s = snap.data();
+            document.getElementById('form-title').innerText = "Kemaskini Maklumat Pelajar";
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-id').readOnly = true;
+            document.getElementById('edit-name').value = s.name;
+            document.getElementById('edit-year').value = s.yearSemester || "";
+            document.getElementById('edit-program').value = s.program || "";
+            document.getElementById('edit-class').value = s.class || "";
+            showView('view-edit-student');
+        }
         toggleLoading(false);
-        alert("Pelajar berjaya didaftarkan dalam Firestore!");
-        showView('view-counselor-dash');
-    };
-
-    window.logout = () => {
-        if(unsubscribeCounselor) unsubscribeCounselor();
-        currentUserData = null;
-        showView('view-auth');
-    };
+    }
 
 </script>
-
-<style>
-    @keyframes spin { to { transform: rotate(360deg); } }
-</style>
 </body>
 </html>
