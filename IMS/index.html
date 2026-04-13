@@ -33,24 +33,41 @@
             cursor: pointer;
             box-shadow: 0 0 10px rgba(79, 70, 229, 0.3);
         }
+        /* Animasi tambahan untuk visual pernafasan */
+        .breathing-circle {
+            transition: transform 4s ease-in-out, opacity 4s ease-in-out;
+        }
+        .breathing-in {
+            transform: scale(2.2);
+            opacity: 0.4;
+        }
+        .breathing-out {
+            transform: scale(1);
+            opacity: 0.1;
+        }
+        .breathing-hold {
+            transform: scale(2.2);
+            opacity: 0.4;
+            transition: none;
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // Menggunakan IIFE untuk mengelakkan pencemaran skop global dan ralat 'Infinity'
         (function() {
-            const { useState, useEffect, useMemo } = React;
+            const { useState, useEffect, useMemo, useRef } = React;
 
-            // Fungsi pembantu untuk ikon Lucide
+            // Fungsi pembantu untuk ikon Lucide yang stabil dalam React
             const Icon = ({ name, size = 24, className = "" }) => {
+                const iconRef = useRef(null);
                 useEffect(() => {
                     if (window.lucide) {
                         window.lucide.createIcons();
                     }
-                }, [name]);
-                return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+                });
+                return <i data-lucide={name} style={{ width: size, height: size }} className={`inline-block ${className}`}></i>;
             };
 
             const MOCK_STUDENTS = {
@@ -98,7 +115,7 @@
             );
 
             const LandingView = ({ setView }) => (
-                <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8">
+                <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8 text-center">
                     <div className="w-full max-w-sm space-y-12">
                         <div className="text-center space-y-4 text-slate-900">
                             <div className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl shadow-indigo-100">
@@ -112,17 +129,17 @@
                         
                         <div className="grid gap-3">
                             <button onClick={() => setView('login-s')} className="w-full p-6 bg-slate-50 border border-slate-100 rounded-[1.5rem] flex items-center gap-5 hover:bg-indigo-50 hover:border-indigo-100 transition-all group">
-                                <div className="bg-white p-3 rounded-xl shadow-sm text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all"><Icon name="user" size={22} /></div>
+                                <div className="bg-white p-3 rounded-xl shadow-sm text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all text-center"><Icon name="user" size={22} /></div>
                                 <div className="text-left">
-                                    <p className="font-bold text-slate-800 text-sm tracking-tight">AKSES PELAJAR</p>
+                                    <p className="font-bold text-slate-800 text-sm tracking-tight text-center">AKSES PELAJAR</p>
                                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center">Mod Intervensi Berfasa</p>
                                 </div>
                             </button>
                             
                             <button onClick={() => setView('login-c')} className="w-full p-6 bg-white border border-slate-100 rounded-[1.5rem] flex items-center gap-5 hover:bg-slate-50 transition-all group shadow-sm">
-                                <div className="bg-slate-100 p-3 rounded-xl text-slate-600 group-hover:bg-slate-800 group-hover:text-white transition-all"><Icon name="lock" size={22} /></div>
+                                <div className="bg-slate-100 p-3 rounded-xl text-slate-600 group-hover:bg-slate-800 group-hover:text-white transition-all text-center"><Icon name="lock" size={22} /></div>
                                 <div className="text-left text-center">
-                                    <p className="font-bold text-slate-800 text-sm tracking-tight">AKSES KAUNSELOR</p>
+                                    <p className="font-bold text-slate-800 text-sm tracking-tight text-center">AKSES KAUNSELOR</p>
                                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center">Panel Pemantauan Data</p>
                                 </div>
                             </button>
@@ -132,9 +149,9 @@
             );
 
             const LoginView = ({ type, setView, inputs, setInputs, handleLogin, msg }) => (
-                <div className="min-h-screen bg-white p-10 flex flex-col justify-center">
+                <div className="min-h-screen bg-white p-10 flex flex-col justify-center text-center">
                     <div className="max-w-sm mx-auto w-full space-y-8">
-                        <button onClick={() => setView('landing')} className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:text-indigo-600 transition-colors">
+                        <button onClick={() => setView('landing')} className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:text-indigo-600 transition-colors justify-center">
                             <Icon name="chevron-left" size={16} /> KEMBALI
                         </button>
                         
@@ -192,7 +209,7 @@
                 };
 
                 return (
-                    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8">
+                    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8 text-center">
                         <div className="w-full max-w-sm space-y-10 text-center">
                             <div className="w-24 h-24 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mx-auto text-indigo-600 border border-slate-100 shadow-sm text-center text-slate-900">
                                 <Icon name="bar-chart-3" size={48} />
@@ -202,8 +219,8 @@
                                 <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em] text-center">Fasa {isPost ? 'Pos' : 'Pra'}-Intervensi IPGKPM</p>
                             </div>
                             <div className="py-6 space-y-1 border-y border-slate-50 text-center">
-                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2 text-center">Skor Akhir</p>
-                                <div className="text-7xl font-extrabold text-slate-900 text-center">{score}<span className="text-2xl text-slate-300 font-bold">/14</span></div>
+                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2 text-center text-center">Skor Akhir</p>
+                                <div className="text-7xl font-extrabold text-slate-900 text-center text-center">{score}<span className="text-2xl text-slate-300 font-bold">/14</span></div>
                             </div>
                             <div className={`py-4 px-8 rounded-2xl border-2 font-bold uppercase tracking-[0.2em] text-xs mx-4 ${getLevelColor(level)} text-center`}>TAHAP: {level}</div>
                             <button onClick={() => { setResponses({}); setView('dash'); window.scrollTo(0,0); }} className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-bold shadow-2xl uppercase tracking-[0.2em] text-center">MENU UTAMA</button>
@@ -215,11 +232,12 @@
             const StudentDashboard = ({ user, day, setDay, status, setView, currentActivity, isCompleted, setUser }) => (
                 <div className="min-h-screen bg-white p-6 max-w-md mx-auto flex flex-col text-center">
                     <Nav setView={setView} setUser={setUser} />
+                    
                     <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-3xl flex items-center justify-between shadow-sm text-center">
-                        <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest flex items-center gap-2">
+                        <div className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest flex items-center gap-2 text-center">
                             <Icon name="activity" size={14} /> Simulasi Fasa
                         </div>
-                        <div className="flex gap-1 items-center bg-white p-1 rounded-xl border border-indigo-200 text-slate-900">
+                        <div className="flex gap-1 items-center bg-white p-1 rounded-xl border border-indigo-200 text-slate-900 text-center">
                             <button onClick={() => setDay(d => Math.max(1, d-1))} className="w-8 h-8 flex items-center justify-center rounded-lg text-indigo-600 hover:bg-indigo-50 font-bold">-</button>
                             <span className="font-bold text-sm text-indigo-900 w-10 text-center">{day}</span>
                             <button onClick={() => setDay(d => Math.min(14, d+1))} className="w-8 h-8 flex items-center justify-center rounded-lg text-indigo-600 hover:bg-indigo-50 font-bold">+</button>
@@ -232,8 +250,8 @@
                                 <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] text-center">{user?.class}</p>
                             </div>
                             <div className="space-y-2 text-center">
-                                <div className="bg-white/10 rounded-full h-2 w-full overflow-hidden">
-                                    <div className="bg-indigo-500 h-full transition-all duration-1000" style={{ width: `${(day/14)*100}%` }} />
+                                <div className="bg-white/10 rounded-full h-2 w-full overflow-hidden text-center">
+                                    <div className="bg-indigo-500 h-full transition-all duration-1000 text-center" style={{ width: `${(day/14)*100}%` }} />
                                 </div>
                                 <p className="text-[10px] font-bold tracking-widest opacity-50 text-center">HARI {day} DARIPADA 14</p>
                             </div>
@@ -248,8 +266,8 @@
                     ) : (
                         <div className="space-y-6 flex-1 text-center text-slate-900">
                             {currentActivity ? (
-                                <button onClick={() => !isCompleted && setView('activity')} className={`w-full p-8 rounded-[2.5rem] border-2 transition-all flex flex-col items-center gap-4 text-center ${isCompleted ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-100 shadow-xl shadow-slate-100/50 group'}`}>
-                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-2 transition-all ${isCompleted ? 'bg-green-50 text-green-600' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'}`}>
+                                <button onClick={() => !isCompleted && setView('activity')} className={`w-full p-8 rounded-[2.5rem] border-2 transition-all flex flex-col items-center gap-4 text-center ${isCompleted ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-100 shadow-xl shadow-slate-100/50 group text-center'}`}>
+                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-2 transition-all text-center ${isCompleted ? 'bg-green-50 text-green-600' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'}`}>
                                         <Icon name={isCompleted ? "check-circle" : "activity"} size={28} />
                                     </div>
                                     <div className="space-y-1 text-center">
@@ -259,11 +277,11 @@
                                 </button>
                             ) : (
                                  <div className="p-16 text-center bg-slate-50 rounded-[2.5rem] border border-dashed border-slate-200">
-                                        <p className="text-[10px] text-slate-300 font-bold uppercase tracking-[0.3em] text-center">Tiada aktiviti dijadualkan</p>
+                                        <p className="text-[10px] text-slate-300 font-bold uppercase tracking-[0.3em] text-center text-center text-center">Tiada aktiviti dwi-harian dijadualkan</p>
                                  </div>
                             )}
                             {day === 14 && status.completedDays.length >= 7 && !status.post && (
-                                <button onClick={() => setView('survey')} className="w-full py-5 bg-green-600 text-white rounded-[1.5rem] font-bold text-xs uppercase tracking-[0.2em] shadow-2xl shadow-green-100 animate-pulse text-center">Lengkapkan Pos-Penilaian</button>
+                                <button onClick={() => setView('survey')} className="w-full py-5 bg-green-600 text-white rounded-[1.5rem] font-bold text-xs uppercase tracking-[0.3em] shadow-2xl shadow-green-100 animate-pulse text-center">Lengkapkan Pos-Penilaian</button>
                             )}
                         </div>
                     )}
@@ -282,7 +300,6 @@
                 const [rainStep, setRainStep] = useState(0); 
                 const [selectedPrompt, setSelectedPrompt] = useState(null);
                 const [promptResponse, setPromptResponse] = useState("");
-                const [plan, setPlan] = useState({ coping: ["", ""], support: ["", ""], outcomes: ["", ""] });
                 const [letterText, setLetterText] = useState("");
 
                 const prompts = [
@@ -303,19 +320,28 @@
                     { title: "Nurture (Pupuk)", desc: "Hantarkan rasa belas kasihan pada diri sendiri." }
                 ];
 
+                // --- LOGIK PERNAFASAN DIPERBAIKI ---
                 useEffect(() => {
                     let timerInterval;
                     if (currentActivity.interactive === 'belly-breathing' && isBreathingActive && breathingTimeLeft > 0) {
                         timerInterval = setInterval(() => {
                             setBreathingTimeLeft(prev => prev - 1);
+                            
+                            // Kitaran 10 saat (4s Tarik, 2s Tahan, 4s Hembus)
                             const totalDuration = currentActivity.duration || 300;
-                            const cycleSeconds = (totalDuration - breathingTimeLeft + 1) % 10;
-                            if (cycleSeconds <= 4 && cycleSeconds > 0) setBreathingStep(0); 
-                            else if (cycleSeconds > 4 && cycleSeconds <= 6) setBreathingStep(1); 
-                            else setBreathingStep(2); 
+                            const elapsed = totalDuration - (breathingTimeLeft - 1);
+                            const cycleSeconds = elapsed % 10;
+                            
+                            if (cycleSeconds > 0 && cycleSeconds <= 4) {
+                                setBreathingStep(0); // Tarik
+                            } else if (cycleSeconds > 4 && cycleSeconds <= 6) {
+                                setBreathingStep(1); // Tahan
+                            } else {
+                                setBreathingStep(2); // Hembus
+                            }
                         }, 1000);
                     } else if (breathingTimeLeft === 0 && isBreathingActive) {
-                        setBreathingStep(3);
+                        setBreathingStep(3); // Selesai
                         setIsBreathingActive(false);
                     }
                     return () => clearInterval(timerInterval);
@@ -338,36 +364,52 @@
 
                 return (
                     <div className="min-h-screen bg-white p-8 max-w-md mx-auto flex flex-col text-center text-slate-900">
-                        <div className="flex justify-between items-center mb-10 border-b border-slate-50 pb-6 text-center">
-                            <button onClick={() => setView('dash')} className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:text-indigo-600 transition-colors text-center">
+                        <div className="flex justify-between items-center mb-10 border-b border-slate-50 pb-6 text-center text-center">
+                            <button onClick={() => setView('dash')} className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 hover:text-indigo-600 transition-colors text-center text-center">
                                 <Icon name="chevron-left" size={16} /> KEMBALI
                             </button>
-                            <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full uppercase tracking-widest text-center">{currentActivity.type}</span>
+                            <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full uppercase tracking-widest text-center text-center">{currentActivity.type}</span>
                         </div>
                         
-                        <div className="flex-1 space-y-10 overflow-y-auto scrollbar-hide pb-10 text-center text-slate-900">
-                            <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight text-center">{currentActivity.title}</h2>
+                        <div className="flex-1 space-y-10 overflow-y-auto scrollbar-hide pb-10 text-center text-slate-900 text-center">
+                            <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight text-center text-center">{currentActivity.title}</h2>
 
                             {currentActivity.interactive === 'belly-breathing' && (
-                                <div className="space-y-10 text-center py-2 text-slate-900">
+                                <div className="space-y-10 text-center py-2 text-slate-900 text-center">
                                     {showTutorial ? (
-                                        <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 space-y-8 text-center text-slate-900">
+                                        <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 space-y-8 text-center text-slate-900 text-center">
                                             <Icon name="info" size={36} className="mx-auto text-indigo-600" />
-                                            <h3 className="text-xl font-bold text-slate-900 uppercase text-center">Teknik Pernafasan</h3>
-                                            <p className="text-xs text-slate-500 leading-relaxed font-bold uppercase text-center">Tumpukan udara ke perut. Perut kembang semasa tarik nafas, dan kempis semasa hembus.</p>
-                                            <button onClick={() => setShowTutorial(false)} className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-bold text-center">FAHAM, MULA</button>
+                                            <h3 className="text-xl font-bold text-slate-900 uppercase text-center text-center">Teknik Pernafasan</h3>
+                                            <p className="text-xs text-slate-500 leading-relaxed font-bold uppercase text-center text-center">Tumpukan udara ke perut. Perut kembang semasa tarik nafas, dan kempis semasa hembus.</p>
+                                            <button onClick={() => setShowTutorial(false)} className="w-full py-5 bg-indigo-600 text-white rounded-[1.5rem] font-bold text-center text-center">FAHAM, MULA</button>
                                         </div>
                                     ) : (
-                                        <div className="space-y-8 text-center text-center text-slate-900">
-                                            <div className="text-5xl font-bold text-indigo-600 text-center">{formatTime(breathingTimeLeft)}</div>
-                                            <div className="relative flex justify-center items-center h-56 text-center text-slate-900">
-                                                <div className={`absolute rounded-full bg-indigo-100 transition-all ease-in-out ${breathingStep === 0 && isBreathingActive ? 'scale-[2.2]' : 'scale-100'}`} style={{ width: '100px', height: '100px' }} />
+                                        <div className="space-y-8 text-center text-center text-slate-900 text-center">
+                                            <div className="text-5xl font-bold text-indigo-600 text-center text-center">{formatTime(breathingTimeLeft)}</div>
+                                            
+                                            <div className="flex justify-center gap-2 mb-4">
+                                                <div className={`px-3 py-1 rounded-full text-[9px] font-bold transition-all border ${breathingStep === 0 && isBreathingActive ? 'bg-indigo-600 text-white border-indigo-600 scale-110' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>Tarik: 4s</div>
+                                                <div className={`px-3 py-1 rounded-full text-[9px] font-bold transition-all border ${breathingStep === 1 && isBreathingActive ? 'bg-amber-500 text-white border-amber-500 scale-110' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>Tahan: 2s</div>
+                                                <div className={`px-3 py-1 rounded-full text-[9px] font-bold transition-all border ${breathingStep === 2 && isBreathingActive ? 'bg-indigo-400 text-white border-indigo-400 scale-110' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>Hembus: 4s</div>
+                                            </div>
+
+                                            <div className="relative flex justify-center items-center h-56 text-center text-slate-900 text-center">
+                                                <div className={`breathing-circle absolute rounded-full bg-indigo-100 ${isBreathingActive ? (breathingStep === 0 ? 'breathing-in' : breathingStep === 1 ? 'breathing-hold' : 'breathing-out') : 'scale-100 opacity-10'}`} style={{ width: '100px', height: '100px' }} />
                                                 <div className="z-10 bg-white w-32 h-32 rounded-[2.5rem] border-4 border-indigo-500 flex flex-col items-center justify-center shadow-2xl text-center text-slate-900">
-                                                    <Icon name="wind" size={42} className="text-indigo-600 text-center" />
+                                                    {isBreathingActive ? (
+                                                        <div className="animate-pulse">
+                                                            <Icon name="wind" size={42} className="text-indigo-600 text-center" />
+                                                            <p className="text-[10px] font-black uppercase mt-1 text-indigo-600">
+                                                                {breathingStep === 0 ? "Tarik" : breathingStep === 1 ? "Tahan" : "Hembus"}
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        <Icon name={breathingTimeLeft === 0 ? "trophy" : "wind"} size={42} className="text-indigo-600 text-center" />
+                                                    )}
                                                 </div>
                                             </div>
                                             {!isBreathingActive && breathingTimeLeft > 0 && (
-                                                <button onClick={() => setIsBreathingActive(true)} className="w-full py-6 bg-slate-900 text-white rounded-[1.5rem] font-bold text-center uppercase tracking-widest text-slate-900">MULAKAN 5 MINIT</button>
+                                                <button onClick={() => setIsBreathingActive(true)} className="w-full py-6 bg-slate-900 text-white rounded-[1.5rem] font-bold text-center uppercase tracking-widest text-slate-900 text-center">MULAKAN 5 MINIT</button>
                                             )}
                                         </div>
                                     )}
@@ -375,50 +417,50 @@
                             )}
 
                             {currentActivity.interactive === 'motivation-ruler' && (
-                                <div className="space-y-12 py-4 text-center text-slate-900">
-                                    <div className="space-y-8 bg-slate-50 p-10 rounded-[2.5rem] border border-slate-100 text-center text-slate-900">
-                                        <p className="text-[11px] font-bold text-slate-400 text-center uppercase tracking-widest text-center text-center text-slate-900">Motivasi untuk mengurus emosi (1-10)</p>
-                                        <input type="range" min="1" max="10" step="1" value={motivationLevel} onChange={(e) => setMotivationLevel(e.target.value)} className="w-full h-2 bg-indigo-100 rounded-full appearance-none cursor-pointer accent-indigo-600" />
-                                        <div className="text-8xl font-bold text-indigo-600 text-center text-slate-900">{motivationLevel}</div>
+                                <div className="space-y-12 py-4 text-center text-slate-900 text-center">
+                                    <div className="space-y-8 bg-slate-50 p-10 rounded-[2.5rem] border border-slate-100 text-center text-slate-900 text-center">
+                                        <p className="text-[11px] font-bold text-slate-400 text-center uppercase tracking-widest text-center text-center text-slate-900 text-center">Motivasi untuk mengurus emosi (1-10)</p>
+                                        <input type="range" min="1" max="10" step="1" value={motivationLevel} onChange={(e) => setMotivationLevel(e.target.value)} className="w-full h-2 bg-indigo-100 rounded-full appearance-none cursor-pointer accent-indigo-600 text-center" />
+                                        <div className="text-8xl font-bold text-indigo-600 text-center text-center">{motivationLevel}</div>
                                     </div>
-                                    <textarea className="w-full p-6 bg-slate-50 border border-slate-200 rounded-[1.5rem] text-sm h-40 outline-none text-center text-slate-900" placeholder="Alasan anda..." value={motivationText} onChange={(e) => setMotivationText(e.target.value)} />
+                                    <textarea className="w-full p-6 bg-slate-50 border border-slate-200 rounded-[1.5rem] text-sm h-40 outline-none text-center text-slate-900 text-center" placeholder="Alasan anda..." value={motivationText} onChange={(e) => setMotivationText(e.target.value)} />
                                 </div>
                             )}
 
                             {currentActivity.interactive === 'gratitude-exercises' && (
-                                <div className="space-y-8 py-4 text-center text-slate-900">
-                                    <p className="text-[10px] font-bold text-slate-400 text-center uppercase text-slate-900 text-center">Nyatakan 3 perkara positif yang anda syukuri:</p>
+                                <div className="space-y-8 py-4 text-center text-slate-900 text-center">
+                                    <p className="text-[10px] font-bold text-slate-400 text-center uppercase text-slate-900 text-center text-center">Nyatakan 3 perkara positif yang anda syukuri:</p>
                                     {gratitudeEntries.map((entry, idx) => (
-                                        <input key={idx} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center text-slate-900" placeholder={`Perkara ${idx+1}`} value={entry} onChange={(e) => { const n = [...gratitudeEntries]; n[idx] = e.target.value; setGratitudeEntries(n); }} />
+                                        <input key={idx} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-center text-slate-900 text-center" placeholder={`Perkara ${idx+1}`} value={entry} onChange={(e) => { const n = [...gratitudeEntries]; n[idx] = e.target.value; setGratitudeEntries(n); }} />
                                     ))}
                                 </div>
                             )}
 
                             {currentActivity.interactive === 'psychology-cards' && (
-                                <div className="space-y-8 py-4 text-center text-slate-900">
+                                <div className="space-y-8 py-4 text-center text-slate-900 text-center">
                                     {!selectedPrompt ? (
-                                        <button onClick={() => setSelectedPrompt(prompts[Math.floor(Math.random() * prompts.length)])} className="w-full aspect-[4/5] bg-slate-900 rounded-[3rem] flex flex-col items-center justify-center gap-6 text-white text-center">
-                                            <Icon name="sparkles" size={48} className="text-indigo-400 text-center" />
-                                            <p className="font-black text-center text-center">KETUK KAD REFLEKSI</p>
+                                        <button onClick={() => setSelectedPrompt(prompts[Math.floor(Math.random() * prompts.length)])} className="w-full aspect-[4/5] bg-slate-900 rounded-[3rem] flex flex-col items-center justify-center gap-6 text-white text-center text-center">
+                                            <Icon name="sparkles" size={48} className="text-indigo-400 text-center text-center" />
+                                            <p className="font-black text-center text-center text-center">KETUK KAD REFLEKSI</p>
                                         </button>
                                     ) : (
-                                        <div className="space-y-8 text-center text-slate-900">
-                                            <div className="p-10 bg-indigo-50 rounded-[3rem] text-center text-center text-slate-900">"{selectedPrompt}"</div>
-                                            <textarea className="w-full p-8 bg-slate-50 border border-slate-200 rounded-[2rem] text-center text-center text-slate-900" placeholder="Tuliskan refleksi..." value={promptResponse} onChange={(e) => setPromptResponse(e.target.value)} />
+                                        <div className="space-y-8 text-center text-center text-slate-900 text-center">
+                                            <div className="p-10 bg-indigo-50 rounded-[3rem] text-center text-center text-slate-900 text-center">"{selectedPrompt}"</div>
+                                            <textarea className="w-full p-8 bg-slate-50 border border-slate-200 rounded-[2rem] text-center text-center text-slate-900 text-center" placeholder="Tuliskan refleksi..." value={promptResponse} onChange={(e) => setPromptResponse(e.target.value)} />
                                         </div>
                                     )}
                                 </div>
                             )}
                             
                             {currentActivity.interactive === 'gratitude-letter' && (
-                                <div className="space-y-6 py-4 text-center text-slate-900 text-slate-900">
-                                    <textarea className="w-full h-56 p-8 bg-slate-50 border border-slate-200 rounded-[2.5rem] text-center text-center text-slate-900" placeholder="Wahai rakan..." value={letterText} onChange={(e) => setLetterText(e.target.value)} />
-                                    <p className="text-[10px] font-bold text-slate-400 text-center text-slate-900">Patah perkataan: {letterText.split(" ").filter(w => w.length > 0).length} / 15</p>
+                                <div className="space-y-6 py-4 text-center text-slate-900 text-slate-900 text-center text-center">
+                                    <textarea className="w-full h-56 p-8 bg-slate-50 border border-slate-200 rounded-[2.5rem] text-center text-center text-slate-900 text-center text-center" placeholder="Wahai rakan..." value={letterText} onChange={(e) => setLetterText(e.target.value)} />
+                                    <p className="text-[10px] font-bold text-slate-400 text-center text-slate-900 text-center">Patah perkataan: {letterText.split(" ").filter(w => w.length > 0).length} / 15</p>
                                 </div>
                             )}
                         </div>
 
-                        <button disabled={!canComplete()} onClick={() => completeActivity(currentActivity.id)} className={`w-full py-5 rounded-[1.5rem] font-bold uppercase text-xs shadow-2xl text-center ${canComplete() ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-300'}`}>SIMPAN PERKEMBANGAN</button>
+                        <button disabled={!canComplete()} onClick={() => completeActivity(currentActivity.id)} className={`w-full py-5 rounded-[1.5rem] font-bold uppercase text-xs shadow-2xl text-center text-center ${canComplete() ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-300'}`}>SIMPAN PERKEMBANGAN</button>
                     </div>
                 );
             };
@@ -428,59 +470,59 @@
                 const isAllAnswered = [0,1,2,3,4,5,6,7,8,9,10,11,12,13].every(i => responses[i] !== undefined);
 
                 return (
-                    <div className="min-h-screen bg-white p-8 max-w-md mx-auto flex flex-col text-center">
-                        <div className="flex justify-between items-center mb-10 border-b border-slate-50 pb-6 text-center text-center">
-                            <button onClick={() => setView('dash')} className="text-slate-400 font-bold text-[10px] uppercase flex items-center gap-2 text-center text-center text-center">
+                    <div className="min-h-screen bg-white p-8 max-w-md mx-auto flex flex-col text-center text-center text-center">
+                        <div className="flex justify-between items-center mb-10 border-b border-slate-50 pb-6 text-center text-center text-center">
+                            <button onClick={() => setView('dash')} className="text-slate-400 font-bold text-[10px] uppercase flex items-center gap-2 text-center text-center text-center text-center">
                                 <Icon name="chevron-left" size={16} /> KEMBALI
                             </button>
-                            <span className="text-[10px] font-bold bg-slate-900 text-white px-3 py-1 rounded-full text-center text-center text-center">SULIT</span>
+                            <span className="text-[10px] font-bold bg-slate-900 text-white px-3 py-1 rounded-full text-center text-center text-center text-center">SULIT</span>
                         </div>
-                        <h2 className="text-3xl font-bold text-slate-900 uppercase text-center leading-none mb-10">Ujian {isPost ? 'Pos' : 'Pra'}</h2>
-                        <div className="space-y-6 pb-40 overflow-y-auto scrollbar-hide flex-1 text-center text-center text-slate-900">
+                        <h2 className="text-3xl font-bold text-slate-900 uppercase text-center leading-none mb-10 text-center text-center">Ujian {isPost ? 'Pos' : 'Pra'}</h2>
+                        <div className="space-y-6 pb-40 overflow-y-auto scrollbar-hide flex-1 text-center text-center text-slate-900 text-center text-center">
                             {questionnaireItems.map((q, i) => (
-                                <div key={i} className="p-8 bg-slate-50 rounded-[2rem] space-y-6 border border-slate-100 text-center text-center">
-                                    <p className="text-sm font-bold text-slate-700 text-center text-center text-slate-900"><span className="text-indigo-600 font-bold mr-2 opacity-50">{i+1}.</span> {q}</p>
-                                    <div className="flex gap-3 px-4 text-center text-center">
+                                <div key={i} className="p-8 bg-slate-50 rounded-[2rem] space-y-6 border border-slate-100 text-center text-center text-center text-center">
+                                    <p className="text-sm font-bold text-slate-700 text-center text-center text-slate-900 text-center text-center"><span className="text-indigo-600 font-bold mr-2 opacity-50">{i+1}.</span> {q}</p>
+                                    <div className="flex gap-3 px-4 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">
                                         {['Ya', 'Tidak'].map(ans => (
-                                            <button key={ans} onClick={() => setResponses({...responses, [i]: ans})} className={`flex-1 py-4 rounded-2xl font-bold text-[10px] border-2 text-center text-center ${responses[i] === ans ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>{ans}</button>
+                                            <button key={ans} onClick={() => setResponses({...responses, [i]: ans})} className={`flex-1 py-4 rounded-2xl font-bold text-[10px] border-2 text-center text-center text-center ${responses[i] === ans ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200'}`}>{ans}</button>
                                         ))}
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <div className="fixed bottom-0 left-0 right-0 p-8 bg-white/90 backdrop-blur-md border-t border-slate-100 max-w-md mx-auto z-20 text-center text-center">
-                            <button disabled={!isAllAnswered} onClick={() => { onSubmit(responses, isPost ? 'post' : 'pre'); window.scrollTo(0,0); }} className={`w-full py-5 rounded-[1.5rem] font-bold text-center text-center text-slate-900 ${isAllAnswered ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-300'}`}>HANTAR PENILAIAN</button>
+                        <div className="fixed bottom-0 left-0 right-0 p-8 bg-white/90 backdrop-blur-md border-t border-slate-100 max-w-md mx-auto z-20 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">
+                            <button disabled={!isAllAnswered} onClick={() => { onSubmit(responses, isPost ? 'post' : 'pre'); window.scrollTo(0,0); }} className={`w-full py-5 rounded-[1.5rem] font-bold text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center ${isAllAnswered ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-300'}`}>HANTAR PENILAIAN</button>
                         </div>
                     </div>
                 );
             };
 
             const CounselorDashboard = ({ setView, setUser, status }) => (
-                <div className="min-h-screen bg-white p-8 max-w-2xl mx-auto text-center text-center text-slate-900">
+                <div className="min-h-screen bg-white p-8 max-w-2xl mx-auto text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center">
                     <Nav setView={setView} setUser={setUser} />
-                    <h2 className="text-3xl font-bold text-slate-900 uppercase text-center text-center text-slate-900">Panel Pemantauan</h2>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.4em] mb-12 text-center text-center text-slate-900">Unit Psikologi IPGKPM</p>
-                    <div className="grid grid-cols-2 gap-4 mb-12 text-center text-center text-slate-900">
-                        <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 text-center text-center text-slate-900">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase text-center text-center text-slate-900">Kes Kritikal</p>
+                    <h2 className="text-3xl font-bold text-slate-900 uppercase text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center">Panel Pemantauan</h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.4em] mb-12 text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">Unit Psikologi IPGKPM</p>
+                    <div className="grid grid-cols-2 gap-4 mb-12 text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">
+                        <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">Kes Kritikal</p>
                             <div className="flex items-center gap-3 text-red-600 justify-center"><Icon name="alert-circle" size={28} /><span className="text-4xl font-bold">01</span></div>
                         </div>
-                        <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 text-center text-center text-center text-slate-900">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase text-center text-center text-slate-900">Kadar Intervensi</p>
+                        <div className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 text-center text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">Kadar Intervensi</p>
                             <div className="flex items-center gap-3 text-green-600 justify-center"><Icon name="check-circle" size={28} /><span className="text-4xl font-bold">94%</span></div>
                         </div>
                     </div>
-                    <div className="divide-y divide-slate-100 border rounded-[3rem] overflow-hidden text-center text-center text-slate-900">
+                    <div className="divide-y divide-slate-100 border rounded-[3rem] overflow-hidden text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">
                         {Object.entries(MOCK_STUDENTS).map(([id, s]) => (
-                            <div key={id} className="p-8 flex items-center justify-between hover:bg-slate-50 text-center text-center text-slate-900">
-                                <div className="flex items-center gap-5 text-center text-center text-slate-900">
-                                    <div className={`w-3 h-3 rounded-full ${id === "BU12345" ? 'bg-red-500 animate-pulse' : 'bg-green-500'} text-center text-center text-slate-900`} />
-                                    <div className="text-left text-center text-slate-900">
-                                        <p className="text-sm font-bold text-slate-800 uppercase text-center text-center text-slate-900">{s.name}</p>
-                                        <p className="text-[9px] text-slate-400 font-bold uppercase text-center text-center text-center text-slate-900">{id} • {s.class}</p>
+                            <div key={id} className="p-8 flex items-center justify-between hover:bg-slate-50 text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">
+                                <div className="flex items-center gap-5 text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">
+                                    <div className={`w-3 h-3 rounded-full ${id === "BU12345" ? 'bg-red-500 animate-pulse' : 'bg-green-500'} text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center`} />
+                                    <div className="text-left text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">
+                                        <p className="text-sm font-bold text-slate-800 uppercase text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">{s.name}</p>
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase text-center text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">{id} • {s.class}</p>
                                     </div>
                                 </div>
-                                <p className="text-[11px] font-bold text-indigo-600 uppercase text-center text-center text-slate-900">Skor: {id === "BU12345" ? (status.preScore || 12) : 3}/14</p>
+                                <p className="text-[11px] font-bold text-indigo-600 uppercase text-center text-center text-slate-900 text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">Skor: {id === "BU12345" ? (status.preScore || 12) : 3}/14</p>
                             </div>
                         ))}
                     </div>
@@ -530,7 +572,7 @@
                 };
 
                 return (
-                    <div className="min-h-screen text-center">
+                    <div className="min-h-screen text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center text-center">
                         {view === 'landing' && <LandingView setView={setView} />}
                         {(view === 'login-s' || view === 'login-c') && <LoginView type={view === 'login-s' ? 's' : 'c'} setView={setView} inputs={inputs} setInputs={setInputs} handleLogin={handleLogin} msg={msg} />}
                         {view === 'dash' && <StudentDashboard user={user} day={day} setDay={setDay} status={status} setView={setView} currentActivity={currentActivity} isCompleted={isCompleted} setUser={setUser} />}
