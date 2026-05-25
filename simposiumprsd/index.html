@@ -1044,8 +1044,12 @@
             <li>Gunakan menu di sebelah kiri untuk menavigasi bahagian yang ingin dikemaskini</li>
             <li>Setiap perubahan yang disimpan akan terus dikemaskini pada paparan awam</li>
             <li>Pastikan maklumat yang dimasukkan adalah tepat sebelum menekan butang Simpan</li>
-            <li>Maklumat disimpan secara tempatan (sesi semasa) — untuk persekitaran sebenar, sambungkan ke pangkalan data</li>
+            <li>✅ Maklumat disimpan secara kekal dalam browser — data tidak akan hilang walaupun browser ditutup</li>
           </ul>
+          <div style="margin-top:1.5rem;padding-top:1.2rem;border-top:1px solid rgba(231,76,60,0.2);">
+            <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem;">⚠️ Tetapkan semula semua maklumat kepada nilai asal:</p>
+            <button onclick="resetAllData()" style="padding:0.5rem 1.2rem;background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);color:#ff6b6b;border-radius:8px;cursor:pointer;font-size:0.82rem;font-family:'DM Sans',sans-serif;">🗑️ Tetapkan Semula Data</button>
+          </div>
         </div>
       </div>
 
@@ -1264,14 +1268,100 @@
 
 
 <script>
-// ===== STATE =====
-let timelineData = [
+// ===== DEFAULT DATA =====
+const DEFAULT_TIMELINE = [
   { date: 'Jun – Julai 2026', event: 'Pendaftaran & Penyerahan Abstrak', note: 'Borang pendaftaran boleh diperoleh daripada Urusetia Simposium' },
   { date: '1 Ogos 2026', event: 'Tarikh Tutup Penyerahan Bahan', note: 'Semua bahan (poster, video, laporan inovasi) mesti dihantar kepada urusetia' },
   { date: '14 Ogos 2026', event: 'Pendaftaran Semula Peserta', note: 'Peserta wajib mendaftar semula bermula jam 8:00 pagi' },
-  { date: '15 Ogos 2026', event: 'Hari Pertama Simposium', note: 'Majlis Perasmian, Pertandingan iKon Inspirasi & Pembentangan Poster' },
-  { date: '16 Ogos 2026', event: 'Hari Kedua Simposium', note: 'Pertandingan Video, Inovasi & Majlis Penutup + Penganugerahan' },
+  { date: '5 Ogos 2026', event: 'Hari Pertama Simposium', note: 'Majlis Perasmian, Pertandingan iKon Inspirasi & Pembentangan Poster' },
+  { date: '6 Ogos 2026', event: 'Hari Kedua Simposium', note: 'Pertandingan Video, Inovasi & Majlis Penutup + Penganugerahan' },
 ];
+
+// ===== LOCALSTORAGE HELPERS =====
+function lsSave(key, val) {
+  try { localStorage.setItem('prsd_' + key, JSON.stringify(val)); } catch(e) {}
+}
+function lsGet(key, fallback) {
+  try {
+    const v = localStorage.getItem('prsd_' + key);
+    return v !== null ? JSON.parse(v) : fallback;
+  } catch(e) { return fallback; }
+}
+
+// ===== STATE =====
+let timelineData = lsGet('timeline', DEFAULT_TIMELINE);
+
+// ===== LOAD SAVED DATA ON PAGE START =====
+function loadAllData() {
+  // Hero
+  const hero = lsGet('hero', null);
+  if (hero) {
+    if (hero.date)     { document.getElementById('heroDate').textContent = hero.date; document.getElementById('f-heroDate').value = hero.date; }
+    if (hero.venue)    { document.getElementById('heroVenue').textContent = hero.venue; document.getElementById('f-heroVenue').value = hero.venue; }
+    if (hero.platform) { document.getElementById('heroPlatform').textContent = hero.platform; document.getElementById('f-heroPlatform').value = hero.platform; }
+    if (hero.tagline)  { document.getElementById('heroTagline').textContent = hero.tagline; document.getElementById('f-heroTagline').value = hero.tagline; }
+  }
+  // About
+  const about = lsGet('about', null);
+  if (about) {
+    if (about.about)      { document.getElementById('aboutDesc').textContent = about.about; document.getElementById('f-aboutDesc').value = about.about; }
+    if (about.objective)  { document.getElementById('objectiveText').textContent = about.objective; document.getElementById('f-objective').value = about.objective; }
+    if (about.target)     { document.getElementById('targetText').textContent = about.target; document.getElementById('f-target').value = about.target; }
+    if (about.generalReq) { document.getElementById('generalReqText').textContent = about.generalReq; document.getElementById('f-generalReq').value = about.generalReq; }
+    if (about.prize)      { document.getElementById('prizeText').textContent = about.prize; document.getElementById('f-prize').value = about.prize; }
+  }
+  // Announcement
+  const ann = lsGet('announcement', null);
+  if (ann) {
+    document.getElementById('announcementText').textContent = ann;
+    document.getElementById('f-announcement').value = ann;
+  }
+  // Contact
+  const contact = lsGet('contact', null);
+  if (contact) {
+    if (contact.email) { document.getElementById('contactEmail').textContent = contact.email; document.getElementById('f-contactEmail').value = contact.email; }
+    if (contact.phone) { document.getElementById('contactPhone').textContent = contact.phone; document.getElementById('f-contactPhone').value = contact.phone; }
+  }
+  // Categories
+  const catFields = {
+    ikon:    { name:'cat1Name', format:'cat1Format', dur:'cat1Duration', part:'cat1Participants', desc:'cat1Desc', mdesc:'m-ikon-desc', mformat:'m-ikon-format',
+               fname:'f-cat1name', fformat:'f-cat1format', fdur:'f-cat1dur', fpart:'f-cat1part', fdesc:'f-cat1desc', fmdesc:'f-m-ikon-desc', fmformat:'f-m-ikon-format' },
+    poster:  { name:'cat2Name', format:'cat2Format', dur:'cat2Duration', part:'cat2Participants', desc:'cat2Desc', mdesc:'m-poster-desc', mformat:'m-poster-format',
+               fname:'f-cat2name', fformat:'f-cat2format', fdur:'f-cat2dur', fpart:'f-cat2part', fdesc:'f-cat2desc', fmdesc:'f-m-poster-desc', fmformat:'f-m-poster-format' },
+    video:   { name:'cat3Name', format:'cat3Format', dur:'cat3Duration', part:'cat3Participants', desc:'cat3Desc', mdesc:'m-video-desc', mformat:'m-video-format',
+               fname:'f-cat3name', fformat:'f-cat3format', fdur:'f-cat3dur', fpart:'f-cat3part', fdesc:'f-cat3desc', fmdesc:'f-m-video-desc', fmformat:'f-m-video-format' },
+    inovasi: { name:'cat4Name', format:'cat4Format', dur:'cat4Duration', part:'cat4Participants', desc:'cat4Desc', mdesc:'m-inovasi-desc', mformat:'m-inovasi-format',
+               fname:'f-cat4name', fformat:'f-cat4format', fdur:'f-cat4dur', fpart:'f-cat4part', fdesc:'f-cat4desc', fmdesc:'f-m-inovasi-desc', fmformat:'f-m-inovasi-format' },
+  };
+  const keyMap = { name:'fname', format:'fformat', dur:'fdur', part:'fpart', desc:'fdesc', mdesc:'fmdesc', mformat:'fmformat' };
+  for (const [cat, fields] of Object.entries(catFields)) {
+    const saved = lsGet('cat_' + cat, null);
+    if (!saved) continue;
+    for (const [key, val] of Object.entries(saved)) {
+      const displayEl = document.getElementById(fields[key]);
+      const formKey = keyMap[key] || ('f' + key);
+      const formEl = document.getElementById(fields[formKey]);
+      if (displayEl) displayEl.textContent = val;
+      if (formEl) formEl.value = val;
+    }
+  }
+  // Timeline
+  const tl = lsGet('timeline', null);
+  if (tl) {
+    timelineData = tl;
+    const container = document.getElementById('timelineContainer');
+    if (container) {
+      container.innerHTML = timelineData.map(item => `
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-date">\${item.date}</div>
+          <div class="timeline-event">\${item.event}</div>
+          <div class="timeline-note">\${item.note}</div>
+        </div>
+      `).join('');
+    }
+  }
+}
 
 // ===== NAVIGATION =====
 let isLoggedIn = false;
@@ -1354,6 +1444,8 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
   document.body.style.overflow = '';
 }
+document.addEventListener('DOMContentLoaded', loadAllData);
+
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) { m.classList.remove('open'); document.body.style.overflow = ''; } });
 });
@@ -1366,64 +1458,78 @@ function flash(id) {
 }
 
 function saveHero() {
-  document.getElementById('heroDate').textContent = document.getElementById('f-heroDate').value;
-  document.getElementById('heroVenue').textContent = document.getElementById('f-heroVenue').value;
-  document.getElementById('heroPlatform').textContent = document.getElementById('f-heroPlatform').value;
-  document.getElementById('heroTagline').textContent = document.getElementById('f-heroTagline').value;
+  const data = {
+    date: document.getElementById('f-heroDate').value,
+    venue: document.getElementById('f-heroVenue').value,
+    platform: document.getElementById('f-heroPlatform').value,
+    tagline: document.getElementById('f-heroTagline').value,
+  };
+  document.getElementById('heroDate').textContent = data.date;
+  document.getElementById('heroVenue').textContent = data.venue;
+  document.getElementById('heroPlatform').textContent = data.platform;
+  document.getElementById('heroTagline').textContent = data.tagline;
+  lsSave('hero', data);
   flash('notice-hero');
 }
 
 function saveAbout() {
-  document.getElementById('aboutDesc').textContent = document.getElementById('f-aboutDesc').value;
-  document.getElementById('objectiveText').textContent = document.getElementById('f-objective').value;
-  document.getElementById('targetText').textContent = document.getElementById('f-target').value;
-  document.getElementById('generalReqText').textContent = document.getElementById('f-generalReq').value;
-  document.getElementById('prizeText').textContent = document.getElementById('f-prize').value;
+  const data = {
+    about: document.getElementById('f-aboutDesc').value,
+    objective: document.getElementById('f-objective').value,
+    target: document.getElementById('f-target').value,
+    generalReq: document.getElementById('f-generalReq').value,
+    prize: document.getElementById('f-prize').value,
+  };
+  document.getElementById('aboutDesc').textContent = data.about;
+  document.getElementById('objectiveText').textContent = data.objective;
+  document.getElementById('targetText').textContent = data.target;
+  document.getElementById('generalReqText').textContent = data.generalReq;
+  document.getElementById('prizeText').textContent = data.prize;
+  lsSave('about', data);
   flash('notice-about');
 }
 
 function saveAnnouncement() {
-  document.getElementById('announcementText').textContent = document.getElementById('f-announcement').value;
+  const val = document.getElementById('f-announcement').value;
+  document.getElementById('announcementText').textContent = val;
+  lsSave('announcement', val);
   flash('notice-announcement');
 }
 
 function saveCat(cat) {
-  if (cat === 'ikon') {
-    document.getElementById('cat1Name').textContent = document.getElementById('f-cat1name').value;
-    document.getElementById('cat1Format').textContent = document.getElementById('f-cat1format').value;
-    document.getElementById('cat1Duration').textContent = document.getElementById('f-cat1dur').value;
-    document.getElementById('cat1Participants').textContent = document.getElementById('f-cat1part').value;
-    document.getElementById('cat1Desc').textContent = document.getElementById('f-cat1desc').value;
-    document.getElementById('m-ikon-desc').textContent = document.getElementById('f-m-ikon-desc').value;
-    document.getElementById('m-ikon-format').textContent = document.getElementById('f-m-ikon-format').value;
-  } else if (cat === 'poster') {
-    document.getElementById('cat2Name').textContent = document.getElementById('f-cat2name').value;
-    document.getElementById('cat2Format').textContent = document.getElementById('f-cat2format').value;
-    document.getElementById('cat2Duration').textContent = document.getElementById('f-cat2dur').value;
-    document.getElementById('cat2Participants').textContent = document.getElementById('f-cat2part').value;
-    document.getElementById('cat2Desc').textContent = document.getElementById('f-cat2desc').value;
-    document.getElementById('m-poster-format').textContent = document.getElementById('f-m-poster-format').value;
-  } else if (cat === 'video') {
-    document.getElementById('cat3Name').textContent = document.getElementById('f-cat3name').value;
-    document.getElementById('cat3Format').textContent = document.getElementById('f-cat3format').value;
-    document.getElementById('cat3Duration').textContent = document.getElementById('f-cat3dur').value;
-    document.getElementById('cat3Participants').textContent = document.getElementById('f-cat3part').value;
-    document.getElementById('cat3Desc').textContent = document.getElementById('f-cat3desc').value;
-    document.getElementById('m-video-format').textContent = document.getElementById('f-m-video-format').value;
-  } else if (cat === 'inovasi') {
-    document.getElementById('cat4Name').textContent = document.getElementById('f-cat4name').value;
-    document.getElementById('cat4Format').textContent = document.getElementById('f-cat4format').value;
-    document.getElementById('cat4Duration').textContent = document.getElementById('f-cat4dur').value;
-    document.getElementById('cat4Participants').textContent = document.getElementById('f-cat4part').value;
-    document.getElementById('cat4Desc').textContent = document.getElementById('f-cat4desc').value;
-    document.getElementById('m-inovasi-format').textContent = document.getElementById('f-m-inovasi-format').value;
+  const maps = {
+    ikon:   { name:'cat1Name', format:'cat1Format', dur:'cat1Duration', part:'cat1Participants', desc:'cat1Desc', mdesc:'m-ikon-desc', mformat:'m-ikon-format' },
+    poster: { name:'cat2Name', format:'cat2Format', dur:'cat2Duration', part:'cat2Participants', desc:'cat2Desc', mdesc:'m-poster-desc', mformat:'m-poster-format' },
+    video:  { name:'cat3Name', format:'cat3Format', dur:'cat3Duration', part:'cat3Participants', desc:'cat3Desc', mdesc:'m-video-desc', mformat:'m-video-format' },
+    inovasi:{ name:'cat4Name', format:'cat4Format', dur:'cat4Duration', part:'cat4Participants', desc:'cat4Desc', mdesc:'m-inovasi-desc', mformat:'m-inovasi-format' },
+  };
+  const fmaps = {
+    ikon:   { name:'f-cat1name', format:'f-cat1format', dur:'f-cat1dur', part:'f-cat1part', desc:'f-cat1desc', mdesc:'f-m-ikon-desc', mformat:'f-m-ikon-format' },
+    poster: { name:'f-cat2name', format:'f-cat2format', dur:'f-cat2dur', part:'f-cat2part', desc:'f-cat2desc', mdesc:'f-m-poster-desc', mformat:'f-m-poster-format' },
+    video:  { name:'f-cat3name', format:'f-cat3format', dur:'f-cat3dur', part:'f-cat3part', desc:'f-cat3desc', mdesc:'f-m-video-desc', mformat:'f-m-video-format' },
+    inovasi:{ name:'f-cat4name', format:'f-cat4format', dur:'f-cat4dur', part:'f-cat4part', desc:'f-cat4desc', mdesc:'f-m-inovasi-desc', mformat:'f-m-inovasi-format' },
+  };
+  const m = maps[cat]; const f = fmaps[cat];
+  const data = {};
+  for (const key of Object.keys(f)) {
+    const el = document.getElementById(f[key]);
+    if (!el) continue;
+    data[key] = el.value;
+    const target = document.getElementById(m[key]);
+    if (target) target.textContent = el.value;
   }
+  lsSave('cat_' + cat, data);
   flash('notice-cat-' + cat);
 }
 
 function saveContact() {
-  document.getElementById('contactEmail').textContent = document.getElementById('f-contactEmail').value;
-  document.getElementById('contactPhone').textContent = document.getElementById('f-contactPhone').value;
+  const data = {
+    email: document.getElementById('f-contactEmail').value,
+    phone: document.getElementById('f-contactPhone').value,
+  };
+  document.getElementById('contactEmail').textContent = data.email;
+  document.getElementById('contactPhone').textContent = data.phone;
+  lsSave('contact', data);
   flash('notice-contact');
 }
 
@@ -1465,7 +1571,16 @@ function saveTimeline() {
       <div class="timeline-note">${item.note}</div>
     </div>
   `).join('');
+  lsSave('timeline', timelineData);
   flash('notice-timeline');
+}
+
+// ===== RESET ALL DATA =====
+function resetAllData() {
+  if (!confirm('Adakah anda pasti? Semua maklumat yang telah dikemaskini akan dipadamkan dan dikembalikan kepada nilai asal.')) return;
+  const keys = ['hero','about','announcement','contact','cat_ikon','cat_poster','cat_video','cat_inovasi','timeline'];
+  keys.forEach(k => { try { localStorage.removeItem('prsd_' + k); } catch(e) {} });
+  location.reload();
 }
 </script>
 </body>
