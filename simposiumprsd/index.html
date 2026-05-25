@@ -1279,19 +1279,30 @@ const DEFAULT_TIMELINE = [
 
 // ===== LOCALSTORAGE HELPERS =====
 function lsSave(key, val) {
-  try { localStorage.setItem('prsd_' + key, JSON.stringify(val)); } catch(e) {}
+  try {
+    localStorage.setItem('prsd_' + key, JSON.stringify(val));
+    console.log('[PRSd] Saved:', key);
+  } catch(e) { console.warn('[PRSd] Save failed:', key, e); }
 }
 function lsGet(key, fallback) {
   try {
     const v = localStorage.getItem('prsd_' + key);
-    return v !== null ? JSON.parse(v) : fallback;
-  } catch(e) { return fallback; }
+    if (v !== null) {
+      const parsed = JSON.parse(v);
+      console.log('[PRSd] Loaded:', key);
+      return parsed;
+    }
+  } catch(e) { console.warn('[PRSd] Load failed:', key, e); }
+  return fallback;
 }
 
 // ===== STATE =====
 let timelineData = lsGet('timeline', DEFAULT_TIMELINE);
 
 // ===== LOAD SAVED DATA ON PAGE START =====
+function setEl(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
+function setVal(id, val) { const e = document.getElementById(id); if (e) e.value = val; }
+
 function loadAllData() {
   // Hero
   const hero = lsGet('hero', null);
@@ -1322,30 +1333,45 @@ function loadAllData() {
     if (contact.email) { document.getElementById('contactEmail').textContent = contact.email; document.getElementById('f-contactEmail').value = contact.email; }
     if (contact.phone) { document.getElementById('contactPhone').textContent = contact.phone; document.getElementById('f-contactPhone').value = contact.phone; }
   }
-  // Categories
-  const catFields = {
-    ikon:    { name:'cat1Name', format:'cat1Format', dur:'cat1Duration', part:'cat1Participants', desc:'cat1Desc', mdesc:'m-ikon-desc', mformat:'m-ikon-format',
-               fname:'f-cat1name', fformat:'f-cat1format', fdur:'f-cat1dur', fpart:'f-cat1part', fdesc:'f-cat1desc', fmdesc:'f-m-ikon-desc', fmformat:'f-m-ikon-format' },
-    poster:  { name:'cat2Name', format:'cat2Format', dur:'cat2Duration', part:'cat2Participants', desc:'cat2Desc', mdesc:'m-poster-desc', mformat:'m-poster-format',
-               fname:'f-cat2name', fformat:'f-cat2format', fdur:'f-cat2dur', fpart:'f-cat2part', fdesc:'f-cat2desc', fmdesc:'f-m-poster-desc', fmformat:'f-m-poster-format' },
-    video:   { name:'cat3Name', format:'cat3Format', dur:'cat3Duration', part:'cat3Participants', desc:'cat3Desc', mdesc:'m-video-desc', mformat:'m-video-format',
-               fname:'f-cat3name', fformat:'f-cat3format', fdur:'f-cat3dur', fpart:'f-cat3part', fdesc:'f-cat3desc', fmdesc:'f-m-video-desc', fmformat:'f-m-video-format' },
-    inovasi: { name:'cat4Name', format:'cat4Format', dur:'cat4Duration', part:'cat4Participants', desc:'cat4Desc', mdesc:'m-inovasi-desc', mformat:'m-inovasi-format',
-               fname:'f-cat4name', fformat:'f-cat4format', fdur:'f-cat4dur', fpart:'f-cat4part', fdesc:'f-cat4desc', fmdesc:'f-m-inovasi-desc', fmformat:'f-m-inovasi-format' },
-  };
-  const keyMap = { name:'fname', format:'fformat', dur:'fdur', part:'fpart', desc:'fdesc', mdesc:'fmdesc', mformat:'fmformat' };
-  for (const [cat, fields] of Object.entries(catFields)) {
-    const saved = lsGet('cat_' + cat, null);
-    if (!saved) continue;
-    for (const [key, val] of Object.entries(saved)) {
-      const displayEl = document.getElementById(fields[key]);
-      const formKey = keyMap[key] || ('f' + key);
-      const formEl = document.getElementById(fields[formKey]);
-      if (displayEl) displayEl.textContent = val;
-      if (formEl) formEl.value = val;
-    }
+  // Categories - explicit loading for each
+  const ci = lsGet('cat_ikon', null);
+  if (ci) {
+    if (ci.name)    { setEl('cat1Name', ci.name);          setVal('f-cat1name', ci.name); }
+    if (ci.format)  { setEl('cat1Format', ci.format);      setVal('f-cat1format', ci.format); }
+    if (ci.dur)     { setEl('cat1Duration', ci.dur);       setVal('f-cat1dur', ci.dur); }
+    if (ci.part)    { setEl('cat1Participants', ci.part);  setVal('f-cat1part', ci.part); }
+    if (ci.desc)    { setEl('cat1Desc', ci.desc);          setVal('f-cat1desc', ci.desc); }
+    if (ci.mdesc)   { setEl('m-ikon-desc', ci.mdesc);      setVal('f-m-ikon-desc', ci.mdesc); }
+    if (ci.mformat) { setEl('m-ikon-format', ci.mformat);  setVal('f-m-ikon-format', ci.mformat); }
   }
-  // Timeline
+  const cp = lsGet('cat_poster', null);
+  if (cp) {
+    if (cp.name)    { setEl('cat2Name', cp.name);          setVal('f-cat2name', cp.name); }
+    if (cp.format)  { setEl('cat2Format', cp.format);      setVal('f-cat2format', cp.format); }
+    if (cp.dur)     { setEl('cat2Duration', cp.dur);       setVal('f-cat2dur', cp.dur); }
+    if (cp.part)    { setEl('cat2Participants', cp.part);  setVal('f-cat2part', cp.part); }
+    if (cp.desc)    { setEl('cat2Desc', cp.desc);          setVal('f-cat2desc', cp.desc); }
+    if (cp.mformat) { setEl('m-poster-format', cp.mformat);setVal('f-m-poster-format', cp.mformat); }
+  }
+  const cv = lsGet('cat_video', null);
+  if (cv) {
+    if (cv.name)    { setEl('cat3Name', cv.name);          setVal('f-cat3name', cv.name); }
+    if (cv.format)  { setEl('cat3Format', cv.format);      setVal('f-cat3format', cv.format); }
+    if (cv.dur)     { setEl('cat3Duration', cv.dur);       setVal('f-cat3dur', cv.dur); }
+    if (cv.part)    { setEl('cat3Participants', cv.part);  setVal('f-cat3part', cv.part); }
+    if (cv.desc)    { setEl('cat3Desc', cv.desc);          setVal('f-cat3desc', cv.desc); }
+    if (cv.mformat) { setEl('m-video-format', cv.mformat); setVal('f-m-video-format', cv.mformat); }
+  }
+  const cn = lsGet('cat_inovasi', null);
+  if (cn) {
+    if (cn.name)    { setEl('cat4Name', cn.name);          setVal('f-cat4name', cn.name); }
+    if (cn.format)  { setEl('cat4Format', cn.format);      setVal('f-cat4format', cn.format); }
+    if (cn.dur)     { setEl('cat4Duration', cn.dur);       setVal('f-cat4dur', cn.dur); }
+    if (cn.part)    { setEl('cat4Participants', cn.part);  setVal('f-cat4part', cn.part); }
+    if (cn.desc)    { setEl('cat4Desc', cn.desc);          setVal('f-cat4desc', cn.desc); }
+    if (cn.mformat) { setEl('m-inovasi-format', cn.mformat);setVal('f-m-inovasi-format', cn.mformat); }
+  }
+    // Timeline
   const tl = lsGet('timeline', null);
   if (tl) {
     timelineData = tl;
@@ -1354,9 +1380,9 @@ function loadAllData() {
       container.innerHTML = timelineData.map(item => `
         <div class="timeline-item">
           <div class="timeline-dot"></div>
-          <div class="timeline-date">\${item.date}</div>
-          <div class="timeline-event">\${item.event}</div>
-          <div class="timeline-note">\${item.note}</div>
+          <div class="timeline-date">${item.date}</div>
+          <div class="timeline-event">${item.event}</div>
+          <div class="timeline-note">${item.note}</div>
         </div>
       `).join('');
     }
@@ -1444,7 +1470,17 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
   document.body.style.overflow = '';
 }
-document.addEventListener('DOMContentLoaded', loadAllData);
+// Load on DOM ready, with window.onload as fallback
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadAllData);
+} else {
+  // DOM already loaded (e.g. script at bottom)
+  loadAllData();
+}
+window.addEventListener('load', function() {
+  // Extra safety: re-apply if DOM was ready before script ran
+  loadAllData();
+});
 
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) { m.classList.remove('open'); document.body.style.overflow = ''; } });
@@ -1497,26 +1533,69 @@ function saveAnnouncement() {
 }
 
 function saveCat(cat) {
-  const maps = {
-    ikon:   { name:'cat1Name', format:'cat1Format', dur:'cat1Duration', part:'cat1Participants', desc:'cat1Desc', mdesc:'m-ikon-desc', mformat:'m-ikon-format' },
-    poster: { name:'cat2Name', format:'cat2Format', dur:'cat2Duration', part:'cat2Participants', desc:'cat2Desc', mdesc:'m-poster-desc', mformat:'m-poster-format' },
-    video:  { name:'cat3Name', format:'cat3Format', dur:'cat3Duration', part:'cat3Participants', desc:'cat3Desc', mdesc:'m-video-desc', mformat:'m-video-format' },
-    inovasi:{ name:'cat4Name', format:'cat4Format', dur:'cat4Duration', part:'cat4Participants', desc:'cat4Desc', mdesc:'m-inovasi-desc', mformat:'m-inovasi-format' },
-  };
-  const fmaps = {
-    ikon:   { name:'f-cat1name', format:'f-cat1format', dur:'f-cat1dur', part:'f-cat1part', desc:'f-cat1desc', mdesc:'f-m-ikon-desc', mformat:'f-m-ikon-format' },
-    poster: { name:'f-cat2name', format:'f-cat2format', dur:'f-cat2dur', part:'f-cat2part', desc:'f-cat2desc', mdesc:'f-m-poster-desc', mformat:'f-m-poster-format' },
-    video:  { name:'f-cat3name', format:'f-cat3format', dur:'f-cat3dur', part:'f-cat3part', desc:'f-cat3desc', mdesc:'f-m-video-desc', mformat:'f-m-video-format' },
-    inovasi:{ name:'f-cat4name', format:'f-cat4format', dur:'f-cat4dur', part:'f-cat4part', desc:'f-cat4desc', mdesc:'f-m-inovasi-desc', mformat:'f-m-inovasi-format' },
-  };
-  const m = maps[cat]; const f = fmaps[cat];
-  const data = {};
-  for (const key of Object.keys(f)) {
-    const el = document.getElementById(f[key]);
-    if (!el) continue;
-    data[key] = el.value;
-    const target = document.getElementById(m[key]);
-    if (target) target.textContent = el.value;
+  let data = {};
+  if (cat === 'ikon') {
+    data = {
+      name:    document.getElementById('f-cat1name').value,
+      format:  document.getElementById('f-cat1format').value,
+      dur:     document.getElementById('f-cat1dur').value,
+      part:    document.getElementById('f-cat1part').value,
+      desc:    document.getElementById('f-cat1desc').value,
+      mdesc:   document.getElementById('f-m-ikon-desc').value,
+      mformat: document.getElementById('f-m-ikon-format').value,
+    };
+    document.getElementById('cat1Name').textContent        = data.name;
+    document.getElementById('cat1Format').textContent      = data.format;
+    document.getElementById('cat1Duration').textContent    = data.dur;
+    document.getElementById('cat1Participants').textContent= data.part;
+    document.getElementById('cat1Desc').textContent        = data.desc;
+    document.getElementById('m-ikon-desc').textContent     = data.mdesc;
+    document.getElementById('m-ikon-format').textContent   = data.mformat;
+  } else if (cat === 'poster') {
+    data = {
+      name:    document.getElementById('f-cat2name').value,
+      format:  document.getElementById('f-cat2format').value,
+      dur:     document.getElementById('f-cat2dur').value,
+      part:    document.getElementById('f-cat2part').value,
+      desc:    document.getElementById('f-cat2desc').value,
+      mformat: document.getElementById('f-m-poster-format').value,
+    };
+    document.getElementById('cat2Name').textContent        = data.name;
+    document.getElementById('cat2Format').textContent      = data.format;
+    document.getElementById('cat2Duration').textContent    = data.dur;
+    document.getElementById('cat2Participants').textContent= data.part;
+    document.getElementById('cat2Desc').textContent        = data.desc;
+    document.getElementById('m-poster-format').textContent = data.mformat;
+  } else if (cat === 'video') {
+    data = {
+      name:    document.getElementById('f-cat3name').value,
+      format:  document.getElementById('f-cat3format').value,
+      dur:     document.getElementById('f-cat3dur').value,
+      part:    document.getElementById('f-cat3part').value,
+      desc:    document.getElementById('f-cat3desc').value,
+      mformat: document.getElementById('f-m-video-format').value,
+    };
+    document.getElementById('cat3Name').textContent        = data.name;
+    document.getElementById('cat3Format').textContent      = data.format;
+    document.getElementById('cat3Duration').textContent    = data.dur;
+    document.getElementById('cat3Participants').textContent= data.part;
+    document.getElementById('cat3Desc').textContent        = data.desc;
+    document.getElementById('m-video-format').textContent  = data.mformat;
+  } else if (cat === 'inovasi') {
+    data = {
+      name:    document.getElementById('f-cat4name').value,
+      format:  document.getElementById('f-cat4format').value,
+      dur:     document.getElementById('f-cat4dur').value,
+      part:    document.getElementById('f-cat4part').value,
+      desc:    document.getElementById('f-cat4desc').value,
+      mformat: document.getElementById('f-m-inovasi-format').value,
+    };
+    document.getElementById('cat4Name').textContent        = data.name;
+    document.getElementById('cat4Format').textContent      = data.format;
+    document.getElementById('cat4Duration').textContent    = data.dur;
+    document.getElementById('cat4Participants').textContent= data.part;
+    document.getElementById('cat4Desc').textContent        = data.desc;
+    document.getElementById('m-inovasi-format').textContent= data.mformat;
   }
   lsSave('cat_' + cat, data);
   flash('notice-cat-' + cat);
