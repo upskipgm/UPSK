@@ -221,19 +221,72 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
     <!-- Pautan Capaian -->
     <div class="mb-8">
       <div class="flex items-center gap-2 mb-5"><div class="w-1 h-6 bg-pri-500 rounded-full"></div><h3 class="font-display font-700 text-lg text-navy-800">Pautan Capaian</h3></div>
-      <div class="grid md:grid-cols-2 gap-7" id="pub-pautan"></div>
+      <div class="grid md:grid-cols-2 gap-7" id="pub-pautan">
+      <!-- Static fallback - JS will overwrite with dynamic content -->
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <div style="width:28px;height:28px;border-radius:8px;background:#E6F5F0;display:flex;align-items:center;justify-content:center;"><i class="fas fa-user-graduate" style="color:#0E7C61;font-size:.75rem;"></i></div>
+          <h4 style="font-family:'Outfit',sans-serif;font-weight:700;color:#0E7C61;">Untuk Pelajar IPGKPM</h4>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="link-card" onclick="handleAksi('ujian')" style="cursor:pointer;"><div class="lc-icon" style="background:#E6F5F0;color:#0E7C61;"><i class="fas fa-clipboard-check"></i></div><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">Ujian Psikologi Dalam Talian</div><div style="font-size:.75rem;color:#9CA3AF;margin-top:2px;">Jalani penilaian diri — stres, personaliti &amp; kerjaya</div></div><i class="fas fa-chevron-right" style="color:#D1D5DB;font-size:.75rem;"></i></div>
+          <div class="link-card" onclick="handleAksi('temujanji')" style="cursor:pointer;"><div class="lc-icon" style="background:#FDF3E6;color:#E88D3A;"><i class="fas fa-calendar-check"></i></div><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">Temujanji Kaunseling</div><div style="font-size:.75rem;color:#9CA3AF;margin-top:2px;">Jadualkan sesi bersemuka atau dalam talian</div></div><i class="fas fa-chevron-right" style="color:#D1D5DB;font-size:.75rem;"></i></div>
+          <div class="link-card" onclick="handleAksi('artikel')" style="cursor:pointer;"><div class="lc-icon" style="background:#EFF6FF;color:#3B82F6;"><i class="fas fa-book-open"></i></div><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">Maklumat Psikopendidikan</div><div style="font-size:.75rem;color:#9CA3AF;margin-top:2px;">Artikel, panduan &amp; sumber psikologi</div></div><i class="fas fa-chevron-right" style="color:#D1D5DB;font-size:.75rem;"></i></div>
+          <div class="link-card" onclick="handleAksi('info')" style="cursor:pointer;"><div class="lc-icon" style="background:#F5F3FF;color:#8B5CF6;"><i class="fas fa-compass"></i></div><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">Bimbingan Kerjaya Pendidik</div><div style="font-size:.75rem;color:#9CA3AF;margin-top:2px;">Laluan kerjaya &amp; peluang pembangunan diri</div></div><i class="fas fa-chevron-right" style="color:#D1D5DB;font-size:.75rem;"></i></div>
+          <div class="link-card" onclick="handleAksi('info')" style="cursor:pointer;"><div class="lc-icon" style="background:#F0FDF4;color:#16A34A;"><i class="fas fa-fire"></i></div><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">Motivasi &amp; Kecergasan Mental</div><div style="font-size:.75rem;color:#9CA3AF;margin-top:2px;">Sumber sokongan motivasi dan kesejahteraan</div></div><i class="fas fa-chevron-right" style="color:#D1D5DB;font-size:.75rem;"></i></div>
+          <div class="link-card placeholder"><div class="lc-icon" style="background:#F3F4F6;color:#D1D5DB;"><i class="fas fa-plus"></i></div><div style="font-size:.875rem;color:#9CA3AF;font-weight:500;">Pautan Akan Datang</div></div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <div style="width:28px;height:28px;border-radius:8px;background:#FDF3E6;display:flex;align-items:center;justify-content:center;"><i class="fas fa-users" style="color:#E88D3A;font-size:.75rem;"></i></div>
+          <h4 style="font-family:'Outfit',sans-serif;font-weight:700;color:#E88D3A;">Untuk Pensyarah / Pegawai / AKP</h4>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="link-card" onclick="handleAksi('info')" style="cursor:pointer;"><div class="lc-icon" style="background:#FDF3E6;color:#E88D3A;"><i class="fas fa-file-lines"></i></div><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">Rujukan Kes Kaunseling</div><div style="font-size:.75rem;color:#9CA3AF;margin-top:2px;">Tatacara dan panduan rujukan kes pelajar</div></div><i class="fas fa-chevron-right" style="color:#D1D5DB;font-size:.75rem;"></i></div>
+          <div class="link-card" onclick="handleAksi('info')" style="cursor:pointer;"><div class="lc-icon" style="background:#E6F5F0;color:#0E7C61;"><i class="fas fa-chalkboard-user"></i></div><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">Program Pembangunan Staf</div><div style="font-size:.75rem;color:#9CA3AF;margin-top:2px;">Latihan, bengkel &amp; psikopendidikan</div></div><i class="fas fa-chevron-right" style="color:#D1D5DB;font-size:.75rem;"></i></div>
+          <div class="link-card" onclick="handleAksi('info')" style="cursor:pointer;"><div class="lc-icon" style="background:#FEF2F2;color:#EF4444;"><i class="fas fa-shield-halved"></i></div><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">Pencegahan &amp; Intervensi Krisis</div><div style="font-size:.75rem;color:#9CA3AF;margin-top:2px;">Tatacara pengurusan kes krisis pelajar</div></div><i class="fas fa-chevron-right" style="color:#D1D5DB;font-size:.75rem;"></i></div>
+          <div class="link-card" onclick="handleAksi('info')" style="cursor:pointer;"><div class="lc-icon" style="background:#F0FDF4;color:#16A34A;"><i class="fas fa-heart-pulse"></i></div><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">Kesihatan Psikologi Staf</div><div style="font-size:.75rem;color:#9CA3AF;margin-top:2px;">Sokongan kebajikan dan kaunseling warga IPG</div></div><i class="fas fa-chevron-right" style="color:#D1D5DB;font-size:.75rem;"></i></div>
+          <div class="link-card" onclick="handleAksi('info')" style="cursor:pointer;"><div class="lc-icon" style="background:#E6F5F0;color:#0E7C61;"><i class="fas fa-hands-holding-child"></i></div><div style="flex:1;"><div style="font-weight:600;font-size:.875rem;">EAP — Program Bantuan Pekerja</div><div style="font-size:.75rem;color:#9CA3AF;margin-top:2px;">Perkhidmatan kaunseling dan sokongan pekerja</div></div><i class="fas fa-chevron-right" style="color:#D1D5DB;font-size:.75rem;"></i></div>
+          <div class="link-card placeholder"><div class="lc-icon" style="background:#F3F4F6;color:#D1D5DB;"><i class="fas fa-plus"></i></div><div style="font-size:.875rem;color:#9CA3AF;font-weight:500;">Pautan Akan Datang</div></div>
+        </div>
+      </div>
+    </div>
     </div>
 
     <!-- Sistem Berkaitan -->
     <div class="mb-8">
       <div class="flex items-center gap-2 mb-5"><div class="w-1 h-6 bg-navy-500 rounded-full"></div><h3 class="font-display font-700 text-lg text-navy-800">Sistem Berkaitan</h3></div>
-      <div class="grid md:grid-cols-2 gap-4 mb-4" id="pub-sys-berkaitan"></div>
+      <div class="grid md:grid-cols-2 gap-4 mb-4" id="pub-sys-berkaitan">
+      <a href="#" class="link-card group" style="text-decoration:none;">
+        <div class="lc-icon" style="background:#E6F5F0;color:#0E7C61;font-size:1.25rem;"><i class="fas fa-user-graduate"></i></div>
+        <div style="flex:1;">
+          <div style="font-family:'Outfit',sans-serif;font-weight:700;font-size:.875rem;color:#132238;">Sistem Profil Pelajar</div>
+          <div style="font-size:.75rem;color:#9CA3AF;margin-top:2px;">Rekod lengkap akademik, latar belakang dan sejarah kaunseling pelajar IPG seluruh negara</div>
+          <div style="font-size:.75rem;color:#0E7C61;font-weight:600;margin-top:4px;"><i class="fas fa-users mr-1"></i>36,000 pelajar &nbsp;·&nbsp; Kemaskini: 20 Mei 2026</div>
+        </div>
+        <i class="fas fa-arrow-right" style="color:#D1D5DB;font-size:.875rem;"></i>
+      </a>
+      <a href="#" class="link-card group" style="text-decoration:none;">
+        <div class="lc-icon" style="background:#EFF6FF;color:#3B82F6;font-size:1.25rem;"><i class="fas fa-id-badge"></i></div>
+        <div style="flex:1;">
+          <div style="font-family:'Outfit',sans-serif;font-weight:700;font-size:.875rem;color:#132238;">Sistem Profil Pensyarah</div>
+          <div style="font-size:.75rem;color:#9CA3AF;margin-top:2px;">Rekod lengkap pensyarah — kelayakan, jawatan, bidang kepakaran dan maklumat peribadi</div>
+          <div style="font-size:.75rem;color:#0E7C61;font-weight:600;margin-top:4px;"><i class="fas fa-users mr-1"></i>5,000 pensyarah &nbsp;·&nbsp; Kemaskini: 19 Mei 2026</div>
+        </div>
+        <i class="fas fa-arrow-right" style="color:#D1D5DB;font-size:.875rem;"></i>
+      </a>
+    </div>
     </div>
 
     <!-- Hubungi -->
     <div class="bg-white rounded-2xl border border-gray-100 p-6">
       <div class="flex items-center gap-2 mb-4"><div class="w-1 h-6 bg-amb-500 rounded-full"></div><h3 class="font-display font-700 text-lg text-navy-800">Hubungi Kami</h3></div>
-      <div id="pub-hubungi" class="grid sm:grid-cols-3 gap-5 text-sm"></div>
+      <div id="pub-hubungi" class="grid sm:grid-cols-3 gap-5 text-sm">
+      <div class="flex items-start gap-3"><i class="fas fa-envelope text-pri-500 mt-0.5"></i><div><div class="font-semibold text-navy-800 mb-0.5">E-mel</div><div class="text-gray-500 text-xs">upskipg@ipgm.edu.my</div></div></div>
+      <div class="flex items-start gap-3"><i class="fas fa-phone text-pri-500 mt-0.5"></i><div><div class="font-semibold text-navy-800 mb-0.5">Telefon</div><div class="text-gray-500 text-xs"></div></div></div>
+      <div class="flex items-start gap-3"><i class="fas fa-map-marker-alt text-pri-500 mt-0.5"></i><div><div class="font-semibold text-navy-800 mb-0.5">Alamat</div><div class="text-gray-500 text-xs">Unit Psikologi &amp; Kaunseling, Institut Pendidikan Guru Malaysia (IPGM), Aras 2, Blok 2250, Jalan Usahawan 1, 63000 Cyberjaya, Selangor</div></div></div>
+    </div>
     </div>
   </main>
 
@@ -515,7 +568,11 @@ function loadApp(){
   return JSON.parse(JSON.stringify(DFLT));
 }
 function saveApp(silent=false){
-  localStorage.setItem(SK,JSON.stringify(APP));
+  // Simpan ke localStorage TANPA pautan & sysBerkaitan (sentiasa dari DFLT)
+  const toSave = {...APP};
+  delete toSave.pautan;
+  delete toSave.sysBerkaitan;
+  localStorage.setItem(SK, JSON.stringify(toSave));
   if(!silent) toast("Data disimpan","ok");
 }
 let APP=loadApp();
@@ -2664,33 +2721,40 @@ async function loadTetapan(){
     const map = {};
     json.values.forEach(r => { if(r[0]) map[r[0].toLowerCase().trim()] = (r[1]||"").trim(); });
 
-    // 1. Hubungi
+    let changed = false;
+
+    // 1. Hubungi sahaja — sync dari Sheets
     if(map.emel || map.tel || map.alamat){
       APP.hubungi = {
         emel:   map.emel   || APP.hubungi.emel,
         tel:    map.tel    || APP.hubungi.tel,
         alamat: map.alamat || APP.hubungi.alamat
       };
+      changed = true;
     }
 
-    // 2. Marquee hebahan (pisah dengan | )
+    // 2. Hebahan marquee (optional — hanya jika ada dalam Sheets)
     if(map.hebahan){
-      APP.hebahan = map.hebahan.split("|").map(s=>s.trim()).filter(Boolean);
+      const arr = map.hebahan.split("|").map(s=>s.trim()).filter(Boolean);
+      if(arr.length > 0){ APP.hebahan = arr; changed = true; }
     }
 
-    // 3. Pautan pelajar (JSON array)
-    if(map.pautan_pelajar){ try{ const a=JSON.parse(map.pautan_pelajar); if(a.length) APP.pautan.pelajar=a; }catch(e){} }
+    // NOTE: pautan & sysBerkaitan TIDAK disync dari Sheets
+    // Ini elak data kosong overwrite DFLT yang ada pautan lengkap
 
-    // 4. Pautan staf (JSON array)
-    if(map.pautan_staf){ try{ const a=JSON.parse(map.pautan_staf); if(a.length) APP.pautan.staf=a; }catch(e){} }
+    if(changed) saveApp(true);
 
-    // 5. Sistem berkaitan (JSON array)
-    if(map.sysberkaitan){ try{ const a=JSON.parse(map.sysberkaitan); if(a.length) APP.sysBerkaitan=a; }catch(e){} }
+    // Kemaskini elemen portal
+    const hEl = document.getElementById("pub-hubungi");
+    if(hEl) hEl.innerHTML = `
+      <div class="flex items-start gap-3"><i class="fas fa-envelope text-pri-500 mt-0.5"></i><div><div class="font-semibold text-navy-800 mb-0.5">E-mel</div><div class="text-gray-500 text-xs">${APP.hubungi.emel}</div></div></div>
+      <div class="flex items-start gap-3"><i class="fas fa-phone text-pri-500 mt-0.5"></i><div><div class="font-semibold text-navy-800 mb-0.5">Telefon</div><div class="text-gray-500 text-xs">${APP.hubungi.tel}</div></div></div>
+      <div class="flex items-start gap-3"><i class="fas fa-map-marker-alt text-pri-500 mt-0.5"></i><div><div class="font-semibold text-navy-800 mb-0.5">Alamat</div><div class="text-gray-500 text-xs">${APP.hubungi.alamat}</div></div></div>`;
+    const fEl = document.getElementById("footer-alamat");
+    if(fEl) fEl.textContent = APP.hubungi.alamat || "Unit Psikologi dan Kaunseling, IPGKPM";
 
-    saveApp(true);
-
-    // Render semula portal awam sepenuhnya
-    if(!SES.loggedIn) renderPortal();
+    // Re-render portal jika perlu
+    if(!SES.role) renderPortal();
 
   } catch(e){ console.warn("loadTetapan failed:", e); }
 }
@@ -5356,13 +5420,14 @@ function closeSb(){document.getElementById("sidebar").classList.remove("open");d
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
-// Bersihkan versi lama localStorage & pastikan pautan ada
+// Bersihkan versi lama & reset pautan/sysBerkaitan dari DFLT setiap kali
 (function(){
-  const OLD_KEYS = ["mykaunseling_v1","mykaunseling_v2","mykaunseling_v3","mykaunseling_v4"];
-  OLD_KEYS.forEach(k => localStorage.removeItem(k));
-  // Pastikan APP.pautan ada data (penting untuk portal)
-  if(!APP.pautan?.pelajar?.length) APP.pautan = JSON.parse(JSON.stringify(DFLT.pautan));
-  if(!APP.sysBerkaitan?.length) APP.sysBerkaitan = JSON.parse(JSON.stringify(DFLT.sysBerkaitan));
+  // Padam semua versi lama
+  ["mykaunseling_v1","mykaunseling_v2","mykaunseling_v3","mykaunseling_v4"].forEach(k=>localStorage.removeItem(k));
+  // pautan & sysBerkaitan SENTIASA dari DFLT (tidak disimpan dalam localStorage)
+  APP.pautan = JSON.parse(JSON.stringify(DFLT.pautan));
+  APP.sysBerkaitan = JSON.parse(JSON.stringify(DFLT.sysBerkaitan));
+  // hebahan: guna localStorage jika ada, kalau tidak guna DFLT
   if(!APP.hebahan?.length) APP.hebahan = JSON.parse(JSON.stringify(DFLT.hebahan));
 })();
 
