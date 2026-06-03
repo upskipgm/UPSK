@@ -239,7 +239,7 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
 
   <footer style="background:var(--navy);padding:20px 24px;">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div><div class="text-white/70 text-sm font-semibold font-display">MyKaunseling — IPGKPM</div><div class="text-white/30 text-xs mt-1" id="footer-alamat">Unit Psikologi dan Kaunseling, IPGKPM</div></div>
+      <div><div class="text-white/70 text-sm font-semibold font-display">MyKaunseling — IPGKPM</div><div class="text-white/30 text-xs mt-1" id="footer-alamat">Unit Psikologi & Kaunseling, Institut Pendidikan Guru Malaysia (IPGM)</div></div>
       <div class="text-white/25 text-xs text-right">&copy; 2025 Bahagian Pendidikan Guru, KPM<br>Versi 2.0 &nbsp;|&nbsp; Dasar Privasi &nbsp;|&nbsp; Penafian</div>
     </div>
   </footer>
@@ -300,7 +300,7 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
 // ══════════════════════════════════════════
 // DATA KONFIGURASI & DEFAULTS
 // ══════════════════════════════════════════
-const SK = "mykaunseling_v3";
+const SK = "mykaunseling_v5";
 
 const DFLT = {
   hebahan:[
@@ -329,7 +329,7 @@ const DFLT = {
     {id:"sb1",nama:"Sistem Profil Pelajar",desk:"Rekod lengkap akademik, latar belakang dan sejarah kaunseling pelajar IPG seluruh negara",ikon:"fa-user-graduate",warna:"pri",bil:"36,000 pelajar",tarikh:"20 Mei 2026",url:"#"},
     {id:"sb2",nama:"Sistem Profil Pensyarah",desk:"Rekod lengkap pensyarah — kelayakan, jawatan, bidang kepakaran dan maklumat peribadi",ikon:"fa-id-badge",warna:"navy",bil:"5,000 pensyarah",tarikh:"19 Mei 2026",url:"#"}
   ],
-  hubungi:{emel:"mykaunseling@ipgkpm.edu.my",tel:"03-8888 1234",alamat:"Unit Psikologi dan Kaunseling, IPG Kampus Pendidikan Islam, Bangi, Selangor"},
+  hubungi:{emel:"upskipg@ipgm.edu.my",tel:"",alamat:"Unit Psikologi & Kaunseling, Institut Pendidikan Guru Malaysia (IPGM), Aras 2, Blok 2250, Jalan Usahawan 1, 63000 Cyberjaya, Selangor"},
   pengguna:[
     {id:"admin",nama:"Admin Utama IPGM",peranan:"admin_utama",kampus:null,kataLaluan:"admin123"},
     {id:"IPGKBM1",nama:"Admin KBM 1",peranan:"admin_kampus",kampus:"KBM",kataLaluan:"IPG123"},
@@ -494,7 +494,24 @@ const KLIST = ["Zon Tengah","Zon Utara","Zon Selatan","Zon Timur","Zon Sabah","Z
 // LOAD / SAVE DATA
 // ══════════════════════════════════════════
 function loadApp(){
-  try{const s=localStorage.getItem(SK);if(s)return{...DFLT,...JSON.parse(s)};}catch(e){}
+  try{
+    const s = localStorage.getItem(SK);
+    if(s){
+      const saved = JSON.parse(s);
+      // Deep merge — ensure pautan & sysBerkaitan always have data from DFLT
+      return {
+        ...DFLT,
+        ...saved,
+        pautan: {
+          pelajar: (saved.pautan?.pelajar?.length) ? saved.pautan.pelajar : DFLT.pautan.pelajar,
+          staf:    (saved.pautan?.staf?.length)    ? saved.pautan.staf    : DFLT.pautan.staf,
+        },
+        sysBerkaitan: (saved.sysBerkaitan?.length) ? saved.sysBerkaitan : DFLT.sysBerkaitan,
+        hubungi: {...DFLT.hubungi, ...saved.hubungi},
+        hebahan: (saved.hebahan?.length) ? saved.hebahan : DFLT.hebahan,
+      };
+    }
+  } catch(e){}
   return JSON.parse(JSON.stringify(DFLT));
 }
 function saveApp(silent=false){
@@ -602,14 +619,15 @@ function viewerExportBar(label, tableId){
 // PORTAL AWAM RENDER
 // ══════════════════════════════════════════
 function renderPortal(){
+  try {
   // Hebahan
   const h=document.getElementById("pub-hebahan");
-  const t=APP.hebahan.map(x=>`<span class="text-amb-800 text-sm font-medium mx-8"><i class="fas fa-chevron-right text-amb-400 mr-1 text-xs"></i>${x}</span>`).join("");
-  h.innerHTML=t+t;
+  if(h){ const t=APP.hebahan.map(x=>`<span class="text-amb-800 text-sm font-medium mx-8"><i class="fas fa-chevron-right text-amb-400 mr-1 text-xs"></i>${x}</span>`).join(""); h.innerHTML=t+t; }
 
   // Pautan
   const secs=[{key:"pelajar",lbl:"Untuk Pelajar IPGKPM",ikon:"fa-user-graduate",w:"pri"},{key:"staf",lbl:"Untuk Pensyarah / Pegawai / AKP",ikon:"fa-users",w:"amb"}];
-  document.getElementById("pub-pautan").innerHTML=secs.map((s,si)=>{
+  const pEl=document.getElementById("pub-pautan");
+  if(pEl) pEl.innerHTML=secs.map((s,si)=>{
     const items=APP.pautan[s.key]||[];
     return`<div class="afu d${si+1}">
       <div class="flex items-center gap-2 mb-3"><div class="w-7 h-7 rounded-lg bg-${s.w}-100 flex items-center justify-center"><i class="fas ${s.ikon} text-${s.w}-600 text-xs"></i></div><h4 class="font-display font-700 text-${s.w}-700">${s.lbl}</h4></div>
@@ -625,7 +643,8 @@ function renderPortal(){
   }).join("");
 
   // Sistem Berkaitan
-  document.getElementById("pub-sys-berkaitan").innerHTML=(APP.sysBerkaitan||[]).map(s=>`
+  const sbEl=document.getElementById("pub-sys-berkaitan");
+  if(sbEl) sbEl.innerHTML=(APP.sysBerkaitan||[]).map(s=>`
     <a href="${s.url}" class="link-card group">
       <div class="lc-icon bg-${s.warna}-100 text-${s.warna}-600 text-xl"><i class="fas ${s.ikon}"></i></div>
       <div class="flex-1">
@@ -637,10 +656,12 @@ function renderPortal(){
     </a>`).join("");
 
   // Hubungi
-  document.getElementById("pub-hubungi").innerHTML=`
+  const hEl=document.getElementById("pub-hubungi");
+  if(hEl) hEl.innerHTML=`
     <div class="flex items-start gap-3"><i class="fas fa-envelope text-pri-500 mt-0.5"></i><div><div class="font-semibold text-navy-800 mb-0.5">E-mel</div><div class="text-gray-500 text-xs">${APP.hubungi.emel}</div></div></div>
     <div class="flex items-start gap-3"><i class="fas fa-phone text-pri-500 mt-0.5"></i><div><div class="font-semibold text-navy-800 mb-0.5">Telefon</div><div class="text-gray-500 text-xs">${APP.hubungi.tel}</div></div></div>
     <div class="flex items-start gap-3"><i class="fas fa-map-marker-alt text-pri-500 mt-0.5"></i><div><div class="font-semibold text-navy-800 mb-0.5">Alamat</div><div class="text-gray-500 text-xs">${APP.hubungi.alamat}</div></div></div>`;
+  } catch(rpErr){ console.error("renderPortal error:", rpErr); }
 }
 
 function handleAksi(a){
@@ -2634,24 +2655,44 @@ const SHEET_TAB_FALLBACKS = {
 // Auto-load tetapan hubungi dari Sheets on startup
 async function loadTetapan(){
   try {
-    const range = encodeURIComponent("Hubungi!A1:B10");
+    const range = encodeURIComponent("Hubungi!A1:B20");
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.spreadsheetId}/values/${range}?key=${SHEETS_CONFIG.apiKey}`;
     const resp = await fetch(url);
     const json = await resp.json();
-    if(json.values){
-      const map = {};
-      json.values.forEach(r => { if(r[0]) map[r[0].toLowerCase()] = r[1]||""; });
-      if(map.emel||map.tel||map.alamat){
-        APP.hubungi = {
-          emel:   map.emel   || APP.hubungi.emel,
-          tel:    map.tel    || APP.hubungi.tel,
-          alamat: map.alamat || APP.hubungi.alamat
-        };
-        saveApp();
-        renderPortal();
-      }
+    if(!json.values) return;
+
+    const map = {};
+    json.values.forEach(r => { if(r[0]) map[r[0].toLowerCase().trim()] = (r[1]||"").trim(); });
+
+    // 1. Hubungi
+    if(map.emel || map.tel || map.alamat){
+      APP.hubungi = {
+        emel:   map.emel   || APP.hubungi.emel,
+        tel:    map.tel    || APP.hubungi.tel,
+        alamat: map.alamat || APP.hubungi.alamat
+      };
     }
-  } catch(e){}
+
+    // 2. Marquee hebahan (pisah dengan | )
+    if(map.hebahan){
+      APP.hebahan = map.hebahan.split("|").map(s=>s.trim()).filter(Boolean);
+    }
+
+    // 3. Pautan pelajar (JSON array)
+    if(map.pautan_pelajar){ try{ const a=JSON.parse(map.pautan_pelajar); if(a.length) APP.pautan.pelajar=a; }catch(e){} }
+
+    // 4. Pautan staf (JSON array)
+    if(map.pautan_staf){ try{ const a=JSON.parse(map.pautan_staf); if(a.length) APP.pautan.staf=a; }catch(e){} }
+
+    // 5. Sistem berkaitan (JSON array)
+    if(map.sysberkaitan){ try{ const a=JSON.parse(map.sysberkaitan); if(a.length) APP.sysBerkaitan=a; }catch(e){} }
+
+    saveApp(true);
+
+    // Render semula portal awam sepenuhnya
+    if(!SES.loggedIn) renderPortal();
+
+  } catch(e){ console.warn("loadTetapan failed:", e); }
 }
 
 // ── Universal fetch dari Google Sheets untuk semua tab ──
@@ -5315,9 +5356,28 @@ function closeSb(){document.getElementById("sidebar").classList.remove("open");d
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
-renderPortal();
-setTimeout(hcInit, 100);
-loadTetapan();
+// Bersihkan versi lama localStorage & pastikan pautan ada
+(function(){
+  const OLD_KEYS = ["mykaunseling_v1","mykaunseling_v2","mykaunseling_v3","mykaunseling_v4"];
+  OLD_KEYS.forEach(k => localStorage.removeItem(k));
+  // Pastikan APP.pautan ada data (penting untuk portal)
+  if(!APP.pautan?.pelajar?.length) APP.pautan = JSON.parse(JSON.stringify(DFLT.pautan));
+  if(!APP.sysBerkaitan?.length) APP.sysBerkaitan = JSON.parse(JSON.stringify(DFLT.sysBerkaitan));
+  if(!APP.hebahan?.length) APP.hebahan = JSON.parse(JSON.stringify(DFLT.hebahan));
+})();
+
+// Pastikan DOM ready sebelum render
+if(document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", function(){
+    renderPortal();
+    setTimeout(hcInit, 100);
+    loadTetapan();
+  });
+} else {
+  renderPortal();
+  setTimeout(hcInit, 100);
+  loadTetapan();
+}
 </script>
 </body>
 </html>
