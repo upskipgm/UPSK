@@ -239,7 +239,7 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
 
   <footer style="background:var(--navy);padding:20px 24px;">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div><div class="text-white/70 text-sm font-semibold font-display">MyKaunseling — IPGKPM</div><div class="text-white/30 text-xs mt-1">Unit Psikologi dan Kaunseling, Institut Pendidikan Guru Kampus Pendidikan Islam</div></div>
+      <div><div class="text-white/70 text-sm font-semibold font-display">MyKaunseling — IPGKPM</div><div class="text-white/30 text-xs mt-1" id="footer-alamat">Unit Psikologi dan Kaunseling, IPGKPM</div></div>
       <div class="text-white/25 text-xs text-right">&copy; 2025 Bahagian Pendidikan Guru, KPM<br>Versi 2.0 &nbsp;|&nbsp; Dasar Privasi &nbsp;|&nbsp; Penafian</div>
     </div>
   </footer>
@@ -1316,7 +1316,12 @@ function pgAULaporan(c){
 // ══════════════════════════════════════════
 // ADMIN UTAMA — PENGURUSAN SISTEM
 // ══════════════════════════════════════════
-function pgAUHebahan(c){
+async function pgAUHebahan(c){
+  c.innerHTML = `<div style="padding:40px;text-align:center;color:var(--muted);">
+    <i class="fas fa-spinner fa-spin" style="font-size:24px;display:block;margin-bottom:12px;color:var(--pri);"></i>
+    <div style="font-size:13px;">Memuatkan hebahan dari Google Sheets...</div>
+  </div>`;
+  await fetchHebahan();
   const items = getHebItems();
 
   c.innerHTML = `
@@ -1443,7 +1448,8 @@ function tambahHebGambar(){
   if(!gambar){ toast("Sila pilih gambar dahulu","err"); return; }
   const items = getHebItems();
   if(items.length >= 8){ toast("Maksimum 8 gambar dalam carousel","err"); return; }
-  items.push({gambar, tajuk, url, tarikh: new Date().toLocaleDateString("ms-MY")});
+  const newItem = {gambar, tajuk, url, tarikh: new Date().toLocaleDateString("ms-MY")};
+  items.push(newItem);
   localStorage.setItem("hebahan_gambar", JSON.stringify(items));
   // Reset form
   input.value=""; input._resized=null;
@@ -1453,8 +1459,12 @@ function tambahHebGambar(){
   if(prev) prev.style.display="none";
   document.getElementById("heb-list").innerHTML = renderHebList(items);
   refreshPrev();
-  hcInit(); // Update portal carousel
-  toast("Gambar berjaya ditambah ke carousel","ok");
+  hcInit();
+  // Simpan ke Google Sheets
+  toast("Menyimpan ke Google Sheets...","inf");
+  saveHebahan(items).then(ok => {
+    toast(ok ? "Hebahan disimpan & dikongsi ke semua peranti ✓" : "Disimpan tempatan sahaja (Sheets gagal)", ok?"ok":"inf");
+  });
 }
 
 function renderHebList(items){
@@ -1481,7 +1491,9 @@ function hcRemove(i){
   document.getElementById("heb-list").innerHTML = renderHebList(items);
   _prevIdx = Math.min(_prevIdx, Math.max(0, items.length-1));
   refreshPrev(); hcInit();
-  toast("Gambar dipadam","ok");
+  saveHebahan(items).then(ok => {
+    toast(ok ? "Gambar dipadam & dikemaskini di Sheets ✓" : "Gambar dipadam (tempatan)", ok?"ok":"inf");
+  });
 }
 
 function hcShift(i, dir){
@@ -1492,6 +1504,7 @@ function hcShift(i, dir){
   localStorage.setItem("hebahan_gambar", JSON.stringify(items));
   document.getElementById("heb-list").innerHTML = renderHebList(items);
   refreshPrev(); hcInit();
+  saveHebahan(items);
 }
 
 
@@ -1842,22 +1855,89 @@ Kata Laluan Baharu: ${pw}`))return;
   saveApp(); navTo("au-pengguna"); toast(`${aff.length} kata laluan berjaya dikemaskini`,"ok");
 }
 
-function pgAUHubungi(c){
+async function pgAUHubungi(c){
+  // Fetch dari tab "Hubungi" dalam Google Sheets
+  try {
+    const range = encodeURIComponent("Hubungi!A1:B10");
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.spreadsheetId}/values/${range}?key=${SHEETS_CONFIG.apiKey}`;
+    const resp = await fetch(url);
+    const json = await resp.json();
+    if(json.values){
+      const map = {};
+      json.values.forEach(r => { if(r[0]) map[r[0].toLowerCase()] = r[1]||""; });
+      if(map.emel||map.tel||map.alamat){
+        APP.hubungi = {
+          emel:   map.emel   || APP.hubungi.emel,
+          tel:    map.tel    || APP.hubungi.tel,
+          alamat: map.alamat || APP.hubungi.alamat
+        };
+        saveApp();
+        // Kemaskini portal Hubungi Kami tanpa re-render
+        const hEl = document.getElementById("pub-hubungi");
+        if(hEl) hEl.innerHTML = `
+          <div class="flex items-start gap-3"><i class="fas fa-envelope text-pri-500 mt-0.5"></i><div><div class="font-semibold text-navy-800 mb-0.5">E-mel</div><div class="text-gray-500 text-xs">${APP.hubungi.emel}</div></div></div>
+          <div class="flex items-start gap-3"><i class="fas fa-phone text-pri-500 mt-0.5"></i><div><div class="font-semibold text-navy-800 mb-0.5">Telefon</div><div class="text-gray-500 text-xs">${APP.hubungi.tel}</div></div></div>
+          <div class="flex items-start gap-3"><i class="fas fa-map-marker-alt text-pri-500 mt-0.5"></i><div><div class="font-semibold text-navy-800 mb-0.5">Alamat</div><div class="text-gray-500 text-xs">${APP.hubungi.alamat}</div></div></div>`;
+        // Kemaskini footer
+        const fEl = document.getElementById("footer-alamat");
+        if(fEl) fEl.textContent = APP.hubungi.alamat || "Unit Psikologi dan Kaunseling, IPGKPM";
+      }
+    }
+  } catch(e){ console.warn("Hubungi fetch failed:", e); }
+
   c.innerHTML=`
-  <div class="card" style="max-width:560px">
-    <div class="card-head"><span class="card-title">Maklumat Hubungi Portal</span></div>
+  <div class="card" style="max-width:620px">
+    <div class="card-head">
+      <span class="card-title">Maklumat Hubungi Portal</span>
+      <span style="font-size:.72rem;color:#0E7C61;"><i class="fas fa-table mr-1"></i>Sync dari Google Sheets</span>
+    </div>
     <div class="card-body space-y-4">
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:12px;color:#15803d;">
+        <i class="fas fa-info-circle mr-2"></i>
+        Kemaskini terus dalam tab <b>Hubungi</b> di Google Sheets anda. Sistem akan fetch data terkini secara automatik.
+      </div>
       <div><label class="fl">E-mel</label><input type="text" id="hb-emel" class="fi" value="${APP.hubungi.emel}"></div>
       <div><label class="fl">Telefon</label><input type="text" id="hb-tel" class="fi" value="${APP.hubungi.tel}"></div>
-      <div><label class="fl">Alamat</label><textarea id="hb-alamat" class="fi" rows="2">${APP.hubungi.alamat}</textarea></div>
-      <button onclick="simpanHubungi()" class="btn btn-pri"><i class="fas fa-save"></i>Simpan Perubahan</button>
+      <div><label class="fl">Alamat</label><textarea id="hb-alamat" class="fi" rows="3">${APP.hubungi.alamat}</textarea></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button onclick="simpanHubungi()" class="btn btn-pri"><i class="fas fa-save"></i>Simpan Perubahan</button>
+        <button onclick="pgAUHubungi(document.getElementById('pg-body'))" class="btn btn-out"><i class="fas fa-rotate-right"></i>Refresh dari Sheets</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panduan kemaskini Sheets -->
+  <div class="card" style="max-width:620px;margin-top:14px;">
+    <div class="card-head"><span class="card-title"><i class="fas fa-book mr-2 text-amb-500"></i>Cara Kemaskini via Google Sheets</span></div>
+    <div class="card-body">
+      <ol style="font-size:13px;color:var(--text);padding-left:18px;line-height:2;">
+        <li>Buka Google Sheets → tab <b>Hubungi</b></li>
+        <li>Kolum A = kunci (<code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;">emel</code>, <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;">tel</code>, <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;">alamat</code>)</li>
+        <li>Kolum B = nilai</li>
+        <li>Klik butang <b>Refresh dari Sheets</b> di atas untuk muatkan semula</li>
+      </ol>
+      <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-top:8px;font-size:12px;">
+        <b>Contoh struktur tab Hubungi:</b>
+        <table style="margin-top:8px;width:100%;border-collapse:collapse;">
+          <tr style="background:#e2e8f0;"><th style="padding:4px 10px;text-align:left;border-radius:4px 0 0 4px;">A (kunci)</th><th style="padding:4px 10px;text-align:left;border-radius:0 4px 4px 0;">B (nilai)</th></tr>
+          <tr><td style="padding:4px 10px;">emel</td><td style="padding:4px 10px;color:#0E7C61;">mykaunseling@ipgkpm.edu.my</td></tr>
+          <tr><td style="padding:4px 10px;">tel</td><td style="padding:4px 10px;color:#0E7C61;">03-8888 1234</td></tr>
+          <tr><td style="padding:4px 10px;">alamat</td><td style="padding:4px 10px;color:#0E7C61;">Unit Psikologi dan Kaunseling, IPGKPM</td></tr>
+        </table>
+      </div>
     </div>
   </div>`;
 }
 
 function simpanHubungi(){
-  APP.hubungi={emel:document.getElementById("hb-emel").value,tel:document.getElementById("hb-tel").value,alamat:document.getElementById("hb-alamat").value};
-  saveApp(); renderPortal(); toast("Maklumat hubungi dikemaskini","ok");
+  APP.hubungi = {
+    emel:   document.getElementById("hb-emel").value,
+    tel:    document.getElementById("hb-tel").value,
+    alamat: document.getElementById("hb-alamat").value
+  };
+  saveApp();
+  renderPortal();
+  toast("Maklumat hubungi disimpan. Kemaskini tab Hubungi dalam Sheets untuk sync ke semua peranti.","ok");
 }
 
 // ══════════════════════════════════════════
@@ -1928,6 +2008,8 @@ function showArtikelModal(){
 // ══════════════════════════════════════════
 // KONFIGURASI GOOGLE SHEETS API
 // ══════════════════════════════════════════
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxyXUqYSBf_tbPqt-3AT2NznERNwUF5pIT9kUyZEfSVtPoCefvfOaCIT7EzHvmtzw4bEA/exec";
+
 const SHEETS_CONFIG = {
   apiKey: "AIzaSyCVR7ilnItnTL7Ogh7Fo4ZE-Bb-w7U-B5E",
   spreadsheetId: "1guGwHIr1qGy9QiJgLklrRBA6HBhAl0wkSgqU1kFzzZY",
@@ -2548,6 +2630,29 @@ const SHEET_TAB_FALLBACKS = {
   program:   ["Program","PROGRAM","Analisis Program"],
   kaunselor: ["Analisis Kaunselor","Kaunselor","KAUNSELOR","Data Kaunselor"]
 };
+
+// Auto-load tetapan hubungi dari Sheets on startup
+async function loadTetapan(){
+  try {
+    const range = encodeURIComponent("Hubungi!A1:B10");
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.spreadsheetId}/values/${range}?key=${SHEETS_CONFIG.apiKey}`;
+    const resp = await fetch(url);
+    const json = await resp.json();
+    if(json.values){
+      const map = {};
+      json.values.forEach(r => { if(r[0]) map[r[0].toLowerCase()] = r[1]||""; });
+      if(map.emel||map.tel||map.alamat){
+        APP.hubungi = {
+          emel:   map.emel   || APP.hubungi.emel,
+          tel:    map.tel    || APP.hubungi.tel,
+          alamat: map.alamat || APP.hubungi.alamat
+        };
+        saveApp();
+        renderPortal();
+      }
+    }
+  } catch(e){}
+}
 
 // ── Universal fetch dari Google Sheets untuk semua tab ──
 async function fetchSheetTab(tabKey){
@@ -4487,7 +4592,9 @@ let _hcTimer = null;
 const HC_W = 420;
 const HC_H = 160;
 
-function hcInit(){
+async function hcInit(){
+  // Fetch dari Sheets dulu, kemaskini local cache
+  await fetchHebahan();
   const slides = getHebItems().filter(h => h.gambar);
   const wrap   = document.getElementById("hc-slides");
   const dots   = document.getElementById("hc-dots");
@@ -4560,6 +4667,34 @@ function hcMove(dir){
 function getHebItems(){
   try { return JSON.parse(localStorage.getItem("hebahan_gambar")||"[]"); }
   catch(e){ return []; }
+}
+
+// Fetch hebahan dari Google Sheets via Apps Script
+async function fetchHebahan(){
+  try {
+    const resp = await fetch(GAS_URL);
+    const json = await resp.json();
+    if(json.ok && json.items){
+      localStorage.setItem("hebahan_gambar", JSON.stringify(json.items));
+      return json.items;
+    }
+  } catch(e){ console.warn("fetchHebahan failed:", e); }
+  return getHebItems(); // fallback to local
+}
+
+// Simpan hebahan ke Google Sheets via Apps Script
+async function saveHebahan(items){
+  try {
+    const resp = await fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify({ action:"save", items }),
+    });
+    const json = await resp.json();
+    return json.ok;
+  } catch(e){
+    console.warn("saveHebahan failed:", e);
+    return false;
+  }
 }
 
 
@@ -5182,6 +5317,7 @@ function closeSb(){document.getElementById("sidebar").classList.remove("open");d
 // ══════════════════════════════════════════
 renderPortal();
 setTimeout(hcInit, 100);
+loadTetapan();
 </script>
 </body>
 </html>
