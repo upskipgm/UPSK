@@ -1,1234 +1,556 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Saringan Minda Sihat IPG - DASS-21</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts (Inter) -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;850;900&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-    .animate-fadeIn {
-      animation: fadeIn 0.3s ease-out forwards;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DASS21 - Depression Anxiety Stress Scale 21</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Pautan PDF telah ditukar kepada versi yang lebih selamat -->
+    <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .radio-circle:checked + div { background-color: #e11d48; border-color: #e11d48; color: white; transform: scale(1.12); box-shadow: 0 4px 14px rgba(225,29,72,0.35); }
+        .progress-anim { transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .hover-lift { transition: all 0.2s ease; }
+        .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all 0.3s ease; padding: 16px; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-box { background: white; border-radius: 16px; max-width: 480px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; transform: scale(0.95); transition: transform 0.3s ease; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
+        .modal-overlay.active .modal-box { transform: scale(1); }
+        .modal-header { padding: 20px 24px 0; text-align: center; flex-shrink: 0; }
+        .modal-body { padding: 16px 24px; overflow-y: auto; flex: 1; }
+        .modal-footer { padding: 16px 24px 20px; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
+
+        #toast-container { position: fixed; top: 22px; right: 22px; z-index: 300; width: min(390px, calc(100vw - 32px)); display: grid; gap: 10px; pointer-events: none; }
+        .app-toast { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid; border-radius: 12px; background: white; box-shadow: 0 16px 35px rgba(15,23,42,.16); animation: toastIn .25s ease-out; pointer-events: auto; }
+        .app-toast.success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+        .app-toast.error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+        .app-toast.warning { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+        .app-toast.info { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+        .app-toast .toast-icon { width: 22px; height: 22px; flex: 0 0 auto; margin-top: 1px; }
+        .app-toast .toast-title { font-size: .875rem; font-weight: 700; line-height: 1.25rem; }
+        .app-toast .toast-message { font-size: .8rem; line-height: 1.2rem; margin-top: 1px; opacity: .92; }
+        .app-toast.toast-out { opacity: 0; transform: translateX(18px); transition: all .22s ease; }
+        @keyframes toastIn { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
+
+        :root {
+            --primary: #9f1239;
+            --primary-dark: #881337;
+            --ink: #172033;
+            --muted: #667085;
+            --line: #dfe5ec;
+            --canvas: #f5f7fa;
+        }
+        body { background: var(--canvas); color: var(--ink); }
+        body::before { content: ''; position: fixed; inset: 0 0 auto 0; height: 4px; background: linear-gradient(90deg, var(--primary-dark), var(--primary)); z-index: 200; }
+
+        /* CSS UNTUK HEADER GAMBAR */
+        .custom-header {
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(16,24,40,.045);
+            border: 1px solid var(--line);
+            margin-bottom: 1.5rem;
+            overflow: hidden; 
+            padding: 0; 
+        }
+        .custom-header img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .question-row { display: grid !important; grid-template-columns: 36px minmax(0,1fr) auto; align-items: center !important; }
+        @media (max-width: 767px) {
+            .question-row { grid-template-columns: 28px minmax(0,1fr); gap: .5rem !important; }
+            .question-row > div:last-child { grid-column: 1 / -1; justify-content: space-between; width: 100%; padding-top: .35rem; }
+        }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-800 flex flex-col min-h-screen">
+<body class="min-h-screen">
+<div id="toast-container" class="no-print" aria-live="polite" aria-atomic="true"></div>
+<div id="app" class="max-w-5xl mx-auto px-4 py-6 pb-24">
 
-  <!-- TOP BANNER & HEADER -->
-  <header class="bg-emerald-800 text-white shadow-md relative overflow-hidden shrink-0">
-    <div class="absolute inset-0 bg-gradient-to-r from-emerald-900 to-teal-800 opacity-90"></div>
-    <div class="max-w-6xl mx-auto px-4 py-6 md:py-8 relative z-10 flex flex-col md:flex-row items-center justify-between">
-      <div class="flex items-center space-x-3 mb-4 md:mb-0">
-        <!-- Icon Minda Sihat (Mental Health Icon) -->
-        <div class="bg-white text-emerald-800 p-2.5 rounded-full shadow">
-          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
-          </svg>
+    <!-- HEADER DASS-21 (GAMBAR ANDA) -->
+    <header class="custom-header">
+        <img src="https://z-cdn-media.chatglm.cn/files/8e44804b-9c4a-40b8-bbbb-b5795e84b8d5.png?auth_key=1884455002-4dc2ac60270647138fb75f98f2879d1c-0-55a94f1b31d0f43d12fc45c20521f5bd" alt="Header DASS 21 - Ujian Psikologi">
+    </header>
+
+    <!-- PROGRESS BAR -->
+    <div id="progress-bar-container" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6 hidden">
+        <div class="flex justify-between items-center mb-2">
+            <span id="progress-text" class="text-sm font-semibold text-slate-700">Pendaftaran Maklumat</span>
+            <span id="progress-percent" class="text-sm font-bold text-rose-600">0%</span>
         </div>
-        <div>
-          <h1 class="text-xl md:text-2xl font-extrabold tracking-tight">Saringan Minda Sihat IPG</h1>
-          <p class="text-xs text-emerald-200 font-medium">Berdasarkan Modul Minda Sihat KKM Edisi Kedua</p>
+        <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
+            <div id="progress-fill" class="bg-rose-600 h-2.5 rounded-full progress-anim" style="width:0%"></div>
         </div>
-      </div>
-      <div class="flex items-center space-x-2">
-        <span class="bg-emerald-700/60 border border-emerald-500/30 text-emerald-100 text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full">
-          Sistem Kesejahteraan Pelajar
-        </span>
-        <button 
-          id="btn-demo"
-          onclick="fillDemoData()" 
-          class="bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-bold text-xs px-3.5 py-1.5 rounded-full shadow transition-all duration-150"
-          title="Isi demografi & jawapan rawak untuk prebiu segera"
-        >
-          Demo Isi Pantas
-        </button>
-      </div>
     </div>
-  </header>
 
-  <!-- MAIN BODY CONTAINER -->
-  <main class="flex-grow max-w-5xl w-full mx-auto p-4 md:p-6 lg:p-8">
+    <!-- MAIN CONTENT -->
+    <main id="main-content"></main>
+
+    <!-- NAVIGATION -->
+    <nav id="nav-container" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 hidden no-print">
+        <div class="max-w-5xl mx-auto flex justify-between items-center">
+            <button id="btn-back" onclick="app.prev()" class="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition hidden">
+                <span class="flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>Kembali</span>
+            </button>
+            <div class="flex-1"></div>
+            <button id="btn-forward" onclick="app.next()" class="px-6 py-2.5 bg-rose-600 text-white rounded-lg font-medium hover:bg-rose-700 transition shadow-lg shadow-rose-200">
+                <span class="flex items-center gap-2">Seterusnya<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></span>
+            </button>
+        </div>
+    </nav>
+</div>
+
+<!-- MODAL: SELESAI -->
+<div id="modal-complete" class="modal-overlay">
+    <div class="modal-box" style="max-width: 440px;">
+        <div class="modal-header">
+            <div class="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg class="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800">Ujian DASS-21 Selesai</h3>
+            <p class="text-sm text-slate-500 mt-1">Sila muat turun slip keputusan rasmi anda.</p>
+        </div>
+        <div class="modal-footer flex gap-3 justify-center">
+            <button onclick="app.closeModal('modal-complete'); app.downloadPDF();" class="px-6 py-2.5 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition flex items-center gap-2 text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Muat Turun Slip (PDF)
+            </button>
+            <button onclick="app.closeModal('modal-complete')" class="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition text-sm">Lihat Paparan</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===================== DATA INVENTORI DASS-21 =====================
+const DEMO_QUESTIONS = [
+    { id:"nama", label:"NAMA PENUH", type:"text", required:true, placeholder:"Contoh: AHMAD BIN ABU" },
+    { id:"kad_pengenalan", label:"NO. KAD PENGENALAN", type:"text", required:true, placeholder:"Contoh: 010203040506" },
+    { id:"no_matrik", label:"NO. MATRIK / STAF", type:"text", required:true, placeholder:"Contoh: D20241001234" },
+    { id:"emel", label:"EMEL", type:"email", required:true, placeholder:"Contoh: nama@ipg.edu.my" },
+    { id:"jantina", label:"JANTINA", type:"radio", options:["LELAKI","PEREMPUAN"], required:true },
+    { id:"kategori", label:"KATEGORI PENGUNA", type:"radio", options:["PELAJAR","PENSYARAH","PEGAWAI","STAF SOKONGAN"], required:true },
+    { id:"ipg", label:"PILIH INSTITUT PENDIDIKAN GURU MALAYSIA KAMPUS", type:"select",
+      options:["IPGMK TEMENGGONG IBRAHIM","IPGMK TUN HUSSEIN ONN","IPGMK PEREMPUAN MELAYU","IPGMK RAJA MELEWAR",
+        "IPGMK PENDIDIKAN TEKNIK","IPGMK PENDIDIKAN ISLAM","IPGMK ILMU KHAS","IPGMK BAHASA MELAYU",
+        "IPGMK BAHASA ANTARABANGSA","IPGMK IPOH","IPGMK DARULAMAN","IPGMK PERLIS","IPGMK PULAU PINANG",
+        "IPGMK TUANKU BAINUN","IPGMK TENGKU AMPUAN AFZAN","IPGMK DATO' RAZALI ISMAIL","IPGMK SULTAN MIZAN",
+        "IPGMK KOTA BHARU","IPGMK RAJANG","IPGMK KENT","IPGMK BATU LINTANG","IPGMK TAWAU",
+        "IPGMK KENINGAU","IPGMK TUN ABDUL RAZAK","IPGMK SULTAN ABDUL HALIM","IPGMK GAYA","IPGMK SARAWAK"], required:true }
+];
+
+const DASS_ITEMS = [
+    "Saya berasa sukar untuk bersemangat melakukan sesuatu perkara.",
+    "Saya mendapati diri saya mudah terganggu dengan tindak-tanduk orang lain.",
+    "Saya rasa mulut saya kering.",
+    "Saya tidak dapat mengalami perasaan positif sama sekali.",
+    "Saya mendapati diri saya sukar untuk berehat.",
+    "Saya rasa cepat hilang tenaga dan menjadi lemah.",
+    "Saya mendapati diri saya sukar untuk memulakan sesuatu kerja.",
+    "Saya rasa terdapat ketegangan otot di seluruh badan saya.",
+    "Saya berasa bimbang akan sesuatu perkara yang mungkin berlaku.",
+    "Saya rasa tertekan (depressed).",
+    "Saya rasa banyak perkara yang mengecewakan saya.",
+    "Saya rasa tidak ada apa-apa yang saya boleh nikmati.",
+    "Saya berasa resah dan gelisah.",
+    "Saya rasa diri saya tidak berharga.",
+    "Saya rasa diri saya tidak sabar.",
+    "Saya rasa diri saya amat lemah.",
+    "Saya rasa sukar untuk membuat keputusan.",
+    "Saya rasa sesuatu yang mengerikan akan berlaku.",
+    "Saya rasa diri saya tidak berguna.",
+    "Saya rasa tidak boleh bertoleransi dengan apa-apa halangan terhadap perkara yang saya mahu lakukan.",
+    "Saya rasa sangat takut tanpa sebab yang munasabah."
+];
+
+const DASS_KEYS = {
+    stress: [0, 5, 7, 10, 11, 13, 17],
+    anxiety: [1, 3, 6, 8, 14, 18, 19],
+    depression: [2, 4, 9, 12, 15, 16, 20]
+};
+
+const DASS_LEVELS = {
+    depression: { normal: 9, ringan: 13, sederhana: 20, teruk: 27 },
+    anxiety: { normal: 7, ringan: 9, sederhana: 14, teruk: 19 },
+    stress: { normal: 14, ringan: 18, sederhana: 25, teruk: 33 }
+};
+
+const ITEMS_PER_PAGE = 7;
+
+// ===================== LOGIK OPERASI APLIKASI =====================
+const GOOGLE_SHEETS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyTZBHPaMa1AMFbfzCXjUh_ZnCEzgD-3vxBce9pJqK2GpUpvwNmV4_BVZv2pXsQQZ9zxA/exec';
+
+const app = {
+    phase: 'welcome',
+    section: 0,
+    answers: { A:{}, B:{} },
+    STORAGE_KEY: 'dass21_responses_v1',
+
+    init() { this.renderWelcome(); },
+
+    renderWelcome() {
+        this.hideNav(); this.hideProgress();
+        document.getElementById('main-content').innerHTML = `
+            <div class="fade-in bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center max-w-3xl mx-auto">
+                <div class="w-20 h-20 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                    <svg class="w-10 h-10 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800 mb-2">Selamat Datang ke Ujian DASS-21</h2>
+                <p class="text-slate-500 mb-6">Depression, Anxiety, and Stress Scale - 21 Item</p>
+                <div class="bg-slate-50 rounded-xl p-5 text-left mb-4 text-sm">
+                    <p class="font-semibold text-slate-700 mb-2">Arahan:</p>
+                    <p class="text-slate-600 mb-3">Sila pilih jawapan yang paling menggambarkan perasaan anda sepanjang minggu lepas. Tiada jawapan betul atau salah.</p>
+                    <div class="flex flex-wrap gap-2 text-xs">
+                        <span class="px-2 py-1 bg-slate-100 rounded border border-slate-200">0 = Tidak sesuai langsung</span>
+                        <span class="px-2 py-1 bg-slate-100 rounded border border-slate-200">1 = Sesuai sedikit</span>
+                        <span class="px-2 py-1 bg-slate-100 rounded border border-slate-200">2 = Sesuai banyak</span>
+                        <span class="px-2 py-1 bg-slate-100 rounded border border-slate-200">3 = Sangat sesuai</span>
+                    </div>
+                </div>
+                <button onclick="app.startRegister()" class="px-8 py-3 bg-rose-600 text-white rounded-xl font-semibold text-base hover:bg-rose-700 transition">
+                    Mula Ujian
+                </button>
+            </div>`;
+    },
+
+    startRegister() {
+        this.phase = 'register';
+        this.showNav(); this.showProgress();
+        this.renderRegister();
+        this.updateProgress();
+    },
+
+    renderRegister() {
+        let html = `<div class="fade-in space-y-5">
+            <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-lg font-bold text-slate-800 mb-1">Bahagian A: Maklumat Pengguna</h2>
+                <p class="text-slate-500 text-sm mb-6">Sila lengkapkan maklumat di bawah.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">`;
+
+        DEMO_QUESTIONS.forEach(q => {
+            const full = q.type === 'radio' || (q.type === 'select' && q.options.length > 5);
+            html += `<div class="${full ? 'md:col-span-2' : ''}">`;
+            html += `<label class="block text-sm font-semibold text-slate-700 mb-1.5">${q.label}${q.required ? '<span class="text-red-500 ml-0.5">*</span>' : ''}</label>`;
+            if (q.type === 'text' || q.type === 'email') {
+                html += `<input type="${q.type}" id="a_${q.id}" value="${this.answers.A[q.id] || ''}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition text-sm" placeholder="${q.placeholder || ''}">`;
+            } else if (q.type === 'select') {
+                html += `<select id="a_${q.id}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-rose-500 outline-none text-sm"><option value="">-- Sila Pilih --</option>${q.options.map(o => `<option value="${o}" ${this.answers.A[q.id] === o ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+            } else if (q.type === 'radio') {
+                const cols = q.options.length <= 2 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4';
+                html += `<div class="grid ${cols} gap-2">`;
+                q.options.forEach(opt => {
+                    const checked = this.answers.A[q.id] === opt ? 'checked' : '';
+                    html += `<label class="flex items-center gap-2.5 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-rose-50 hover:border-rose-300 transition bg-white"><input type="radio" name="a_${q.id}" value="${opt}" ${checked} class="w-4 h-4 text-rose-600"><span class="text-sm text-slate-700">${opt}</span></label>`;
+                });
+                html += `</div>`;
+            }
+            html += `</div>`;
+        });
+        html += `</div></section></div>`;
+        document.getElementById('main-content').innerHTML = html;
+    },
+
+    renderInventoryPage() {
+        const startIdx = this.section * ITEMS_PER_PAGE;
+        const endIdx = Math.min(startIdx + ITEMS_PER_PAGE, DASS_ITEMS.length);
+        let html = `<div class="fade-in">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-4 sticky top-2 z-10">
+                <h2 class="text-xl font-bold text-slate-800">SOAL SELIDIK DASS-21</h2>
+                <p class="text-sm text-slate-500">Item ${startIdx + 1} hingga ${endIdx} daripada ${DASS_ITEMS.length}</p>
+            </div>
+            <div class="space-y-2">`;
+
+        for (let i = startIdx; i < endIdx; i++) {
+            const saved = this.answers.B[i];
+            html += `<div class="question-row bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-start gap-4 hover-lift">
+                <span class="text-sm font-bold text-rose-600 w-7 shrink-0 mt-0.5">${i+1}.</span>
+                <span class="text-sm text-slate-700 flex-1 leading-relaxed">${DASS_ITEMS[i]}</span>
+                <div class="flex gap-1.5 shrink-0">`;
+            for (let v = 0; v <= 3; v++) {
+                const checked = saved == v ? 'checked' : '';
+                html += `<label class="cursor-pointer">
+                    <input type="radio" name="b_${i}" value="${v}" ${checked} class="radio-circle sr-only" onchange="app.saveB(${i},${v})">
+                    <div class="w-9 h-9 rounded-full border-2 border-slate-300 flex items-center justify-center text-xs font-semibold text-slate-500 hover:border-rose-400 transition-all">${v}</div>
+                </label>`;
+            }
+            html += `</div></div>`;
+        }
+        html += `</div></div>`;
+        document.getElementById('main-content').innerHTML = html;
+    },
+
+    renderResults() {
+        const scores = this.calcDass();
+        const levels = this.getLevels(scores);
+        const a = this.answers.A;
+
+        let html = `<div id="result-slip" class="fade-in space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center">
+                <h2 class="text-xl font-bold text-slate-800">Slip Keputusan DASS-21</h2>
+                <p class="text-slate-400 text-xs mt-0.5">Dijana pada ${new Date().toLocaleString('ms-MY')}</p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-md font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">Keputusan Skor</h3>
+                <div class="space-y-6">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold text-slate-700">Kemurungan (Depression)</span>
+                            <span class="text-sm font-bold px-3 py-1 rounded-full text-white ${levels.D.color}">${levels.D.label}</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-3 mb-1.5">
+                            <div class="${levels.D.color} h-3 rounded-full transition-all" style="width:${Math.min((scores.D/42)*100, 100)}%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-slate-400"><span>Skor: ${scores.D} / 42</span><span></span></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold text-slate-700">Kebimbangan (Anxiety)</span>
+                            <span class="text-sm font-bold px-3 py-1 rounded-full text-white ${levels.A.color}">${levels.A.label}</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-3 mb-1.5">
+                            <div class="${levels.A.color} h-3 rounded-full transition-all" style="width:${Math.min((scores.A/42)*100, 100)}%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-slate-400"><span>Skor: ${scores.A} / 42</span><span></span></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-semibold text-slate-700">Tekanan (Stress)</span>
+                            <span class="text-sm font-bold px-3 py-1 rounded-full text-white ${levels.S.color}">${levels.S.label}</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-3 mb-1.5">
+                            <div class="${levels.S.color} h-3 rounded-full transition-all" style="width:${Math.min((scores.S/42)*100, 100)}%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-slate-400"><span>Skor: ${scores.S} / 42</span><span></span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-md font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">Maklumat Diri</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                    <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">Nama</span><span class="font-medium text-slate-700">${a.nama || '-'}</span></div>
+                    <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">No. KP</span><span class="font-medium text-slate-700">${a.kad_pengenalan || '-'}</span></div>
+                    <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">No. Matrik/Staf</span><span class="font-medium text-slate-700">${a.no_matrik || '-'}</span></div>
+                    <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">Emel</span><span class="font-medium text-slate-700">${a.emel || '-'}</span></div>
+                    <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">Jantina</span><span class="font-medium text-slate-700">${a.jantina || '-'}</span></div>
+                    <div class="flex justify-between py-1.5 border-b border-slate-100"><span class="text-slate-500">Kategori</span><span class="font-medium text-slate-700">${a.kategori || '-'}</span></div>
+                    <div class="flex justify-between py-1.5 border-b border-slate-100 md:col-span-2"><span class="text-slate-500">IPG Kampus</span><span class="font-medium text-slate-700 text-right">${a.ipg || '-'}</span></div>
+                </div>
+            </div>
+
+            <div class="no-print flex flex-wrap justify-center gap-4 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                <button onclick="app.downloadPDF()" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg text-sm shadow flex items-center gap-2 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    Muat Turun PDF
+                </button>
+                <button onclick="app.resetInventory()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg text-sm flex items-center gap-2 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5M4 4h5v.582"/></svg>
+                    Jawab Semula
+                </button>
+            </div>
+        </div>`;
+
+        document.getElementById('main-content').innerHTML = html;
+        this.hideNav(); this.hideProgress();
+    },
+
+    calcDass() {
+        const scores = { D: 0, A: 0, S: 0 };
+        DASS_KEYS.depression.forEach(idx => { scores.D += this.answers.B[idx] || 0; });
+        DASS_KEYS.anxiety.forEach(idx => { scores.A += this.answers.B[idx] || 0; });
+        DASS_KEYS.stress.forEach(idx => { scores.S += this.answers.B[idx] || 0; });
+        scores.D *= 2; scores.A *= 2; scores.S *= 2;
+        return scores;
+    },
+
+    getLevels(scores) {
+        const getLevel = (type, score) => {
+            const l = DASS_LEVELS[type];
+            if (score <= l.normal) return { label: "Normal", color: "bg-green-500" };
+            if (score <= l.ringan) return { label: "Ringan", color: "bg-yellow-400" };
+            if (score <= l.sederhana) return { label: "Sederhana", color: "bg-orange-500" };
+            if (score <= l.teruk) return { label: "Teruk", color: "bg-red-500" };
+            return { label: "Sangat Teruk", color: "bg-red-800" };
+        };
+        return {
+            D: getLevel('depression', scores.D),
+            A: getLevel('anxiety', scores.A),
+            S: getLevel('stress', scores.S)
+        };
+    },
+
+    notify(type, title, message) { 
+        const c = document.getElementById('toast-container'); if (!c) return;
+        const t = document.createElement('div'); const s = type === 'success';
+        t.className = `app-toast ${s ? 'success' : 'error'}`;
+        t.innerHTML = `<svg class="toast-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${s ? 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' : 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z'}"/></svg><div><div class="toast-title">${title}</div><div class="toast-message">${message}</div></div>`;
+        c.appendChild(t); setTimeout(() => { t.classList.add('toast-out'); setTimeout(() => t.remove(), 240); }, 4200);
+    },
+
+    async next() {
+        if (this.phase === 'register') {
+            if (!this.validateRegister()) return;
+            this.saveRegister();
+            this.phase = 'inventory'; this.section = 0;
+            this.renderInventoryPage(); this.updateProgress();
+            return;
+        }
+        if (this.phase === 'inventory') {
+            if (!this.validateInventory()) return;
+            const totalPages = Math.ceil(DASS_ITEMS.length / ITEMS_PER_PAGE);
+            if (this.section < totalPages - 1) {
+                this.section++; this.renderInventoryPage(); this.updateProgress();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                // Hantar ke Google Sheets Sebelum Paparkan Keputusan
+                await this.submitToSheet();
+                this.phase = 'results';
+                this.renderResults();
+                this.openModal('modal-complete');
+            }
+        }
+    },
+
+    prev() {
+        if (this.phase === 'inventory' && this.section > 0) {
+            this.section--; this.renderInventoryPage(); this.updateProgress();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (this.phase === 'inventory' && this.section === 0) {
+            this.phase = 'register'; this.renderRegister(); this.updateProgress();
+        }
+    },
+
+    validateRegister() {
+        for (const q of DEMO_QUESTIONS) {
+            if (!q.required) continue;
+            let val = q.type === 'radio' ? document.querySelector(`input[name="a_${q.id}"]:checked`)?.value : document.getElementById(`a_${q.id}`)?.value;
+            if (!val || !val.trim()) { this.notify('error', 'Maklumat belum lengkap', `Sila lengkapkan: ${q.label}`); return false; }
+        }
+        return true;
+    },
+
+    validateInventory() {
+        const startIdx = this.section * ITEMS_PER_PAGE;
+        const endIdx = Math.min(startIdx + ITEMS_PER_PAGE, DASS_ITEMS.length);
+        for (let i = startIdx; i < endIdx; i++) {
+            if (!document.querySelector(`input[name="b_${i}"]:checked`)) {
+                this.notify('error', 'Soalan belum dijawab', `Sila jawab item ${i+1} sebelum ke muka seterusnya.`);
+                return false;
+            }
+        }
+        return true;
+    },
+
+    saveRegister() {
+        DEMO_QUESTIONS.forEach(q => {
+            if (q.type === 'radio') {
+                const el = document.querySelector(`input[name="a_${q.id}"]:checked`);
+                if (el) this.answers.A[q.id] = el.value;
+            } else {
+                const el = document.getElementById(`a_${q.id}`);
+                if (el) this.answers.A[q.id] = el.value;
+            }
+        });
+    },
+
+    saveB(idx, val) { this.answers.B[idx] = parseInt(val); },
+    resetInventory() { this.phase = 'welcome'; this.section = 0; this.answers = { A:{}, B:{} }; this.renderWelcome(); },
     
-    <!-- PROGRESS TRACKER -->
-    <div class="mb-8 max-w-3xl mx-auto">
-      <div class="flex items-center justify-between relative">
-        <div class="absolute left-0 right-0 top-1/2 h-0.5 bg-slate-200 -translate-y-1/2 z-0"></div>
+    // FUNGI HANTAR KE GOOGLE SHEET (DENGAN 21 SKOR ITEM)
+    async submitToSheet() {
+        const scores = this.calcDass();
+        const levels = this.getLevels(scores);
         
-        <!-- Step 1 Tracker Indicator -->
-        <div id="track-1" class="relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-emerald-600 text-white ring-4 ring-emerald-100">
-          1
-        </div>
-
-        <!-- Step 2 Tracker Indicator -->
-        <div id="track-2" class="relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-slate-200 text-slate-500">
-          2
-        </div>
-
-        <!-- Step 3 Tracker Indicator -->
-        <div id="track-3" class="relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-slate-200 text-slate-500">
-          3
-        </div>
-      </div>
-      
-      <div class="flex justify-between text-[11px] md:text-xs font-bold text-slate-500 mt-2">
-        <span id="label-track-1" class="text-emerald-700">DEMOGRAFI PELAJAR</span>
-        <span id="label-track-2" class="">SOAL SELIDIK DASS-21</span>
-        <span id="label-track-3" class="">KEPUTUSAN & INTERVENSI</span>
-      </div>
-    </div>
-
-    <!-- SEKSYEN 1: DEMOGRAFI PELAJAR -->
-    <div id="container-step-1" class="bg-white rounded-xl shadow-md border border-slate-200/80 p-5 md:p-8 animate-fadeIn">
-      <div class="border-b pb-4 mb-6">
-        <h2 class="text-xl font-bold text-slate-800 flex items-center">
-          <svg class="w-5 h-5 text-emerald-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-          </svg>
-          Maklumat Demografi Pelajar IPG
-        </h2>
-        <p class="text-xs text-slate-500 mt-1">Sila isi maklumat anda di bawah dengan lengkap sebelum memulakan ujian saringan minda sihat.</p>
-      </div>
-
-      <form id="form-demografi" onsubmit="event.preventDefault(); handleNextDemografi();" class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        
-        <!-- Nama Penuh -->
-        <div class="flex flex-col">
-          <label class="text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Nama Penuh <span class="text-red-500">*</span></label>
-          <input 
-            type="text" 
-            id="input-nama"
-            placeholder="Contoh: Muhammad Ali bin Ahmad"
-            class="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50/50 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          />
-          <span id="err-nama" class="text-xs text-red-500 mt-1 hidden"></span>
-        </div>
-
-        <!-- E-mel -->
-        <div class="flex flex-col">
-          <label class="text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">E-mel Rasmi Pelajar (Siswa IPG) <span class="text-red-500">*</span></label>
-          <input 
-            type="email" 
-            id="input-email"
-            placeholder="Contoh: nama.ipg@siswa.edu.my"
-            class="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50/50 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          />
-          <span id="err-email" class="text-xs text-red-500 mt-1 hidden"></span>
-        </div>
-
-        <!-- Umur -->
-        <div class="flex flex-col">
-          <label class="text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Umur <span class="text-red-500">*</span></label>
-          <input 
-            type="number" 
-            id="input-umur"
-            min="18" 
-            max="40"
-            placeholder="Contoh: 21"
-            class="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50/50 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          />
-          <span id="err-umur" class="text-xs text-red-500 mt-1 hidden"></span>
-        </div>
-
-        <!-- Jantina -->
-        <div class="flex flex-col">
-          <label class="text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Jantina <span class="text-red-500">*</span></label>
-          <div class="flex space-x-4">
-            <button 
-              type="button"
-              id="btn-jantina-l"
-              onclick="selectJantina('Lelaki')"
-              class="flex items-center justify-center border-2 border-slate-300 hover:bg-slate-50 rounded-lg p-2.5 w-1/2 text-sm font-semibold transition"
-            >
-              Lelaki
-            </button>
-            <button 
-              type="button"
-              id="btn-jantina-p"
-              onclick="selectJantina('Perempuan')"
-              class="flex items-center justify-center border-2 border-slate-300 hover:bg-slate-50 rounded-lg p-2.5 w-1/2 text-sm font-semibold transition"
-            >
-              Perempuan
-            </button>
-          </div>
-          <span id="err-jantina" class="text-xs text-red-500 mt-1 hidden"></span>
-        </div>
-
-        <!-- Kampus IPG -->
-        <div class="flex flex-col md:col-span-2">
-          <label class="text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Kampus IPG <span class="text-red-500">*</span></label>
-          <select
-            id="input-kampus"
-            class="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          >
-            <option value="">-- Sila Pilih Kampus Anda --</option>
-          </select>
-          <span id="err-kampus" class="text-xs text-red-500 mt-1 hidden"></span>
-        </div>
-
-        <!-- Program Pengajian -->
-        <div class="flex flex-col">
-          <label class="text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Program Pengajian <span class="text-red-500">*</span></label>
-          <input 
-            type="text" 
-            id="input-program"
-            placeholder="Contoh: PISMP (Sains) / PPISMP"
-            class="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50/50 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          />
-          <span id="err-program" class="text-xs text-red-500 mt-1 hidden"></span>
-        </div>
-
-        <!-- Tahun Pengajian -->
-        <div class="flex flex-col">
-          <label class="text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Tahun Pengajian <span class="text-red-500">*</span></label>
-          <select
-            id="input-tahun"
-            class="w-full p-2.5 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          >
-            <option value="">-- Sila Pilih Tahun --</option>
-            <option value="Persediaan (PPISMP)">Tahun Persediaan (PPISMP)</option>
-            <option value="Tahun 1">PISMP Tahun 1</option>
-            <option value="Tahun 2">PISMP Tahun 2</option>
-            <option value="Tahun 3">PISMP Tahun 3</option>
-            <option value="Tahun 4">PISMP Tahun 4</option>
-            <option value="Pascasiswazah (PDPP)">Program Diploma Pascasiswazah Pendidikan (PDPP)</option>
-            <option value="Lain-lain">Lain-lain</option>
-          </select>
-          <span id="err-tahun" class="text-xs text-red-500 mt-1 hidden"></span>
-        </div>
-
-        <div class="md:col-span-2 mt-8 border-t pt-6 flex justify-end">
-          <button 
-            type="submit"
-            class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-lg text-sm shadow transition-all flex items-center"
-          >
-            Seterusnya ke Soal Selidik
-            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path stroke-linecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-            </svg>
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <!-- SEKSYEN 2: SOAL SELIDIK DASS-21 (MULTIPLE PAGES) -->
-    <div id="container-step-2" class="bg-white rounded-xl shadow-md border border-slate-200/80 p-5 md:p-8 animate-fadeIn hidden">
-      <div class="border-b pb-4 mb-6">
-        <div class="flex justify-between items-center">
-          <h2 id="dass-title" class="text-lg md:text-xl font-bold text-slate-800">
-            Ujian Saringan Minda Sihat (Bahagian 1/3)
-          </h2>
-          <span id="dass-badge" class="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-3 py-1 rounded-full">
-            0 / 21 Soalan Dijawab
-          </span>
-        </div>
-        <p class="text-xs text-slate-500 mt-2 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-200">
-          <strong>Arahan KKM:</strong> Sila baca setiap kenyataan dan pilih jawapan di bawah yang menggambarkan keadaan emosi anda sepanjang <strong>seminggu yang lepas</strong>. Tiada jawapan yang betul atau salah. Jangan ambil masa terlalu lama untuk satu-satu kenyataan.
-        </p>
-      </div>
-
-      <!-- Container Dinamik untuk Soalan -->
-      <div id="questions-wrapper" class="space-y-6"></div>
-
-      <!-- Navigasi DASS -->
-      <div class="mt-8 border-t pt-6 flex justify-between items-center">
-        <button 
-          onclick="handlePrevQuestions()"
-          class="border border-slate-300 hover:bg-slate-50 text-slate-600 font-bold py-2 px-5 rounded-lg text-sm shadow-sm transition-all"
-        >
-          Kembali
-        </button>
-
-        <!-- Bullet Dots -->
-        <div class="flex space-x-1.5">
-          <div id="dot-0" class="w-2.5 h-2.5 rounded-full bg-emerald-600"></div>
-          <div id="dot-1" class="w-2.5 h-2.5 rounded-full bg-slate-200"></div>
-          <div id="dot-2" class="w-2.5 h-2.5 rounded-full bg-slate-200"></div>
-        </div>
-
-        <button 
-          id="btn-next-dass"
-          onclick="handleNextQuestions()"
-          class="bg-slate-200 text-slate-400 cursor-not-allowed font-bold py-2 px-6 rounded-lg text-sm shadow transition-all flex items-center"
-          disabled
-        >
-          Seterusnya
-          <svg id="arrow-icon" class="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- SEKSYEN 3: PAPARAN HASIL JAWAPAN & INTERVENSI -->
-    <div id="container-step-3" class="space-y-6 animate-fadeIn hidden">
-      
-      <!-- Dashboard Utama Keputusan -->
-      <div class="bg-white rounded-xl shadow-md border border-slate-200/80 p-5 md:p-8">
-        
-        <div class="border-b pb-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 class="text-xl font-bold text-slate-800">
-              Keputusan Rasmi Saringan Minda Sihat
-            </h2>
-            <p id="label-student-meta" class="text-xs text-slate-500 mt-1">Disediakan untuk...</p>
-          </div>
-          <div class="mt-4 md:mt-0 flex space-x-2">
-            <button 
-              onclick="handleDownloadReport()"
-              class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-4 rounded-lg shadow flex items-center transition-all"
-            >
-              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-              </svg>
-              Simpan Laporan (HTML)
-            </button>
-            <button 
-              onclick="window.print()"
-              class="bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs py-2 px-4 rounded-lg shadow flex items-center transition-all"
-            >
-              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-              </svg>
-              Cetak / PDF
-            </button>
-          </div>
-        </div>
-
-        <!-- Bar Integrasi Google Sheets -->
-        <div id="google-sync-bar" class="mb-6 p-3 bg-slate-100 rounded-lg border border-slate-200 text-xs flex items-center justify-between">
-          <span class="font-bold text-slate-600 flex items-center">
-            <svg class="w-4 h-4 text-emerald-600 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
-            Status Integrasi Pangkalan Data Google Sheets:
-          </span>
-          <span id="google-sync-status" class="font-bold flex items-center">Sedia dipindahkan</span>
-        </div>
-
-        <!-- Kad Markah DASS-21 (Tiga Kategori) -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-          
-          <!-- Kad Kemurungan -->
-          <div id="card-depression" class="p-5 rounded-xl border-2 flex flex-col items-center justify-between shadow-sm transition-all hover:shadow-md">
-            <div class="text-center">
-              <span class="text-[10px] font-extrabold uppercase tracking-widest opacity-80">Kemurungan (D)</span>
-              <h3 id="score-depression" class="text-3xl font-black mt-1">0</h3>
-            </div>
-            <div class="w-full bg-white/40 h-2 rounded-full my-3 overflow-hidden">
-              <div id="progress-depression" class="bg-slate-700 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-            </div>
-            <span id="level-depression" class="text-sm font-black px-4 py-1 bg-white/70 rounded-full border border-black/5">Normal</span>
-          </div>
-
-          <!-- Kad Anzieti -->
-          <div id="card-anxiety" class="p-5 rounded-xl border-2 flex flex-col items-center justify-between shadow-sm transition-all hover:shadow-md">
-            <div class="text-center">
-              <span class="text-[10px] font-extrabold uppercase tracking-widest opacity-80">Anzieti (A)</span>
-              <h3 id="score-anxiety" class="text-3xl font-black mt-1">0</h3>
-            </div>
-            <div class="w-full bg-white/40 h-2 rounded-full my-3 overflow-hidden">
-              <div id="progress-anxiety" class="bg-slate-700 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-            </div>
-            <span id="level-anxiety" class="text-sm font-black px-4 py-1 bg-white/70 rounded-full border border-black/5">Normal</span>
-          </div>
-
-          <!-- Kad Stres -->
-          <div id="card-stress" class="p-5 rounded-xl border-2 flex flex-col items-center justify-between shadow-sm transition-all hover:shadow-md">
-            <div class="text-center">
-              <span class="text-[10px] font-extrabold uppercase tracking-widest opacity-80">Stres (S)</span>
-              <h3 id="score-stress" class="text-3xl font-black mt-1">0</h3>
-            </div>
-            <div class="w-full bg-white/40 h-2 rounded-full my-3 overflow-hidden">
-              <div id="progress-stress" class="bg-slate-700 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-            </div>
-            <span id="level-stress" class="text-sm font-black px-4 py-1 bg-white/70 rounded-full border border-black/5">Normal</span>
-          </div>
-
-        </div>
-
-        <!-- Box Syor Tindakan KKM -->
-        <div id="box-recommendation" class="mt-6 p-5 rounded-xl border-2">
-          <div class="flex items-start">
-            <div class="mr-3 mt-0.5 shrink-0">
-              <div id="recommendation-icon-wrapper" class="p-2 rounded-full">
-                <!-- SVG Icon dinilai secara dinamik oleh Javascript -->
-              </div>
-            </div>
-            <div>
-              <h4 id="recommendation-title" class="text-base font-bold">Menilai Keputusan...</h4>
-              <p id="recommendation-desc" class="text-xs md:text-sm mt-1 text-slate-700 leading-relaxed"></p>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- KUMPULAN INTERVENSI 10B -->
-      <div class="bg-white rounded-xl shadow-md border border-slate-200/80 p-5 md:p-8">
-        <h3 class="text-lg font-bold text-slate-800 border-b pb-3 mb-6 flex items-center">
-          <svg class="w-5 h-5 text-emerald-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-          </svg>
-          Pelan Tindakan Minda Sihat: Kaedah 10B (KKM)
-        </h3>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          
-          <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-start">
-            <div class="bg-emerald-600 text-white font-bold rounded-lg w-8 h-8 flex items-center justify-center shrink-0 mr-3 text-xs">B1</div>
-            <div>
-              <h4 class="text-sm font-bold text-slate-800">Bersyukur</h4>
-              <p class="text-xs text-slate-600 mt-1">Sentiasa menghargai nikmat dan kebaikan yang dimiliki bagi meningkatkan pemikiran positif.</p>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-start">
-            <div class="bg-emerald-600 text-white font-bold rounded-lg w-8 h-8 flex items-center justify-center shrink-0 mr-3 text-xs">B2</div>
-            <div>
-              <h4 class="text-sm font-bold text-slate-800">Bernafas dengan Teratur</h4>
-              <p class="text-xs text-slate-600 mt-1">Lakukan latihan pernafasan secara dalam untuk menurunkan kadar denyutan jantung dan menenangkan fizikal.</p>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-start">
-            <div class="bg-emerald-600 text-white font-bold rounded-lg w-8 h-8 flex items-center justify-center shrink-0 mr-3 text-xs">B3</div>
-            <div>
-              <h4 class="text-sm font-bold text-slate-800">Bicara Diri (Positive Self-Talk)</h4>
-              <p class="text-xs text-slate-600 mt-1">Sebutkan kata-kata membina seperti "Tenang, semua akan baik-baik sahaja" untuk meredakan ketegangan emosi.</p>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-start">
-            <div class="bg-emerald-600 text-white font-bold rounded-lg w-8 h-8 flex items-center justify-center shrink-0 mr-3 text-xs">B4</div>
-            <div>
-              <h4 class="text-sm font-bold text-slate-800">Beribadat</h4>
-              <p class="text-xs text-slate-600 mt-1">Mendekatkan diri dengan Tuhan melalui doa, zikir, dan ibadat bagi mendapatkan ketenangan rohani dan mental.</p>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-start">
-            <div class="bg-emerald-600 text-white font-bold rounded-lg w-8 h-8 flex items-center justify-center shrink-0 mr-3 text-xs">B5</div>
-            <div>
-              <h4 class="text-sm font-bold text-slate-800">Berkongsi Perasaan (Luahkan)</h4>
-              <p class="text-xs text-slate-600 mt-1">Jangan pendam emosi. Kongsikan kerisauan anda dengan rakan rapat, ahli keluarga, atau kaunselor bertauliah.</p>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-start">
-            <div class="bg-emerald-600 text-white font-bold rounded-lg w-8 h-8 flex items-center justify-center shrink-0 mr-3 text-xs">B6</div>
-            <div>
-              <h4 class="text-sm font-bold text-slate-800">Berurut / Relaksasi Otot</h4>
-              <p class="text-xs text-slate-600 mt-1">Urutan pada kawasan leher dan bahu membantu melancarkan peredaran darah serta melegakan stres fizikal.</p>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-start">
-            <div class="bg-emerald-600 text-white font-bold rounded-lg w-8 h-8 flex items-center justify-center shrink-0 mr-3 text-xs">B7</div>
-            <div>
-              <h4 class="text-sm font-bold text-slate-800">Berehat & Mendengar Muzik</h4>
-              <p class="text-xs text-slate-600 mt-1">Dengarkan alunan melodi atau bunyi alam semula jadi yang menenangkan untuk merehatkan sistem saraf.</p>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-start">
-            <div class="bg-emerald-600 text-white font-bold rounded-lg w-8 h-8 flex items-center justify-center shrink-0 mr-3 text-xs">B8</div>
-            <div>
-              <h4 class="text-sm font-bold text-slate-800">Beriadah</h4>
-              <p class="text-xs text-slate-600 mt-1">Lakukan hobi luar yang menyeronokkan seperti berkhemah atau berkelah bersama rakan se-IPG.</p>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-start">
-            <div class="bg-emerald-600 text-white font-bold rounded-lg w-8 h-8 flex items-center justify-center shrink-0 mr-3 text-xs">B9</div>
-            <div>
-              <h4 class="text-sm font-bold text-slate-800">Bersenam</h4>
-              <p class="text-xs text-slate-600 mt-1">Senaman ringan 15-30 minit sehari merangsang hormon endorfin yang meningkatkan kegembiraan.</p>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-start">
-            <div class="bg-emerald-600 text-white font-bold rounded-lg w-8 h-8 flex items-center justify-center shrink-0 mr-3 text-xs">B10</div>
-            <div>
-              <h4 class="text-sm font-bold text-slate-800">Berfikiran Positif</h4>
-              <p class="text-xs text-slate-600 mt-1">Tukar pemikiran negatif kepada cabaran baru yang berupaya mematangkan diri anda.</p>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- PANDUAN LATIHAN KKM -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        <!-- Kad Pernafasan -->
-        <div class="bg-white rounded-xl shadow-md border border-slate-200/80 p-5 md:p-6">
-          <h4 class="text-base font-bold text-emerald-800 mb-4 flex items-center">
-            <svg class="w-5 h-5 text-emerald-600 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M14 12a2 2 0 11-4 0 2 2 0 014 0z"></path>
-            </svg>
-            Teknik Latihan Pernafasan KKM
-          </h4>
-          
-          <div class="space-y-3.5 text-xs">
-            <div class="flex items-start">
-              <span class="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded mr-2.5">1</span>
-              <p class="text-slate-700">Berdiri dengan menjarakkan kaki sedikit & longlaikan tangan di kedua-dua sisi badan anda.</p>
-            </div>
-            <div class="flex items-start">
-              <span class="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded mr-2.5">2</span>
-              <p class="text-slate-700">Pejamkan mata anda, biarkan kepala tunduk sedikit ke hadapan dengan tenang.</p>
-            </div>
-            <div class="flex items-start">
-              <span class="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded mr-2.5">3</span>
-              <p class="text-slate-700"><strong>Tarik nafas</strong> melalui hidung sedalam-dalamnya secara perlahan.</p>
-            </div>
-            <div class="flex items-start">
-              <span class="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded mr-2.5">4</span>
-              <p class="text-slate-700"><strong>Tahan nafas</strong> anda dalam hati dengan mengira sehingga 10 saat.</p>
-            </div>
-            <div class="flex items-start">
-              <span class="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded mr-2.5">5</span>
-              <p class="text-slate-700"><strong>Hembus nafas</strong> perlahan-lahan melalui hidung. Rasakan ketegangan keluar bersama nafas.</p>
-            </div>
-            <div class="flex items-start">
-              <span class="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded mr-2.5">6</span>
-              <p class="text-slate-700">Ulangi langkah ini sebanyak 5 kali berturut-turut untuk kesan relaksasi maksima.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Kad Urutan -->
-        <div class="bg-white rounded-xl shadow-md border border-slate-200/80 p-5 md:p-6">
-          <h4 class="text-base font-bold text-emerald-800 mb-4 flex items-center">
-            <svg class="w-5 h-5 text-emerald-600 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            Teknik Urutan Leher & Bahu
-          </h4>
-          
-          <div class="space-y-3.5 text-xs">
-            <div class="flex items-start">
-              <span class="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded mr-2.5">1</span>
-              <p class="text-slate-700">Letakkan ibu jari di bahagian tengkuk bawah telinga.</p>
-            </div>
-            <div class="flex items-start">
-              <span class="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded mr-2.5">2</span>
-              <p class="text-slate-700">Urut perlahan menggunakan teknik putaran ibu jari mengarah ke luar menjauhi tulang belakang.</p>
-            </div>
-            <div class="flex items-start">
-              <span class="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded mr-2.5">3</span>
-              <p class="text-slate-700">Turunkan urutan secara beransur-ansur dari tengkuk ke arah bahu.</p>
-            </div>
-            <div class="flex items-start">
-              <span class="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded mr-2.5">4</span>
-              <p class="text-slate-700">Gunakan kedua-dua belah tangan untuk mencubit lembut bahagian atas otot bahu anda.</p>
-            </div>
-            <div class="flex items-start">
-              <span class="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded mr-2.5">5</span>
-              <p class="text-slate-700">Lakukan urutan dahi secara putaran lembut menggunakan hujung jari-jemari.</p>
-            </div>
-            <div class="flex items-start">
-              <span class="bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded mr-2.5">6</span>
-              <p class="text-slate-700">Lakukan selama 3-5 minit bagi mengendurkan otot kepala dan menghilangkan migrain.</p>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Talian Helplines -->
-      <div class="bg-emerald-900 text-white rounded-xl shadow p-6 border border-emerald-800">
-        <h4 class="text-md font-bold mb-3 flex items-center">
-          <svg class="w-5 h-5 text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
-          </svg>
-          Talian Sokongan Psikososial KKM & NGO (Sedia Membantu)
-        </h4>
-        <p class="text-xs text-emerald-100 leading-relaxed mb-4">
-          Sekiranya anda atau rakan-rakan se-IPG sedang mengalami tekanan emosi yang berat, sila hubungi talian sokongan di bawah secara percuma & sulit:
-        </p>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-semibold">
-          <div class="bg-emerald-950/60 p-3 rounded-lg border border-emerald-700/50">
-            <div class="text-[10px] text-emerald-300">Talian Kasih (KPWKM)</div>
-            <div class="text-sm font-bold text-yellow-400 mt-0.5">15999</div>
-            <div class="text-[10px] text-emerald-400 font-medium">Aktif 24 Jam Sehari</div>
-          </div>
-          <div class="bg-emerald-950/60 p-3 rounded-lg border border-emerald-700/50">
-            <div class="text-[10px] text-emerald-300">Befrienders Malaysia</div>
-            <div class="text-sm font-bold text-yellow-400 mt-0.5">03-7627 2929</div>
-            <div class="text-[10px] text-emerald-400 font-medium">Bantuan Sokongan Emosi</div>
-          </div>
-          <div class="bg-emerald-950/60 p-3 rounded-lg border border-emerald-700/50">
-            <div class="text-[10px] text-emerald-300">Talian HEAL KKM</div>
-            <div class="text-sm font-bold text-yellow-400 mt-0.5">15555</div>
-            <div class="text-[10px] text-emerald-400 font-medium">Kesihatan Mental & Krisis</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Butang Reset -->
-      <div class="flex justify-center pb-6">
-        <button 
-          onclick="resetForm()"
-          class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-2.5 px-8 rounded-lg text-sm shadow transition-all flex items-center"
-        >
-          <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18.5"></path>
-          </svg>
-          Ambil Saringan Semula
-        </button>
-      </div>
-
-    </div>
-
-  </main>
-
-  <!-- FOOTER -->
-  <footer class="bg-slate-900 text-slate-400 py-6 text-center border-t border-slate-800 mt-auto text-xs shrink-0">
-    <div class="max-w-6xl mx-auto px-4">
-      <p>© 2026 Unit Psikologi & Kaunseling IPG dengan kerjasama Kementerian Kesihatan Malaysia.</p>
-      <p class="mt-1 text-slate-600">Direka mengikut garis panduan Modul Minda Sihat (Edisi Kedua, Bahagian Pendidikan Kesihatan KKM).</p>
-    </div>
-  </footer>
-
-  <!-- =========================================================================
-       JAVASCRIPT LOGIC (SINGLE FILE INTERACTIVE)
-       ========================================================================= -->
-  <script>
-    // Konfigurasi Pangkalan Data Google Sheets
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby70lar6ISJFMx2-OJx636Bfa3Ybc0PajJO8Dij4YzuGVJUCm8-f5A1vzxFCW3CMhvEig/exec";
-
-    // Senarai Kampus IPG
-    const KAMPUS_IPG = [
-      "IPG Kampus Bahasa Antarabangsa (Kuala Lumpur)",
-      "IPG Kampus Bahasa Melayu (Kuala Lumpur)",
-      "IPG Kampus Darulaman (Kedah)",
-      "IPG Kampus Dato' Razali Ismail (Terengganu)",
-      "IPG Kampus Gaya (Sabah)",
-      "IPG Kampus Ilmu Khas (Kuala Lumpur)",
-      "IPG Kampus Ipoh (Perak)",
-      "IPG Kampus Islam (Selangor)",
-      "IPG Kampus Johor (Johor)",
-      "IPG Kampus Keningau (Sabah)",
-      "IPG Kampus Kent (Sabah)",
-      "IPG Kampus Kota Bharu (Kelantan)",
-      "IPG Kampus Kota Kinabalu (Sabah)",
-      "IPG Kampus Melaka (Melaka)",
-      "IPG Kampus Miri (Sarawak)",
-      "IPG Kampus Pendidikan Islam (Selangor)",
-      "IPG Kampus Pendidikan Teknik (Negeri Sembilan)",
-      "IPG Kampus Perempuan Melayu (Melaka)",
-      "IPG Kampus Perlis (Perlis)",
-      "IPG Kampus Raja Melewar (Negeri Sembilan)",
-      "IPG Kampus Rajang (Sarawak)",
-      "IPG Kampus Sarawak (Sarawak)",
-      "IPG Kampus Sultan Abdul Halim (Kedah)",
-      "IPG Kampus Sultan Mizan (Terengganu)",
-      "IPG Kampus Tawau (Sabah)",
-      "IPG Kampus Temenggong Ibrahim (Johor)",
-      "IPG Kampus Tuanku Bainun (Pulau Pinang)",
-      "IPG Kampus Tun Abdul Razak (Sarawak)"
-    ];
-
-    // Senarai 21 Soalan DASS-21
-    const SOALAN_DASS = [
-      { id: 1, text: "Saya dapati diri saya sukar ditenteramkan.", category: "S" },
-      { id: 2, text: "Saya sedar mulut saya terasa kering.", category: "A" },
-      { id: 3, text: "Saya tidak dapat mengalami perasaan positif sama sekali.", category: "D" },
-      { id: 4, text: "Saya mengalami kesukaran bernafas (contohnya pernafasan yang laju, tercungap-cungap walaupun tidak melakukan senaman fizikal).", category: "A" },
-      { id: 5, text: "Saya sukar untuk mendapatkan semangat bagi melakukan sesuatu perkara.", category: "D" },
-      { id: 6, text: "Saya cenderung untuk bertindak keterlaluan dalam sesuatu keadaan.", category: "S" },
-      { id: 7, text: "Saya rasa menggeletar (contohnya pada tangan).", category: "A" },
-      { id: 8, text: "Saya rasa saya menggunakan banyak tenaga dalam keadaan cemas.", category: "S" },
-      { id: 9, text: "Saya bimbang keadaan di mana saya mungkin menjadi panik dan melakukan perkara yang membodohkan diri sendiri.", category: "A" },
-      { id: 10, text: "Saya rasa saya tidak mempunyai apa-apa untuk diharapkan.", category: "D" },
-      { id: 11, text: "Saya dapati diri saya semakin gelisah.", category: "S" },
-      { id: 12, text: "Saya rasa sukar untuk relaks.", category: "S" },
-      { id: 13, text: "Saya rasa sedih dan murung.", category: "D" },
-      { id: 14, text: "Saya tidak dapat menahan sabar dengan perkara yang menghalang saya meneruskan apa yang saya lakukan.", category: "S" },
-      { id: 15, text: "Saya rasa hampir-hampir menjadi panik / cemas.", category: "A" },
-      { id: 16, text: "Saya tidak bersemangat dengan apa jua yang saya lakukan.", category: "D" },
-      { id: 17, text: "Saya tidak begitu berharga sebagai seorang individu.", category: "D" },
-      { id: 18, text: "Saya rasa yang saya mudah tersentuh.", category: "S" },
-      { id: 19, text: "Saya sedar tindak balas jantung saya walaupun tidak melakukan aktiviti fizikal (contohnya kadar denyutan jantung bertambah atau berkurangan).", category: "A" },
-      { id: 20, text: "Saya berasa takut tanpa sebab yang munasabah.", category: "A" },
-      { id: 21, text: "Saya rasa hidup ini tidak bermakna.", category: "D" }
-    ];
-
-    // State Pengurusan Aplikasi
-    let state = {
-      step: 1,
-      demografi: {
-        nama: '',
-        email: '',
-        umur: '',
-        jantina: '',
-        kampus: '',
-        program: '',
-        tahun: ''
-      },
-      jawapan: {}, // Map menyimpan ID Soalan -> Jawapan (0 hingga 3)
-      currentQuestionPage: 0,
-      isSubmitting: false,
-      submitSuccess: false,
-      submitError: null
-    };
-
-    const questionsPerPage = 7;
-
-    // Persediaan Asal semasa halaman dimuatkan
-    window.onload = function() {
-      // Masukkan senarai kampus IPG ke dalam element Select
-      const selectKampus = document.getElementById('input-kampus');
-      KAMPUS_IPG.forEach(kampus => {
-        const option = document.createElement('option');
-        option.value = kampus;
-        option.textContent = kampus;
-        selectKampus.appendChild(option);
-      });
-      
-      // Papar langkah pertama
-      updateStepUI();
-    };
-
-    // Fungsi Pengurusan Jantina (Custom Radio Button)
-    function selectJantina(val) {
-      state.demografi.jantina = val;
-      const btnL = document.getElementById('btn-jantina-l');
-      const btnP = document.getElementById('btn-jantina-p');
-      
-      if (val === 'Lelaki') {
-        btnL.className = "flex items-center justify-center border-2 border-emerald-500 bg-emerald-50 text-emerald-800 rounded-lg p-2.5 w-1/2 text-sm font-semibold transition";
-        btnP.className = "flex items-center justify-center border-2 border-slate-300 hover:bg-slate-50 rounded-lg p-2.5 w-1/2 text-sm font-semibold transition";
-      } else {
-        btnP.className = "flex items-center justify-center border-2 border-emerald-500 bg-emerald-50 text-emerald-800 rounded-lg p-2.5 w-1/2 text-sm font-semibold transition";
-        btnL.className = "flex items-center justify-center border-2 border-slate-300 hover:bg-slate-50 rounded-lg p-2.5 w-1/2 text-sm font-semibold transition";
-      }
-      
-      clearError('jantina');
-    }
-
-    // Pembasmi mesej Ralat
-    function clearError(field) {
-      const errEl = document.getElementById(`err-${field}`);
-      if (errEl) {
-        errEl.classList.add('hidden');
-        errEl.textContent = '';
-      }
-      const inputEl = document.getElementById(`input-${field}`);
-      if (inputEl) {
-        inputEl.classList.remove('border-red-400');
-        inputEl.classList.add('border-slate-300');
-      }
-    }
-
-    // Pembina mesej Ralat
-    function showError(field, msg) {
-      const errEl = document.getElementById(`err-${field}`);
-      if (errEl) {
-        errEl.classList.remove('hidden');
-        errEl.textContent = msg;
-      }
-      const inputEl = document.getElementById(`input-${field}`);
-      if (inputEl) {
-        inputEl.classList.remove('border-slate-300');
-        inputEl.classList.add('border-red-400');
-      }
-    }
-
-    // Memproses peralihan dari Demografi ke DASS-21
-    function handleNextDemografi() {
-      // Dapatkan nilai dari elemen input
-      state.demografi.nama = document.getElementById('input-nama').value.trim();
-      state.demografi.email = document.getElementById('input-email').value.trim();
-      state.demografi.umur = document.getElementById('input-umur').value.trim();
-      state.demografi.kampus = document.getElementById('input-input-kampus') ? document.getElementById('input-input-kampus').value : document.getElementById('input-kampus').value;
-      state.demografi.program = document.getElementById('input-program').value.trim();
-      state.demografi.tahun = document.getElementById('input-tahun').value;
-
-      // Validasi Maklumat
-      let isValid = true;
-      
-      if (!state.demografi.nama) { showError('nama', 'Nama penuh diperlukan'); isValid = false; } else { clearError('nama'); }
-      if (!state.demografi.email) { 
-        showError('email', 'E-mel diperlukan'); isValid = false; 
-      } else if (!/\S+@\S+\.\S+/.test(state.demografi.email)) {
-        showError('email', 'Format e-mel tidak sah'); isValid = false;
-      } else { clearError('email'); }
-      
-      if (!state.demografi.umur) { showError('umur', 'Umur diperlukan'); isValid = false; } else { clearError('umur'); }
-      if (!state.demografi.jantina) { showError('jantina', 'Sila pilih jantina'); isValid = false; } else { clearError('jantina'); }
-      if (!state.demografi.kampus) { showError('kampus', 'Sila pilih kampus IPG anda'); isValid = false; } else { clearError('kampus'); }
-      if (!state.demografi.program) { showError('program', 'Sila nyatakan Program Pengajian'); isValid = false; } else { clearError('program'); }
-      if (!state.demografi.tahun) { showError('tahun', 'Sila pilih tahun pengajian'); isValid = false; } else { clearError('tahun'); }
-
-      if (isValid) {
-        state.step = 2;
-        updateStepUI();
-        renderQuestions();
-      }
-    }
-
-    // Pembina UI Soalan DASS-21 secara dinamik
-    function renderQuestions() {
-      const startIndex = state.currentQuestionPage * questionsPerPage;
-      const endIndex = startIndex + questionsPerPage;
-      const pageQuestions = SOALAN_DASS.slice(startIndex, endIndex);
-
-      // Kemaskini Tajuk Halaman & Status Badge
-      document.getElementById('dass-title').textContent = `Ujian Saringan Minda Sihat (Bahagian ${state.currentQuestionPage + 1}/3)`;
-      const totalAnswers = Object.keys(state.jawapan).length;
-      document.getElementById('dass-badge').textContent = `${totalAnswers} / 21 Soalan Dijawab`;
-
-      // Kemaskini Bullet Dots
-      [0, 1, 2].forEach(p => {
-        const dot = document.getElementById(`dot-${p}`);
-        if (p === state.currentQuestionPage) {
-          dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-600";
-        } else {
-          dot.className = "w-2.5 h-2.5 rounded-full bg-slate-200";
+        // Kumpul jawapan setiap item (1 hingga 21)
+        const itemScores = [];
+        for (let i = 0; i < 21; i++) {
+            itemScores.push(this.answers.B[i] !== undefined ? this.answers.B[i] : 0);
         }
-      });
 
-      const wrapper = document.getElementById('questions-wrapper');
-      wrapper.innerHTML = '';
+        const payload = {
+            student: { ...this.answers.A },
+            items: itemScores, // Hantar 21 skor item
+            scores: scores,
+            levels: { D: levels.D.label, A: levels.A.label, S: levels.S.label }
+        };
 
-      pageQuestions.forEach((q, idx) => {
-        const globalIndex = startIndex + idx + 1;
-        const savedAnswer = state.jawapan[q.id];
-
-        const qCard = document.createElement('div');
-        qCard.className = "p-4 rounded-xl border border-slate-100 bg-slate-50/30 hover:border-emerald-100 transition-colors";
-        
-        qCard.innerHTML = `
-          <div class="flex items-start mb-3">
-            <span class="font-bold text-emerald-800 text-sm bg-emerald-50 w-6 h-6 rounded-full flex items-center justify-center shrink-0 mr-3">
-              ${globalIndex}
-            </span>
-            <p class="text-sm md:text-base text-slate-800 font-medium leading-relaxed">
-              ${q.text}
-            </p>
-          </div>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-            ${[
-              { val: 0, text: "0 - Tidak Pernah", desc: "Tidak menggambarkan saya" },
-              { val: 1, text: "1 - Jarang", desc: "Sedikit/jarang menggambarkan saya" },
-              { val: 2, text: "2 - Kerap", desc: "Banyak/kerap menggambarkan saya" },
-              { val: 3, text: "3 - Sangat Kerap", desc: "Sangat kerap menggambarkan saya" }
-            ].map(opt => {
-              const isChecked = savedAnswer === opt.val;
-              return `
-                <label class="flex flex-col items-center justify-center p-2.5 rounded-lg border cursor-pointer text-center transition ${
-                  isChecked ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900 font-bold shadow-sm' : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-600'
-                }">
-                  <input 
-                    type="radio" 
-                    name="q-${q.id}" 
-                    value="${opt.val}" 
-                    ${isChecked ? 'checked' : ''} 
-                    onclick="handleAnswerChange(${q.id}, ${opt.val})"
-                    class="sr-only"
-                  />
-                  <span class="text-xs md:text-sm">${opt.text}</span>
-                  <span class="text-[10px] text-slate-400 mt-1 hidden md:block leading-tight">${opt.desc}</span>
-                </label>
-              `;
-            }).join('')}
-          </div>
-        `;
-        wrapper.appendChild(qCard);
-      });
-
-      checkPageCompletion();
-    }
-
-    // Menguruskan penyimpanan jawapan pilihan
-    function handleAnswerChange(questionId, value) {
-      state.jawapan[questionId] = value;
-      
-      // Re-render soalan pada halaman aktif bagi mengemas kini visual border yang dipilih
-      renderQuestions();
-    }
-
-    // Menyemak jika halaman soalan aktif diselesaikan sepenuhnya
-    function checkPageCompletion() {
-      const startIndex = state.currentQuestionPage * questionsPerPage;
-      const endIndex = startIndex + questionsPerPage;
-      const pageQuestions = SOALAN_DASS.slice(startIndex, endIndex);
-      
-      const isComplete = pageQuestions.every(q => state.jawapan[q.id] !== undefined);
-      const nextBtn = document.getElementById('btn-next-dass');
-
-      if (isComplete) {
-        nextBtn.disabled = false;
-        nextBtn.className = "bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-lg text-sm shadow transition-all flex items-center cursor-pointer";
-      } else {
-        nextBtn.disabled = true;
-        nextBtn.className = "bg-slate-200 text-slate-400 font-bold py-2 px-6 rounded-lg text-sm shadow transition-all flex items-center cursor-not-allowed";
-      }
-    }
-
-    // Fungsi klik "Seterusnya" dalam Soal Selidik
-    function handleNextQuestions() {
-      if (state.currentQuestionPage < 2) {
-        state.currentQuestionPage++;
-        renderQuestions();
-        window.scrollTo(0, 0);
-      } else {
-        // Tamat saringan, terus ke Keputusan (Step 3)
-        state.step = 3;
-        updateStepUI();
-        processResults();
-      }
-    }
-
-    // Fungsi klik "Kembali" dalam Soal Selidik
-    function handlePrevQuestions() {
-      if (state.currentQuestionPage > 0) {
-        state.currentQuestionPage--;
-        renderQuestions();
-      } else {
-        state.step = 1;
-        updateStepUI();
-      }
-    }
-
-    // Mengawal tontonan seksyen halaman (Step 1, 2, atau 3)
-    function updateStepUI() {
-      document.getElementById('container-step-1').classList.add('hidden');
-      document.getElementById('container-step-2').classList.add('hidden');
-      document.getElementById('container-step-3').classList.add('hidden');
-
-      // Tracker styling reset
-      const t1 = document.getElementById('track-1');
-      const t2 = document.getElementById('track-2');
-      const t3 = document.getElementById('track-3');
-      const l1 = document.getElementById('label-track-1');
-      const l2 = document.getElementById('label-track-2');
-      const l3 = document.getElementById('label-track-3');
-
-      t1.className = "relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-slate-200 text-slate-500";
-      t2.className = "relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-slate-200 text-slate-500";
-      t3.className = "relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-slate-200 text-slate-500";
-      l1.className = "";
-      l2.className = "";
-      l3.className = "";
-
-      if (state.step === 1) {
-        document.getElementById('container-step-1').classList.remove('hidden');
-        t1.className = "relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-emerald-600 text-white ring-4 ring-emerald-100";
-        l1.className = "text-emerald-700 font-bold";
-      } else if (state.step === 2) {
-        document.getElementById('container-step-2').classList.remove('hidden');
-        t1.className = "relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-emerald-200 text-emerald-800";
-        t2.className = "relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-emerald-600 text-white ring-4 ring-emerald-100";
-        l2.className = "text-emerald-700 font-bold";
-      } else if (state.step === 3) {
-        document.getElementById('container-step-3').classList.remove('hidden');
-        t1.className = "relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-emerald-200 text-emerald-800";
-        t2.className = "relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-emerald-200 text-emerald-800";
-        t3.className = "relative z-10 w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all bg-emerald-600 text-white ring-4 ring-emerald-100";
-        l3.className = "text-emerald-700 font-bold";
-      }
-    }
-
-    // Menjana & Mengira Skor DASS-21
-    let computedScores = null;
-
-    function processResults() {
-      let dScore = 0;
-      let aScore = 0;
-      let sScore = 0;
-
-      SOALAN_DASS.forEach(q => {
-        const val = state.jawapan[q.id] || 0;
-        if (q.category === 'D') dScore += val;
-        if (q.category === 'A') aScore += val;
-        if (q.category === 'S') sScore += val;
-      });
-
-      const getLevel = (score, category) => {
-        if (category === 'D') { // Depression (Kemurungan)
-          if (score <= 5) return { text: "Normal", color: "bg-emerald-100 text-emerald-800 border-emerald-300", severity: "normal" };
-          if (score <= 7) return { text: "Ringan", color: "bg-yellow-100 text-yellow-800 border-yellow-300", severity: "mild" };
-          if (score <= 10) return { text: "Sederhana", color: "bg-orange-100 text-orange-800 border-orange-300", severity: "moderate" };
-          if (score <= 14) return { text: "Teruk", color: "bg-red-100 text-red-800 border-red-300", severity: "severe" };
-          return { text: "Sangat Teruk", color: "bg-purple-100 text-purple-800 border-purple-300", severity: "extreme" };
+        try {
+            await fetch(GOOGLE_SHEETS_WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            });
+            this.notify('success', 'Berjaya Dihantar', 'Maklumat dan 21 skor item anda telah direkodkan.');
+        } catch (error) {
+            this.notify('error', 'Gagal Dihantar', 'Sila semak sambungan internet anda.');
         }
-        if (category === 'A') { // Anxiety (Anzieti)
-          if (score <= 4) return { text: "Normal", color: "bg-emerald-100 text-emerald-800 border-emerald-300", severity: "normal" };
-          if (score <= 6) return { text: "Ringan", color: "bg-yellow-100 text-yellow-800 border-yellow-300", severity: "mild" };
-          if (score <= 8) return { text: "Sederhana", color: "bg-orange-100 text-orange-800 border-orange-300", severity: "moderate" };
-          if (score <= 10) return { text: "Teruk", color: "bg-red-100 text-red-800 border-red-300", severity: "severe" };
-          return { text: "Sangat Teruk", color: "bg-purple-100 text-purple-800 border-purple-300", severity: "extreme" };
+    },
+
+    showNav() { document.getElementById('nav-container').classList.remove('hidden'); },
+    hideNav() { document.getElementById('nav-container').classList.add('hidden'); },
+    showProgress() { document.getElementById('progress-bar-container').classList.remove('hidden'); },
+    hideProgress() { document.getElementById('progress-bar-container').classList.add('hidden'); },
+
+    updateProgress() {
+        const totalPages = Math.ceil(DASS_ITEMS.length / ITEMS_PER_PAGE);
+        let pct, label;
+        if (this.phase === 'register') { pct = 5; label = 'Pendaftaran Maklumat'; }
+        else { pct = Math.round(((this.section + 1) / totalPages) * 95) + 5; label = `DASS-21 — Muka ${this.section + 1} / ${totalPages}`; }
+        document.getElementById('progress-fill').style.width = pct + '%';
+        document.getElementById('progress-percent').textContent = pct + '%';
+        document.getElementById('progress-text').textContent = label;
+        document.getElementById('btn-back').classList.toggle('hidden', this.phase === 'register');
+        const isLast = this.phase === 'inventory' && this.section === totalPages - 1;
+        document.getElementById('btn-forward').innerHTML = isLast ? `<span class="flex items-center gap-2">Lihat Keputusan<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></span>` : `<span class="flex items-center gap-2">Seterusnya<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></span>`;
+    },
+
+    openModal(id) { document.getElementById(id).classList.add('active'); },
+    closeModal(id) { document.getElementById(id).classList.remove('active'); },
+
+    // FUNGSI PDF YANG TELAH DIBAIKPULIH
+    async downloadPDF() {
+        try {
+            const element = document.getElementById('result-slip');
+            if (!element) {
+                this.notify('error', 'Ralat', 'Slip keputusan tidak dijumpai.');
+                return;
+            }
+            
+            if (typeof html2pdf === 'undefined') {
+                this.notify('error', 'Pustaka PDF Gagal Dimuatkan', 'Sila pastikan anda mempunyai sambungan internet yang stabil dan cuba semula.');
+                return;
+            }
+
+            const name = (this.answers.A.nama || 'PELAJAR').replace(/[^a-zA-Z0-9_-]+/g, '_');
+            this.notify('info', 'Sila Tunggu', 'PDF sedang dijana, jangan tutup tetingkap ini...');
+
+            await html2pdf().set({
+                margin: [10, 10, 10, 10],
+                filename: `SLIP_DASS21_${name}.pdf`,
+                image: { type: 'jpeg', quality: 0.95 },
+                html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', scrollY: 0 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+            }).from(element).save();
+            
+        } catch (error) {
+            console.error("PDF Error:", error);
+            this.notify('error', 'Gagal Jana PDF', 'Berlaku ralat. Sila pastikan anda menggunakan pelayar Chrome/Firefox terkini.');
         }
-        if (category === 'S') { // Stress (Stres)
-          if (score <= 7) return { text: "Normal", color: "bg-emerald-100 text-emerald-800 border-emerald-300", severity: "normal" };
-          if (score <= 9) return { text: "Ringan", color: "bg-yellow-100 text-yellow-800 border-yellow-300", severity: "mild" };
-          if (score <= 13) return { text: "Sederhana", color: "bg-orange-100 text-orange-800 border-orange-300", severity: "moderate" };
-          if (score <= 17) return { text: "Teruk", color: "bg-red-100 text-red-800 border-red-300", severity: "severe" };
-          return { text: "Sangat Teruk", color: "bg-purple-100 text-purple-800 border-purple-300", severity: "extreme" };
-        }
-      };
-
-      const depLvl = getLevel(dScore, 'D');
-      const anxLvl = getLevel(aScore, 'A');
-      const strLvl = getLevel(sScore, 'S');
-
-      const isReferralNeeded = 
-        depLvl.severity === 'severe' || depLvl.severity === 'extreme' ||
-        anxLvl.severity === 'severe' || anxLvl.severity === 'extreme' ||
-        strLvl.severity === 'severe' || strLvl.severity === 'extreme';
-
-      computedScores = { dScore, aScore, sScore, depLvl, anxLvl, strLvl, isReferralNeeded };
-
-      // Paparkan Butiran Pelajar di Atas Keputusan
-      document.getElementById('label-student-meta').textContent = `Disediakan untuk ${state.demografi.nama} (${state.demografi.tahun}, ${state.demografi.program})`;
-
-      // Kemaskini Kad Keputusan
-      document.getElementById('score-depression').textContent = dScore;
-      document.getElementById('level-depression').textContent = depLvl.text;
-      document.getElementById('card-depression').className = `p-5 rounded-xl border-2 flex flex-col items-center justify-between shadow-sm transition-all hover:shadow-md ${depLvl.color}`;
-      document.getElementById('progress-depression').style.width = `${Math.min((dScore / 21) * 100, 100)}%`;
-
-      document.getElementById('score-anxiety').textContent = aScore;
-      document.getElementById('level-anxiety').textContent = anxLvl.text;
-      document.getElementById('card-anxiety').className = `p-5 rounded-xl border-2 flex flex-col items-center justify-between shadow-sm transition-all hover:shadow-md ${anxLvl.color}`;
-      document.getElementById('progress-anxiety').style.width = `${Math.min((aScore / 21) * 100, 100)}%`;
-
-      document.getElementById('score-stress').textContent = sScore;
-      document.getElementById('level-stress').textContent = strLvl.text;
-      document.getElementById('card-stress').className = `p-5 rounded-xl border-2 flex flex-col items-center justify-between shadow-sm transition-all hover:shadow-md ${strLvl.color}`;
-      document.getElementById('progress-stress').style.width = `${Math.min((sScore / 21) * 100, 100)}%`;
-
-      // Kemaskini Bahagian Syor Tindakan KKM
-      const recommendBox = document.getElementById('box-recommendation');
-      const recommendTitle = document.getElementById('recommendation-title');
-      const recommendDesc = document.getElementById('recommendation-desc');
-      const iconWrapper = document.getElementById('recommendation-icon-wrapper');
-
-      if (isReferralNeeded) {
-        recommendBox.className = "mt-6 p-5 rounded-xl border-2 bg-red-50/50 border-red-200 text-red-950";
-        recommendTitle.textContent = "Syor KKM: Sila Hubungi Unit Psikologi & Kaunseling IPG";
-        recommendDesc.textContent = "Skor saringan anda menunjukkan tahap Teruk atau Sangat Teruk pada salah satu komponen. Anda sangat dinasihatkan untuk bertemu kaunselor kampus IPG anda atau melawat klinik kesihatan berdekatan. Ingat, anda tidak bersendirian dan sokongan sedia membantu.";
-        iconWrapper.className = "p-2 rounded-full bg-red-100 text-red-700";
-        iconWrapper.innerHTML = `
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-          </svg>
-        `;
-      } else {
-        recommendBox.className = "mt-6 p-5 rounded-xl border-2 bg-emerald-50/40 border-emerald-200 text-emerald-950";
-        recommendTitle.textContent = "Syor KKM: Amalkan Intervensi Kaedah 10B & Gaya Hidup Sihat";
-        recommendDesc.textContent = "Tahap kesihatan mental anda dalam julat yang baik dan terkawal. Teruskan menjaga kesejahteraan anda dengan mengamalkan kaedah relaksasi secara rutin.";
-        iconWrapper.className = "p-2 rounded-full bg-emerald-100 text-emerald-700";
-        iconWrapper.innerHTML = `
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-        `;
-      }
-
-      // Hantar Data ke Google Sheets secara automatik (Apps Script API)
-      hantarKeGoogleSheets();
     }
+};
 
-    // Penghantaran Data Sebenar ke Google Sheets
-    function hantarKeGoogleSheets() {
-      if (!GOOGLE_SCRIPT_URL) return;
-
-      const syncStatus = document.getElementById('google-sync-status');
-      syncStatus.className = "text-blue-600 font-bold flex items-center animate-pulse";
-      syncStatus.innerHTML = `
-        <svg class="animate-spin h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-        </svg>
-        Menghantar data...
-      `;
-
-      const payload = {
-        timestamp: new Date().toLocaleString('ms-MY', { timeZone: 'Asia/Kuala_Lumpur' }),
-        nama: state.demografi.nama,
-        email: state.demografi.email,
-        umur: state.demografi.umur,
-        jantina: state.demografi.jantina,
-        kampus: state.demografi.kampus,
-        program: state.demografi.program,
-        tahun: state.demografi.tahun,
-        dScore: computedScores.dScore,
-        depLvl: computedScores.depLvl.text,
-        aScore: computedScores.aScore,
-        anxLvl: computedScores.anxLvl.text,
-        sScore: computedScores.sScore,
-        strLvl: computedScores.strLvl.text
-      };
-
-      fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors', // Pinting untuk melepasi sekatan CORS bagi Google Apps Script
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      })
-      .then(() => {
-        syncStatus.className = "text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded flex items-center";
-        syncStatus.innerHTML = `
-          <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-          </svg>
-          Data Selamat Disimpan!
-        `;
-      })
-      .catch(err => {
-        console.error("Ralat simpan data:", err);
-        syncStatus.className = "text-red-700 font-bold bg-red-100 px-2 py-0.5 rounded";
-        syncStatus.textContent = "Ralat hantar pangkalan data";
-      });
-    }
-
-    // Menjana fail Laporan HTML Pelajar untuk dimuat turun secara dinamik
-    function handleDownloadReport() {
-      if (!computedScores) return;
-
-      const reportHtml = `
-<!DOCTYPE html>
-<html lang="ms">
-<head>
-  <meta charset="UTF-8">
-  <title>Laporan Minda Sihat DASS-21 - ${state.demografi.nama}</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <style>
-    @media print {
-      body { background: white; color: black; }
-      .no-print { display: none; }
-      .print-card { border: 1px solid #e2e8f0; box-shadow: none; break-inside: avoid; }
-    }
-  </style>
-</head>
-<body class="bg-gray-50 py-10 px-5 text-gray-800">
-  <div class="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100 print-card">
-    <div class="text-center border-b-2 border-emerald-600 pb-6 mb-6">
-      <h1 class="text-2xl font-bold text-emerald-800 uppercase tracking-wide">Laporan Keputusan Saringan Minda Sihat IPG</h1>
-      <p class="text-sm text-gray-500 mt-1">Menggunakan Instrumen Rasmi KKM DASS-21</p>
-    </div>
-
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold text-emerald-700 mb-3 border-b pb-1">Maklumat Pelajar</h2>
-      <div class="grid grid-cols-2 gap-4 text-sm">
-        <div><span class="font-semibold text-gray-600">Nama Penuh:</span> ${state.demografi.nama}</div>
-        <div><span class="font-semibold text-gray-600">E-mel Rasmi:</span> ${state.demografi.email}</div>
-        <div><span class="font-semibold text-gray-600">Umur / Jantina:</span> ${state.demografi.umur} Tahun / ${state.demografi.jantina}</div>
-        <div><span class="font-semibold text-gray-600">Kampus IPG:</span> ${state.demografi.kampus}</div>
-        <div><span class="font-semibold text-gray-600">Program Pengajian:</span> ${state.demografi.program}</div>
-        <div><span class="font-semibold text-gray-600">Tahun/Semester:</span> ${state.demografi.tahun}</div>
-      </div>
-    </div>
-
-    <div class="mb-8">
-      <h2 class="text-lg font-semibold text-emerald-700 mb-4 border-b pb-1">Keputusan Analisis Saringan DASS-21</h2>
-      <div class="grid grid-cols-3 gap-4">
-        <div class="p-4 rounded-lg border text-center ${computedScores.depLvl.color}">
-          <div class="text-xs font-bold uppercase tracking-wider">Kemurungan</div>
-          <div class="text-3xl font-extrabold my-1">${computedScores.dScore}</div>
-          <div class="text-sm font-semibold">${computedScores.depLvl.text}</div>
-        </div>
-        <div class="p-4 rounded-lg border text-center ${computedScores.anxLvl.color}">
-          <div class="text-xs font-bold uppercase tracking-wider">Anzieti</div>
-          <div class="text-3xl font-extrabold my-1">${computedScores.aScore}</div>
-          <div class="text-sm font-semibold">${computedScores.anxLvl.text}</div>
-        </div>
-        <div class="p-4 rounded-lg border text-center ${computedScores.strLvl.color}">
-          <div class="text-xs font-bold uppercase tracking-wider">Stres</div>
-          <div class="text-3xl font-extrabold my-1">${computedScores.sScore}</div>
-          <div class="text-sm font-semibold">${computedScores.strLvl.text}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="p-5 rounded-lg border mb-8 ${computedScores.isReferralNeeded ? 'bg-red-50 border-red-300' : 'bg-emerald-50 border-emerald-300'}">
-      <h3 class="text-md font-bold ${computedScores.isReferralNeeded ? 'text-red-800' : 'text-emerald-800'} mb-2">
-        Syor Tindakan & Intervensi KKM:
-      </h3>
-      <p class="text-sm leading-relaxed">
-        ${computedScores.isReferralNeeded 
-          ? "Sila hubungi Unit Psikologi & Kaunseling IPG kampus anda ATAU rujuk Klinik Kesihatan/Pegawai Perubatan terdekat secepat mungkin." 
-          : "Keadaan minda anda berada pada tahap yang terkawal. Untuk memelihara kesejahteraan psikologi anda, disyorkan untuk mengamalkan Teknik Intervensi Minda Sihat 10B."}
-      </p>
-    </div>
-  </div>
-  <div class="text-center mt-6 no-print">
-    <button onclick="window.print()" class="bg-emerald-600 text-white font-semibold py-2 px-6 rounded-md hover:bg-emerald-700 transition">
-      Cetak Laporan / Simpan PDF
-    </button>
-  </div>
-</body>
-</html>
-      `;
-
-      const blob = new Blob([reportHtml], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Laporan_Minda_Sihat_DASS21_${state.demografi.nama.replace(/\s+/g, '_')}.html`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    // Set Data Percubaan Pantas (Demo Mode)
-    function fillDemoData() {
-      document.getElementById('input-nama').value = "Amirul bin Syahmi";
-      document.getElementById('input-email').value = "amirul.ipg@siswa.edu.my";
-      document.getElementById('input-umur').value = "21";
-      
-      selectJantina('Lelaki');
-      
-      document.getElementById('input-kampus').value = KAMPUS_IPG[5]; // Pilih Ilmu Khas
-      document.getElementById('input-program').value = "PISMP (Bahasa Melayu SK)";
-      document.getElementById('input-tahun').value = "Tahun 2";
-
-      // Isi jawapan saringan secara rawak (0, 1, 2, atau 3)
-      for (let i = 1; i <= 21; i++) {
-        state.jawapan[i] = Math.floor(Math.random() * 4);
-      }
-
-      // Hapus mesej-mesej kesalahan validasi jika ada
-      const fieldList = ['nama', 'email', 'umur', 'jantina', 'kampus', 'program', 'tahun'];
-      fieldList.forEach(field => clearError(field));
-    }
-
-    // Set Semula Saringan
-    function resetForm() {
-      state.step = 1;
-      state.jawapan = {};
-      state.currentQuestionPage = 0;
-      
-      // Kosongkan nilai borang di UI
-      document.getElementById('input-nama').value = '';
-      document.getElementById('input-email').value = '';
-      document.getElementById('input-umur').value = '';
-      document.getElementById('input-kampus').value = '';
-      document.getElementById('input-program').value = '';
-      document.getElementById('input-tahun').value = '';
-      
-      // Padam pilihan jantina di UI
-      document.getElementById('btn-jantina-l').className = "flex items-center justify-center border-2 border-slate-300 hover:bg-slate-50 rounded-lg p-2.5 w-1/2 text-sm font-semibold transition";
-      document.getElementById('btn-jantina-p').className = "flex items-center justify-center border-2 border-slate-300 hover:bg-slate-50 rounded-lg p-2.5 w-1/2 text-sm font-semibold transition";
-      state.demografi.jantina = '';
-
-      updateStepUI();
-    }
-  </script>
+document.addEventListener('DOMContentLoaded', () => app.init());
+</script>
 </body>
 </html>
