@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MyKaunseling v1.1 — Unit Psikologi dan Kaunseling IPGKPM</title>
+<title>MyKaunseling — Unit Psikologi dan Kaunseling IPGKPM</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
@@ -179,8 +179,178 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
   }
 </style>
 
+
+<!-- Firebase Fasa 2: satu fail HTML, SDK modular melalui CDN rasmi -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+  import {
+    getAuth, setPersistence, browserLocalPersistence, inMemoryPersistence,
+    signInWithEmailAndPassword, createUserWithEmailAndPassword,
+    signOut, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc,
+    collection, getDocs, query, orderBy, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+  /*
+   * GANTIKAN NILAI DI BAWAH dengan konfigurasi Web App daripada
+   * Firebase Console > Project settings > Your apps > SDK setup and configuration.
+   * apiKey Firebase untuk aplikasi web bukan kata laluan pentadbir; keselamatan
+   * sebenar dikawal melalui Firebase Authentication dan Firestore Security Rules.
+   */
+  const firebaseConfig = {
+    apiKey: "AIzaSyCuNFzt-y97Cp6_Aew58RskBzkXOOCOFgc",
+    authDomain: "mykaunseling-ipgkpm.firebaseapp.com",
+    projectId: "mykaunseling-ipgkpm",
+    storageBucket: "mykaunseling-ipgkpm.firebasestorage.app",
+    messagingSenderId: "211425668379",
+    appId: "1:211425668379:web:9013dac51de5b2777737be",
+    measurementId: "G-7VS1GVXQJH"
+  };
+
+  const configured = !Object.values(firebaseConfig).some(v => String(v).includes("PASTE_"));
+  let app = null, auth = null, db = null, secondaryApp = null, secondaryAuth = null;
+
+  function idToFirebaseEmail(idPengguna){
+    const clean = String(idPengguna || "").trim().toLowerCase().replace(/[^a-z0-9._-]/g, "");
+    return `${clean}@mykaunseling.local`;
+  }
+
+  async function initFirebase(){
+    if(!configured){
+      window.MYFB_CONFIGURED = false;
+      console.warn("MyKaunseling: Firebase belum dikonfigurasi. Isikan firebaseConfig dalam fail HTML.");
+      return false;
+    }
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    await setPersistence(auth, browserLocalPersistence);
+    window.MYFB_CONFIGURED = true;
+    window.MYFB = {
+      auth, db, idToFirebaseEmail,
+      signIn: async (id, password) => signInWithEmailAndPassword(auth, idToFirebaseEmail(id), password),
+      signOut: async () => signOut(auth),
+      readUserProfile: async (uid) => {
+        const snap = await getDoc(doc(db, "pengguna", uid));
+        return snap.exists() ? { uid, ...snap.data() } : null;
+      },
+      listUsers: async () => {
+        const snap = await getDocs(collection(db, "pengguna"));
+        return snap.docs.map(d => ({ uid:d.id, ...d.data() }))
+          .sort((a,b)=>String(a.id||"").localeCompare(String(b.id||""),"ms"));
+      },
+      createManagedUser: async (payload, password, adminUid) => {
+        if(!secondaryApp){
+          secondaryApp = initializeApp(firebaseConfig, "mykaunseling-user-creator");
+          secondaryAuth = getAuth(secondaryApp);
+          await setPersistence(secondaryAuth, inMemoryPersistence);
+        }
+        let cred = null;
+        try{
+          cred = await createUserWithEmailAndPassword(secondaryAuth, idToFirebaseEmail(payload.id), password);
+          const profile = {
+            id:String(payload.id||"").toUpperCase(),
+            nama:payload.nama||"",
+            peranan:payload.peranan||"kaunselor",
+            kampus:payload.kampus||null,
+            kodKampus:payload.kodKampus||payload.kampus||null,
+            jawatan:payload.jawatan||"",
+            aktif:payload.aktif!==false,
+            wajibTukarKataLaluan:true,
+            diciptaOleh:adminUid||null,
+            diciptaPada:serverTimestamp(),
+            dikemasKiniOleh:adminUid||null,
+            dikemasKiniPada:serverTimestamp()
+          };
+          await setDoc(doc(db,"pengguna",cred.user.uid), profile);
+          return {uid:cred.user.uid,...profile};
+        } finally {
+          try{ if(secondaryAuth?.currentUser) await signOut(secondaryAuth); }catch(_e){}
+        }
+      },
+      updateManagedUser: async (uid, payload, adminUid) => {
+        const clean = {...payload};
+        delete clean.uid; delete clean.kataLaluan;
+        await updateDoc(doc(db,"pengguna",uid), {
+          ...clean,
+          dikemasKiniOleh:adminUid||null,
+          dikemasKiniPada:serverTimestamp()
+        });
+      },
+      setManagedUserActive: async (uid, aktif, adminUid) => updateDoc(doc(db,"pengguna",uid), {
+        aktif:!!aktif,
+        dikemasKiniOleh:adminUid||null,
+        dikemasKiniPada:serverTimestamp()
+      }),
+      deleteManagedUserProfile: async (uid) => deleteDoc(doc(db,"pengguna",uid)),
+      savePortalSettings: async (payload, uid) => setDoc(
+        doc(db, "tetapan", "portal"),
+        { ...payload, dikemasKiniOleh: uid || null, dikemasKiniPada: serverTimestamp() },
+        { merge: true }
+      ),
+      readPortalSettings: async () => {
+        const snap = await getDoc(doc(db, "tetapan", "portal"));
+        return snap.exists() ? snap.data() : null;
+      },
+      onAuthStateChanged: (callback) => onAuthStateChanged(auth, callback)
+    };
+    return true;
+  }
+
+  window.MYFB_READY = initFirebase().catch(err => {
+    window.MYFB_CONFIGURED = false;
+    console.error("MyKaunseling Firebase initialization failed:", err);
+    return false;
+  });
+</script>
+
+
+<style id="mk-core-build-001">
+/* MyKaunseling Build 002 — status, loading dan panel ujian */
+#mk-loading{position:fixed;inset:0;z-index:99999;background:rgba(8,18,34,.66);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px}
+#mk-loading.show{display:flex}
+.mk-loading-card{width:min(360px,92vw);background:#fff;border-radius:16px;padding:24px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.3)}
+.mk-spinner{width:42px;height:42px;margin:0 auto 14px;border:4px solid #dce9e5;border-top-color:var(--pri);border-radius:50%;animation:mkspin .8s linear infinite}
+@keyframes mkspin{to{transform:rotate(360deg)}}
+#mk-dev-panel{position:fixed;right:14px;bottom:14px;z-index:9000;width:250px;background:rgba(8,18,34,.96);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:12px;box-shadow:0 10px 35px rgba(0,0,0,.28);font-size:11px;overflow:hidden;display:none}
+#mk-dev-panel.show{display:block}
+.mk-dev-head{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;background:rgba(255,255,255,.06);font-family:Outfit,sans-serif;font-weight:700}
+.mk-dev-body{padding:8px 11px 10px}
+.mk-dev-row{display:grid;grid-template-columns:92px 1fr;gap:8px;padding:3px 0;color:rgba(255,255,255,.7)}
+.mk-dev-row b{color:#fff;font-weight:600;overflow-wrap:anywhere}
+.mk-status-pill{display:inline-flex;align-items:center;gap:6px}
+.mk-status-pill:before{content:"";width:7px;height:7px;border-radius:50%;background:#94a3b8}
+.mk-status-pill.ok:before{background:#22c55e}.mk-status-pill.err:before{background:#ef4444}.mk-status-pill.warn:before{background:#f59e0b}
+#mk-net-banner{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:99998;background:#991b1b;color:#fff;padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;display:none;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+#mk-net-banner.show{display:block}
+@media(max-width:640px){#mk-dev-panel{left:10px;right:10px;width:auto;bottom:10px}}
+@media print{#mk-loading,#mk-dev-panel,#mk-net-banner{display:none!important}}
+</style>
+
 </head>
 <body>
+<div id="mk-loading" role="status" aria-live="polite">
+  <div class="mk-loading-card">
+    <div class="mk-spinner"></div>
+    <div id="mk-loading-title" class="font-display font-bold text-navy-800">Sedang memproses...</div>
+    <div id="mk-loading-sub" class="text-xs text-gray-500 mt-2">Sila tunggu sebentar.</div>
+  </div>
+</div>
+<div id="mk-net-banner"><i class="fas fa-wifi mr-1"></i> Sambungan internet terputus</div>
+<div id="mk-dev-panel" aria-label="Panel status pembangunan">
+  <div class="mk-dev-head"><span><i class="fas fa-code mr-1"></i> Status Sistem</span><button onclick="toggleDevPanel(false)" style="background:none;border:0;color:#fff;cursor:pointer"><i class="fas fa-times"></i></button></div>
+  <div class="mk-dev-body">
+    <div class="mk-dev-row"><span>Firebase</span><b id="dev-firebase" class="mk-status-pill warn">Memulakan</b></div>
+    <div class="mk-dev-row"><span>Internet</span><b id="dev-network" class="mk-status-pill">—</b></div>
+    <div class="mk-dev-row"><span>Pengesahan</span><b id="dev-auth" class="mk-status-pill">Belum log masuk</b></div>
+    <div class="mk-dev-row"><span>Firestore</span><b id="dev-firestore" class="mk-status-pill">Belum diuji</b></div>
+    <div class="mk-dev-row"><span>Peranan</span><b id="dev-role">—</b></div>
+    <div class="mk-dev-row"><span>UID</span><b id="dev-uid">—</b></div>
+  </div>
+</div>
+
 <div id="toast-wrap"></div>
 <div id="modal-wrap"></div>
 <div class="sidebar-overlay" id="sb-overlay" onclick="toggleSb()"></div>
@@ -388,90 +558,90 @@ const DFLT = {
   ],
   hubungi:{emel:"upskipg@ipgm.edu.my",tel:"",alamat:"Unit Psikologi & Kaunseling, Institut Pendidikan Guru Malaysia (IPGM), Aras 2, Blok 2250, Jalan Usahawan 1, 63000 Cyberjaya, Selangor"},
   pengguna:[
-    {"id":"KSR_IPGM01","nama":"Admin Utama IPGM 1","peranan":"admin_utama","kampus":null,"kataLaluan":"6644","jawatan":"Admin Utama","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_IPGM02","nama":"Admin Utama IPGM 2","peranan":"admin_utama","kampus":null,"kataLaluan":"6644","jawatan":"Admin Utama","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_ELTC01","nama":"Pentadbir ELTC","peranan":"admin_eltc","kampus":"ELTC","kataLaluan":"6644","jawatan":"Pentadbir ELTC","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_BA01","nama":"Ketua Kaunselor Kampus — IPG Kampus Bahasa Antarabangsa","peranan":"admin_kampus","kampus":"BA","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_BA02","nama":"Kaunselor Pelajar — IPG Kampus Bahasa Antarabangsa","peranan":"kaunselor","kampus":"BA","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_BA03","nama":"Kaunselor Pentadbiran — IPG Kampus Bahasa Antarabangsa","peranan":"kaunselor","kampus":"BA","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_BM01","nama":"Ketua Kaunselor Kampus — IPG Kampus Bahasa Melayu","peranan":"admin_kampus","kampus":"BM","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_BM02","nama":"Kaunselor Pelajar — IPG Kampus Bahasa Melayu","peranan":"kaunselor","kampus":"BM","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_BM03","nama":"Kaunselor Pentadbiran — IPG Kampus Bahasa Melayu","peranan":"kaunselor","kampus":"BM","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_IK01","nama":"Ketua Kaunselor Kampus — IPG Kampus Ilmu Khas","peranan":"admin_kampus","kampus":"IK","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_IK02","nama":"Kaunselor Pelajar — IPG Kampus Ilmu Khas","peranan":"kaunselor","kampus":"IK","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_IK03","nama":"Kaunselor Pentadbiran — IPG Kampus Ilmu Khas","peranan":"kaunselor","kampus":"IK","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PI01","nama":"Ketua Kaunselor Kampus — IPG Kampus Pendidikan Islam","peranan":"admin_kampus","kampus":"PI","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PI02","nama":"Kaunselor Pelajar — IPG Kampus Pendidikan Islam","peranan":"kaunselor","kampus":"PI","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PI03","nama":"Kaunselor Pentadbiran — IPG Kampus Pendidikan Islam","peranan":"kaunselor","kampus":"PI","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PT01","nama":"Ketua Kaunselor Kampus — IPG Kampus Pendidikan Teknik","peranan":"admin_kampus","kampus":"PT","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PT02","nama":"Kaunselor Pelajar — IPG Kampus Pendidikan Teknik","peranan":"kaunselor","kampus":"PT","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PT03","nama":"Kaunselor Pentadbiran — IPG Kampus Pendidikan Teknik","peranan":"kaunselor","kampus":"PT","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_RM01","nama":"Ketua Kaunselor Kampus — IPG Kampus Raja Melewar","peranan":"admin_kampus","kampus":"RM","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_RM02","nama":"Kaunselor Pelajar — IPG Kampus Raja Melewar","peranan":"kaunselor","kampus":"RM","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_RM03","nama":"Kaunselor Pentadbiran — IPG Kampus Raja Melewar","peranan":"kaunselor","kampus":"RM","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PM01","nama":"Ketua Kaunselor Kampus — IPG Kampus Perempuan Melayu","peranan":"admin_kampus","kampus":"PM","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PM02","nama":"Kaunselor Pelajar — IPG Kampus Perempuan Melayu","peranan":"kaunselor","kampus":"PM","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PM03","nama":"Kaunselor Pentadbiran — IPG Kampus Perempuan Melayu","peranan":"kaunselor","kampus":"PM","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_DA01","nama":"Ketua Kaunselor Kampus — IPG Kampus Darul Aman","peranan":"admin_kampus","kampus":"DA","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_DA02","nama":"Kaunselor Pelajar — IPG Kampus Darul Aman","peranan":"kaunselor","kampus":"DA","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_DA03","nama":"Kaunselor Pentadbiran — IPG Kampus Darul Aman","peranan":"kaunselor","kampus":"DA","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_SAH01","nama":"Ketua Kaunselor Kampus — IPG Kampus Sultan Abdul Halim","peranan":"admin_kampus","kampus":"SAH","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_SAH02","nama":"Kaunselor Pelajar — IPG Kampus Sultan Abdul Halim","peranan":"kaunselor","kampus":"SAH","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_SAH03","nama":"Kaunselor Pentadbiran — IPG Kampus Sultan Abdul Halim","peranan":"kaunselor","kampus":"SAH","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TB01","nama":"Ketua Kaunselor Kampus — IPG Kampus Tuanku Bainun","peranan":"admin_kampus","kampus":"TB","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TB02","nama":"Kaunselor Pelajar — IPG Kampus Tuanku Bainun","peranan":"kaunselor","kampus":"TB","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TB03","nama":"Kaunselor Pentadbiran — IPG Kampus Tuanku Bainun","peranan":"kaunselor","kampus":"TB","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PP01","nama":"Ketua Kaunselor Kampus — IPG Kampus Pulau Pinang","peranan":"admin_kampus","kampus":"PP","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PP02","nama":"Kaunselor Pelajar — IPG Kampus Pulau Pinang","peranan":"kaunselor","kampus":"PP","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PP03","nama":"Kaunselor Pentadbiran — IPG Kampus Pulau Pinang","peranan":"kaunselor","kampus":"PP","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PL01","nama":"Ketua Kaunselor Kampus — IPG Kampus Perlis","peranan":"admin_kampus","kampus":"PL","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PL02","nama":"Kaunselor Pelajar — IPG Kampus Perlis","peranan":"kaunselor","kampus":"PL","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_PL03","nama":"Kaunselor Pentadbiran — IPG Kampus Perlis","peranan":"kaunselor","kampus":"PL","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_IPH01","nama":"Ketua Kaunselor Kampus — IPG Kampus Ipoh","peranan":"admin_kampus","kampus":"IPH","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_IPH02","nama":"Kaunselor Pelajar — IPG Kampus Ipoh","peranan":"kaunselor","kampus":"IPH","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_IPH03","nama":"Kaunselor Pentadbiran — IPG Kampus Ipoh","peranan":"kaunselor","kampus":"IPH","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_KB01","nama":"Ketua Kaunselor Kampus — IPG Kampus Kota Bharu","peranan":"admin_kampus","kampus":"KB","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_KB02","nama":"Kaunselor Pelajar — IPG Kampus Kota Bharu","peranan":"kaunselor","kampus":"KB","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_KB03","nama":"Kaunselor Pentadbiran — IPG Kampus Kota Bharu","peranan":"kaunselor","kampus":"KB","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_SM01","nama":"Ketua Kaunselor Kampus — IPG Kampus Sultan Mizan","peranan":"admin_kampus","kampus":"SM","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_SM02","nama":"Kaunselor Pelajar — IPG Kampus Sultan Mizan","peranan":"kaunselor","kampus":"SM","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_SM03","nama":"Kaunselor Pentadbiran — IPG Kampus Sultan Mizan","peranan":"kaunselor","kampus":"SM","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_DRI01","nama":"Ketua Kaunselor Kampus — IPG Kampus Dato' Razali Ismail","peranan":"admin_kampus","kampus":"DRI","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_DRI02","nama":"Kaunselor Pelajar — IPG Kampus Dato' Razali Ismail","peranan":"kaunselor","kampus":"DRI","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_DRI03","nama":"Kaunselor Pentadbiran — IPG Kampus Dato' Razali Ismail","peranan":"kaunselor","kampus":"DRI","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TAA01","nama":"Ketua Kaunselor Kampus — IPG Kampus Tengku Ampuan Afzan","peranan":"admin_kampus","kampus":"TAA","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TAA02","nama":"Kaunselor Pelajar — IPG Kampus Tengku Ampuan Afzan","peranan":"kaunselor","kampus":"TAA","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TAA03","nama":"Kaunselor Pentadbiran — IPG Kampus Tengku Ampuan Afzan","peranan":"kaunselor","kampus":"TAA","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_THO01","nama":"Ketua Kaunselor Kampus — IPG Kampus Tun Hussein Onn","peranan":"admin_kampus","kampus":"THO","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_THO02","nama":"Kaunselor Pelajar — IPG Kampus Tun Hussein Onn","peranan":"kaunselor","kampus":"THO","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_THO03","nama":"Kaunselor Pentadbiran — IPG Kampus Tun Hussein Onn","peranan":"kaunselor","kampus":"THO","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TI01","nama":"Ketua Kaunselor Kampus — IPG Kampus Temenggong Ibrahim","peranan":"admin_kampus","kampus":"TI","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TI02","nama":"Kaunselor Pelajar — IPG Kampus Temenggong Ibrahim","peranan":"kaunselor","kampus":"TI","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TI03","nama":"Kaunselor Pentadbiran — IPG Kampus Temenggong Ibrahim","peranan":"kaunselor","kampus":"TI","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_BL01","nama":"Ketua Kaunselor Kampus — IPG Kampus Batu Lintang","peranan":"admin_kampus","kampus":"BL","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_BL02","nama":"Kaunselor Pelajar — IPG Kampus Batu Lintang","peranan":"kaunselor","kampus":"BL","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_BL03","nama":"Kaunselor Pentadbiran — IPG Kampus Batu Lintang","peranan":"kaunselor","kampus":"BL","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_SWK01","nama":"Ketua Kaunselor Kampus — IPG Kampus Sarawak","peranan":"admin_kampus","kampus":"SWK","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_SWK02","nama":"Kaunselor Pelajar — IPG Kampus Sarawak","peranan":"kaunselor","kampus":"SWK","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_SWK03","nama":"Kaunselor Pentadbiran — IPG Kampus Sarawak","peranan":"kaunselor","kampus":"SWK","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TAR01","nama":"Ketua Kaunselor Kampus — IPG Kampus Tun Abdul Razak","peranan":"admin_kampus","kampus":"TAR","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TAR02","nama":"Kaunselor Pelajar — IPG Kampus Tun Abdul Razak","peranan":"kaunselor","kampus":"TAR","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TAR03","nama":"Kaunselor Pentadbiran — IPG Kampus Tun Abdul Razak","peranan":"kaunselor","kampus":"TAR","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_RJ01","nama":"Ketua Kaunselor Kampus — IPG Kampus Rajang","peranan":"admin_kampus","kampus":"RJ","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_RJ02","nama":"Kaunselor Pelajar — IPG Kampus Rajang","peranan":"kaunselor","kampus":"RJ","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_RJ03","nama":"Kaunselor Pentadbiran — IPG Kampus Rajang","peranan":"kaunselor","kampus":"RJ","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_GYA01","nama":"Ketua Kaunselor Kampus — IPG Kampus Gaya","peranan":"admin_kampus","kampus":"GYA","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_GYA02","nama":"Kaunselor Pelajar — IPG Kampus Gaya","peranan":"kaunselor","kampus":"GYA","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_GYA03","nama":"Kaunselor Pentadbiran — IPG Kampus Gaya","peranan":"kaunselor","kampus":"GYA","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_KT01","nama":"Ketua Kaunselor Kampus — IPG Kampus Kent","peranan":"admin_kampus","kampus":"KT","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_KT02","nama":"Kaunselor Pelajar — IPG Kampus Kent","peranan":"kaunselor","kampus":"KT","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_KT03","nama":"Kaunselor Pentadbiran — IPG Kampus Kent","peranan":"kaunselor","kampus":"KT","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TW01","nama":"Ketua Kaunselor Kampus — IPG Kampus Tawau","peranan":"admin_kampus","kampus":"TW","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TW02","nama":"Kaunselor Pelajar — IPG Kampus Tawau","peranan":"kaunselor","kampus":"TW","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_TW03","nama":"Kaunselor Pentadbiran — IPG Kampus Tawau","peranan":"kaunselor","kampus":"TW","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_KG01","nama":"Ketua Kaunselor Kampus — IPG Kampus Keningau","peranan":"admin_kampus","kampus":"KG","kataLaluan":"6644","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_KG02","nama":"Kaunselor Pelajar — IPG Kampus Keningau","peranan":"kaunselor","kampus":"KG","kataLaluan":"6644","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
-    {"id":"KSR_KG03","nama":"Kaunselor Pentadbiran — IPG Kampus Keningau","peranan":"kaunselor","kampus":"KG","kataLaluan":"6644","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false}
+    {"id":"KSR_IPGM01","nama":"Admin Utama IPGM 1","peranan":"admin_utama","kampus":null,"jawatan":"Admin Utama","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_IPGM02","nama":"Admin Utama IPGM 2","peranan":"admin_utama","kampus":null,"jawatan":"Admin Utama","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_ELTC01","nama":"Pentadbir ELTC","peranan":"admin_eltc","kampus":"ELTC","jawatan":"Pentadbir ELTC","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_BA01","nama":"Ketua Kaunselor Kampus — IPG Kampus Bahasa Antarabangsa","peranan":"admin_kampus","kampus":"BA","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_BA02","nama":"Kaunselor Pelajar — IPG Kampus Bahasa Antarabangsa","peranan":"kaunselor","kampus":"BA","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_BA03","nama":"Kaunselor Pentadbiran — IPG Kampus Bahasa Antarabangsa","peranan":"kaunselor","kampus":"BA","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_BM01","nama":"Ketua Kaunselor Kampus — IPG Kampus Bahasa Melayu","peranan":"admin_kampus","kampus":"BM","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_BM02","nama":"Kaunselor Pelajar — IPG Kampus Bahasa Melayu","peranan":"kaunselor","kampus":"BM","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_BM03","nama":"Kaunselor Pentadbiran — IPG Kampus Bahasa Melayu","peranan":"kaunselor","kampus":"BM","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_IK01","nama":"Ketua Kaunselor Kampus — IPG Kampus Ilmu Khas","peranan":"admin_kampus","kampus":"IK","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_IK02","nama":"Kaunselor Pelajar — IPG Kampus Ilmu Khas","peranan":"kaunselor","kampus":"IK","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_IK03","nama":"Kaunselor Pentadbiran — IPG Kampus Ilmu Khas","peranan":"kaunselor","kampus":"IK","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PI01","nama":"Ketua Kaunselor Kampus — IPG Kampus Pendidikan Islam","peranan":"admin_kampus","kampus":"PI","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PI02","nama":"Kaunselor Pelajar — IPG Kampus Pendidikan Islam","peranan":"kaunselor","kampus":"PI","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PI03","nama":"Kaunselor Pentadbiran — IPG Kampus Pendidikan Islam","peranan":"kaunselor","kampus":"PI","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PT01","nama":"Ketua Kaunselor Kampus — IPG Kampus Pendidikan Teknik","peranan":"admin_kampus","kampus":"PT","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PT02","nama":"Kaunselor Pelajar — IPG Kampus Pendidikan Teknik","peranan":"kaunselor","kampus":"PT","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PT03","nama":"Kaunselor Pentadbiran — IPG Kampus Pendidikan Teknik","peranan":"kaunselor","kampus":"PT","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_RM01","nama":"Ketua Kaunselor Kampus — IPG Kampus Raja Melewar","peranan":"admin_kampus","kampus":"RM","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_RM02","nama":"Kaunselor Pelajar — IPG Kampus Raja Melewar","peranan":"kaunselor","kampus":"RM","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_RM03","nama":"Kaunselor Pentadbiran — IPG Kampus Raja Melewar","peranan":"kaunselor","kampus":"RM","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PM01","nama":"Ketua Kaunselor Kampus — IPG Kampus Perempuan Melayu","peranan":"admin_kampus","kampus":"PM","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PM02","nama":"Kaunselor Pelajar — IPG Kampus Perempuan Melayu","peranan":"kaunselor","kampus":"PM","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PM03","nama":"Kaunselor Pentadbiran — IPG Kampus Perempuan Melayu","peranan":"kaunselor","kampus":"PM","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_DA01","nama":"Ketua Kaunselor Kampus — IPG Kampus Darul Aman","peranan":"admin_kampus","kampus":"DA","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_DA02","nama":"Kaunselor Pelajar — IPG Kampus Darul Aman","peranan":"kaunselor","kampus":"DA","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_DA03","nama":"Kaunselor Pentadbiran — IPG Kampus Darul Aman","peranan":"kaunselor","kampus":"DA","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_SAH01","nama":"Ketua Kaunselor Kampus — IPG Kampus Sultan Abdul Halim","peranan":"admin_kampus","kampus":"SAH","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_SAH02","nama":"Kaunselor Pelajar — IPG Kampus Sultan Abdul Halim","peranan":"kaunselor","kampus":"SAH","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_SAH03","nama":"Kaunselor Pentadbiran — IPG Kampus Sultan Abdul Halim","peranan":"kaunselor","kampus":"SAH","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TB01","nama":"Ketua Kaunselor Kampus — IPG Kampus Tuanku Bainun","peranan":"admin_kampus","kampus":"TB","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TB02","nama":"Kaunselor Pelajar — IPG Kampus Tuanku Bainun","peranan":"kaunselor","kampus":"TB","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TB03","nama":"Kaunselor Pentadbiran — IPG Kampus Tuanku Bainun","peranan":"kaunselor","kampus":"TB","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PP01","nama":"Ketua Kaunselor Kampus — IPG Kampus Pulau Pinang","peranan":"admin_kampus","kampus":"PP","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PP02","nama":"Kaunselor Pelajar — IPG Kampus Pulau Pinang","peranan":"kaunselor","kampus":"PP","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PP03","nama":"Kaunselor Pentadbiran — IPG Kampus Pulau Pinang","peranan":"kaunselor","kampus":"PP","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PL01","nama":"Ketua Kaunselor Kampus — IPG Kampus Perlis","peranan":"admin_kampus","kampus":"PL","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PL02","nama":"Kaunselor Pelajar — IPG Kampus Perlis","peranan":"kaunselor","kampus":"PL","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_PL03","nama":"Kaunselor Pentadbiran — IPG Kampus Perlis","peranan":"kaunselor","kampus":"PL","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_IPH01","nama":"Ketua Kaunselor Kampus — IPG Kampus Ipoh","peranan":"admin_kampus","kampus":"IPH","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_IPH02","nama":"Kaunselor Pelajar — IPG Kampus Ipoh","peranan":"kaunselor","kampus":"IPH","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_IPH03","nama":"Kaunselor Pentadbiran — IPG Kampus Ipoh","peranan":"kaunselor","kampus":"IPH","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_KB01","nama":"Ketua Kaunselor Kampus — IPG Kampus Kota Bharu","peranan":"admin_kampus","kampus":"KB","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_KB02","nama":"Kaunselor Pelajar — IPG Kampus Kota Bharu","peranan":"kaunselor","kampus":"KB","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_KB03","nama":"Kaunselor Pentadbiran — IPG Kampus Kota Bharu","peranan":"kaunselor","kampus":"KB","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_SM01","nama":"Ketua Kaunselor Kampus — IPG Kampus Sultan Mizan","peranan":"admin_kampus","kampus":"SM","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_SM02","nama":"Kaunselor Pelajar — IPG Kampus Sultan Mizan","peranan":"kaunselor","kampus":"SM","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_SM03","nama":"Kaunselor Pentadbiran — IPG Kampus Sultan Mizan","peranan":"kaunselor","kampus":"SM","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_DRI01","nama":"Ketua Kaunselor Kampus — IPG Kampus Dato' Razali Ismail","peranan":"admin_kampus","kampus":"DRI","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_DRI02","nama":"Kaunselor Pelajar — IPG Kampus Dato' Razali Ismail","peranan":"kaunselor","kampus":"DRI","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_DRI03","nama":"Kaunselor Pentadbiran — IPG Kampus Dato' Razali Ismail","peranan":"kaunselor","kampus":"DRI","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TAA01","nama":"Ketua Kaunselor Kampus — IPG Kampus Tengku Ampuan Afzan","peranan":"admin_kampus","kampus":"TAA","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TAA02","nama":"Kaunselor Pelajar — IPG Kampus Tengku Ampuan Afzan","peranan":"kaunselor","kampus":"TAA","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TAA03","nama":"Kaunselor Pentadbiran — IPG Kampus Tengku Ampuan Afzan","peranan":"kaunselor","kampus":"TAA","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_THO01","nama":"Ketua Kaunselor Kampus — IPG Kampus Tun Hussein Onn","peranan":"admin_kampus","kampus":"THO","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_THO02","nama":"Kaunselor Pelajar — IPG Kampus Tun Hussein Onn","peranan":"kaunselor","kampus":"THO","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_THO03","nama":"Kaunselor Pentadbiran — IPG Kampus Tun Hussein Onn","peranan":"kaunselor","kampus":"THO","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TI01","nama":"Ketua Kaunselor Kampus — IPG Kampus Temenggong Ibrahim","peranan":"admin_kampus","kampus":"TI","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TI02","nama":"Kaunselor Pelajar — IPG Kampus Temenggong Ibrahim","peranan":"kaunselor","kampus":"TI","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TI03","nama":"Kaunselor Pentadbiran — IPG Kampus Temenggong Ibrahim","peranan":"kaunselor","kampus":"TI","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_BL01","nama":"Ketua Kaunselor Kampus — IPG Kampus Batu Lintang","peranan":"admin_kampus","kampus":"BL","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_BL02","nama":"Kaunselor Pelajar — IPG Kampus Batu Lintang","peranan":"kaunselor","kampus":"BL","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_BL03","nama":"Kaunselor Pentadbiran — IPG Kampus Batu Lintang","peranan":"kaunselor","kampus":"BL","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_SWK01","nama":"Ketua Kaunselor Kampus — IPG Kampus Sarawak","peranan":"admin_kampus","kampus":"SWK","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_SWK02","nama":"Kaunselor Pelajar — IPG Kampus Sarawak","peranan":"kaunselor","kampus":"SWK","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_SWK03","nama":"Kaunselor Pentadbiran — IPG Kampus Sarawak","peranan":"kaunselor","kampus":"SWK","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TAR01","nama":"Ketua Kaunselor Kampus — IPG Kampus Tun Abdul Razak","peranan":"admin_kampus","kampus":"TAR","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TAR02","nama":"Kaunselor Pelajar — IPG Kampus Tun Abdul Razak","peranan":"kaunselor","kampus":"TAR","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TAR03","nama":"Kaunselor Pentadbiran — IPG Kampus Tun Abdul Razak","peranan":"kaunselor","kampus":"TAR","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_RJ01","nama":"Ketua Kaunselor Kampus — IPG Kampus Rajang","peranan":"admin_kampus","kampus":"RJ","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_RJ02","nama":"Kaunselor Pelajar — IPG Kampus Rajang","peranan":"kaunselor","kampus":"RJ","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_RJ03","nama":"Kaunselor Pentadbiran — IPG Kampus Rajang","peranan":"kaunselor","kampus":"RJ","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_GYA01","nama":"Ketua Kaunselor Kampus — IPG Kampus Gaya","peranan":"admin_kampus","kampus":"GYA","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_GYA02","nama":"Kaunselor Pelajar — IPG Kampus Gaya","peranan":"kaunselor","kampus":"GYA","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_GYA03","nama":"Kaunselor Pentadbiran — IPG Kampus Gaya","peranan":"kaunselor","kampus":"GYA","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_KT01","nama":"Ketua Kaunselor Kampus — IPG Kampus Kent","peranan":"admin_kampus","kampus":"KT","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_KT02","nama":"Kaunselor Pelajar — IPG Kampus Kent","peranan":"kaunselor","kampus":"KT","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_KT03","nama":"Kaunselor Pentadbiran — IPG Kampus Kent","peranan":"kaunselor","kampus":"KT","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TW01","nama":"Ketua Kaunselor Kampus — IPG Kampus Tawau","peranan":"admin_kampus","kampus":"TW","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TW02","nama":"Kaunselor Pelajar — IPG Kampus Tawau","peranan":"kaunselor","kampus":"TW","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_TW03","nama":"Kaunselor Pentadbiran — IPG Kampus Tawau","peranan":"kaunselor","kampus":"TW","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_KG01","nama":"Ketua Kaunselor Kampus — IPG Kampus Keningau","peranan":"admin_kampus","kampus":"KG","jawatan":"Ketua Kaunselor Kampus","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_KG02","nama":"Kaunselor Pelajar — IPG Kampus Keningau","peranan":"kaunselor","kampus":"KG","jawatan":"Kaunselor Pelajar","aktif":true,"wajibTukarKataLaluan":false},
+    {"id":"KSR_KG03","nama":"Kaunselor Pentadbiran — IPG Kampus Keningau","peranan":"kaunselor","kampus":"KG","jawatan":"Kaunselor Pentadbiran","aktif":true,"wajibTukarKataLaluan":false}
   ],
   kampusData:{}
 };
@@ -586,11 +756,25 @@ function loadApp(){
   return JSON.parse(JSON.stringify(DFLT));
 }
 function saveApp(silent=false){
-  // Simpan ke localStorage TANPA pautan & sysBerkaitan (sentiasa dari DFLT)
+  // Salinan setempat dikekalkan supaya modul sedia ada terus berfungsi.
   const toSave = {...APP};
   delete toSave.pautan;
   delete toSave.sysBerkaitan;
   localStorage.setItem(SK, JSON.stringify(toSave));
+
+  // Fasa 2: cerminkan tetapan portal bersaiz kecil ke Cloud Firestore.
+  // Data besar/CSV tidak dimasukkan ke satu dokumen kerana had saiz dokumen Firestore.
+  if(window.MYFB_CONFIGURED && window.MYFB && SES?.uid){
+    window.MYFB.savePortalSettings({
+      hebahan: APP.hebahan || [],
+      hubungi: APP.hubungi || {},
+      pautan: APP.pautan || {},
+      sysBerkaitan: APP.sysBerkaitan || []
+    }, SES.uid).catch(err=>{
+      console.error("Gagal menyimpan tetapan ke Firestore:",err);
+      if(!silent) toast("Data setempat disimpan, tetapi penyegerakan Firestore gagal","err");
+    });
+  }
   if(!silent) toast("Data disimpan","ok");
 }
 let APP=loadApp();
@@ -672,7 +856,7 @@ function initials(n){return n.split(" ").slice(0,2).map(w=>w[0]).join("").toUppe
 // ══════════════════════════════════════════
 // SESSION STATE
 // ══════════════════════════════════════════
-let SES={role:null,nama:null,kampus:null,pg:null};
+let SES={loggedIn:false,uid:null,role:null,id:null,nama:null,kampus:null,pg:null};
 
 // ── ROLE HELPERS ──
 function isAdmin(){ return SES.role==="admin_utama"; }
@@ -808,6 +992,45 @@ function bukaPautanAwam(url,nama){
 }
 
 // ══════════════════════════════════════════
+// MYKAUNSELING CORE BUILD 001
+// ══════════════════════════════════════════
+const MK_BUILD="001";
+const MK_DEV_MODE=true; // tukar kepada false sebelum pelancaran rasmi
+
+function showCoreLoading(title="Sedang memproses...",sub="Sila tunggu sebentar."){
+  const el=document.getElementById("mk-loading");
+  const t=document.getElementById("mk-loading-title"),s=document.getElementById("mk-loading-sub");
+  if(t)t.textContent=title;if(s)s.textContent=sub;if(el)el.classList.add("show");
+}
+function hideCoreLoading(){document.getElementById("mk-loading")?.classList.remove("show");}
+function toggleDevPanel(force){
+  const el=document.getElementById("mk-dev-panel"); if(!el)return;
+  const on=typeof force==="boolean"?force:!el.classList.contains("show");
+  el.classList.toggle("show",on&&MK_DEV_MODE);
+}
+function setDevStatus(id,text,state=""){
+  const el=document.getElementById(id);if(!el)return;el.textContent=text;
+  if(id.startsWith("dev-")&&["dev-firebase","dev-network","dev-auth","dev-firestore"].includes(id)) el.className=`mk-status-pill ${state}`.trim();
+}
+function refreshDevPanel(){
+  setDevStatus("dev-network",navigator.onLine?"Dalam talian":"Luar talian",navigator.onLine?"ok":"err");
+  setDevStatus("dev-auth",SES?.loggedIn?"Log masuk":"Belum log masuk",SES?.loggedIn?"ok":"warn");
+  setDevStatus("dev-role",SES?.role||"—");
+  setDevStatus("dev-uid",SES?.uid||"—");
+}
+function handleNetworkState(){
+  const online=navigator.onLine;
+  document.getElementById("mk-net-banner")?.classList.toggle("show",!online);
+  setDevStatus("dev-network",online?"Dalam talian":"Luar talian",online?"ok":"err");
+  if(online&&window.MYFB_CONFIGURED)setDbStatus(true,"Firebase aktif");
+  else if(!online)setDbStatus(false,"Tiada internet");
+}
+window.addEventListener("online",()=>{handleNetworkState();toast("Sambungan internet dipulihkan","ok")});
+window.addEventListener("offline",()=>{handleNetworkState();toast("Sambungan internet terputus","err")});
+window.addEventListener("error",e=>{console.error("Ralat global MyKaunseling:",e.error||e.message);setDevStatus("dev-firestore","Ralat aplikasi","err")});
+window.addEventListener("unhandledrejection",e=>{console.error("Janji tidak dikendalikan:",e.reason);setDevStatus("dev-firestore","Ralat aplikasi","err")});
+
+// ══════════════════════════════════════════
 // LOGIN MODAL
 // ══════════════════════════════════════════
 function showLogin(){
@@ -849,28 +1072,126 @@ function toggleLoginPw(){
   if(ic)ic.className=`fas ${el.type==="password"?"fa-eye":"fa-eye-slash"}`;
 }
 
-function doLogin(){
-  const id=document.getElementById("lg-id").value.trim().toUpperCase().replace(/[\s-]/g,"");
-  const pw=document.getElementById("lg-pw").value;
+async function doLogin(){
+  const idEl=document.getElementById("lg-id"), pwEl=document.getElementById("lg-pw");
+  const id=(idEl?.value||"").trim().toUpperCase().replace(/[\s-]/g,"");
+  const pw=pwEl?.value||"";
   if(!id||!pw){toast("Sila masukkan ID pengguna dan kata laluan","err");return;}
-  const u=APP.pengguna.find(x=>String(x.id).toUpperCase().replace(/[\s-]/g,"")===id);
-  if(!u||u.kataLaluan!==pw){toast("ID pengguna atau kata laluan tidak sah","err");return;}
-  if(u.aktif===false){toast("Akaun belum diaktifkan. Sila hubungi Admin Utama IPGM","err");return;}
-  SES={loggedIn:true,role:u.peranan,id:u.id,nama:u.nama,kampus:u.kampus||null,pg:null};
+  if(!window.MYFB_CONFIGURED || !window.MYFB){
+    toast("Firebase belum dikonfigurasi. Sila isikan firebaseConfig dalam fail HTML.","err");
+    return;
+  }
+
+  const btn=document.querySelector('#modal-wrap .btn-pri');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Mengesahkan...';}
+  showCoreLoading("Sedang mengesahkan...","Firebase sedang menyemak ID pengguna dan kata laluan.");
+  try{
+    const cred=await window.MYFB.signIn(id,pw);
+    const profile=await window.MYFB.readUserProfile(cred.user.uid);
+    if(!profile) throw new Error("PROFILE_NOT_FOUND");
+    if(profile.aktif===false){
+      await window.MYFB.signOut();
+      throw new Error("ACCOUNT_DISABLED");
+    }
+    if(String(profile.id||"").toUpperCase().replace(/[\s-]/g,"")!==id){
+      await window.MYFB.signOut();
+      throw new Error("ID_MISMATCH");
+    }
+    await enterAuthenticatedSystem(cred.user,profile,true);
+  }catch(err){
+    console.error("Log masuk Firebase gagal:",err);
+    const code=err?.code||err?.message||"";
+    let msg="ID pengguna atau kata laluan tidak sah";
+    if(code.includes("PROFILE_NOT_FOUND")) msg="Profil pengguna belum diwujudkan dalam Cloud Firestore";
+    else if(code.includes("ACCOUNT_DISABLED")) msg="Akaun belum diaktifkan. Sila hubungi Admin Utama IPGM";
+    else if(code.includes("ID_MISMATCH")) msg="ID pengguna tidak sepadan dengan profil akaun";
+    else if(code.includes("auth/too-many-requests")) msg="Terlalu banyak cubaan. Cuba semula kemudian";
+    else if(code.includes("auth/network-request-failed")) msg="Sambungan internet atau Firebase gagal";
+    toast(msg,"err");
+  }finally{
+    hideCoreLoading();
+    if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i>Log Masuk';}
+  }
+}
+
+async function enterAuthenticatedSystem(user,profile,showWelcome=false){
+  SES={
+    loggedIn:true, uid:user.uid, role:profile.peranan, id:profile.id,
+    nama:profile.nama, kampus:profile.kampus||null, pg:null,
+    jawatan:profile.jawatan||"", wajibTukarKataLaluan:!!profile.wajibTukarKataLaluan
+  };
   closeModal();
   document.getElementById("public-view").classList.add("hidden");
   document.getElementById("sys-view").classList.remove("hidden");
   initSys();
-  toast(`Selamat datang, ${u.nama}`,"ok");
-  if(u.wajibTukarKataLaluan){setTimeout(()=>toast("Sila tukar kata laluan sementara melalui Admin Utama","inf"),700);}
+  setDbStatus(true,"Firestore");
+  setDevStatus("dev-auth","Log masuk","ok");
+  setDevStatus("dev-firestore","Bersambung","ok");
+  refreshDevPanel();
+  if(showWelcome) toast(`Selamat datang, ${profile.nama}`,"ok");
+  if(profile.wajibTukarKataLaluan){setTimeout(()=>toast("Sila tukar kata laluan sementara melalui pentadbir","inf"),700);}
 }
 
-function doLogout(){
-  SES={role:null,nama:null,kampus:null,pg:null};
+async function doLogout(){
+  try{ if(window.MYFB_CONFIGURED && window.MYFB) await window.MYFB.signOut(); }
+  catch(err){ console.error("Log keluar Firebase gagal:",err); }
+  SES={loggedIn:false,uid:null,role:null,id:null,nama:null,kampus:null,pg:null};
   destroyCharts();
   document.getElementById("sys-view").classList.add("hidden");
   document.getElementById("public-view").classList.remove("hidden");
+  setDbStatus(false,"Luar talian");
+  setDevStatus("dev-auth","Belum log masuk","warn");
+  setDevStatus("dev-firestore","Sesi ditutup","warn");
+  refreshDevPanel();
   toast("Anda telah log keluar","inf");
+}
+
+function setDbStatus(active,label){
+  const dot=document.getElementById("db-dot"), txt=document.getElementById("db-txt");
+  if(dot) dot.className=active?"dot-on":"dot-off";
+  if(txt) txt.textContent=label|| (active?"Aktif":"Luar talian");
+}
+
+async function initFirebaseAuthObserver(){
+  const ready=await (window.MYFB_READY||Promise.resolve(false));
+  if(!ready || !window.MYFB){ setDbStatus(false,"Belum dikonfigurasi");setDevStatus("dev-firebase","Tidak dikonfigurasi","err"); return; }
+  setDbStatus(true,"Firebase aktif");
+  setDevStatus("dev-firebase","Bersambung","ok");
+  window.MYFB.onAuthStateChanged(async user=>{
+    if(!user){
+      setDevStatus("dev-auth","Belum log masuk","warn");
+      setDevStatus("dev-firestore","Menunggu sesi","warn");
+      refreshDevPanel();
+      if(SES.loggedIn){
+        SES={loggedIn:false,uid:null,role:null,id:null,nama:null,kampus:null,pg:null};
+        document.getElementById("sys-view")?.classList.add("hidden");
+        document.getElementById("public-view")?.classList.remove("hidden");
+      }
+      return;
+    }
+    if(SES.uid===user.uid && SES.loggedIn) return;
+    try{
+      showCoreLoading("Memulihkan sesi...","MyKaunseling sedang membaca profil pengguna daripada Firestore.");
+      const profile=await window.MYFB.readUserProfile(user.uid);
+      if(!profile || profile.aktif===false){ await window.MYFB.signOut(); return; }
+      await enterAuthenticatedSystem(user,profile,false);
+    }catch(err){
+      console.error("Gagal memulihkan sesi Firebase:",err);
+      setDbStatus(false,"Ralat Firestore");
+      setDevStatus("dev-firestore","Gagal membaca","err");
+    }finally{hideCoreLoading();}
+  });
+
+  try{
+    const cloud=await window.MYFB.readPortalSettings();
+    if(cloud){
+      APP.hebahan=cloud.hebahan||APP.hebahan;
+      APP.hubungi={...APP.hubungi,...(cloud.hubungi||{})};
+      APP.pautan=cloud.pautan||APP.pautan;
+      APP.sysBerkaitan=cloud.sysBerkaitan||APP.sysBerkaitan;
+      renderPortal();
+    }
+  }catch(err){ console.warn("Tetapan portal Firestore belum tersedia:",err); }
 }
 
 // ══════════════════════════════════════════
@@ -1673,67 +1994,52 @@ function renderTblKampus(data){
   </tr>`;}).join("")}</tbody></table>`;
 }
 
-function pgAUPengguna(c){
+async function pgAUPengguna(c){
+  c.innerHTML=`<div class="card"><div class="card-body py-10 text-center"><div class="mk-spinner"></div><div class="font-semibold text-navy-800">Memuatkan pengguna daripada Firestore...</div><div class="text-xs text-gray-400 mt-1">Sila tunggu sebentar</div></div></div>`;
+  try{
+    if(!window.MYFB) throw new Error("Firebase belum tersedia");
+    APP.pengguna = await window.MYFB.listUsers();
+    renderAUPenggunaPage(c);
+  }catch(err){
+    console.error(err);
+    c.innerHTML=`<div class="card"><div class="card-body py-10 text-center"><i class="fas fa-triangle-exclamation text-red-500 text-3xl mb-3"></i><div class="font-semibold">Gagal membaca senarai pengguna</div><div class="text-sm text-gray-500 mt-1">${esc(err.message||String(err))}</div><button class="btn btn-pri btn-sm mt-4" onclick="navTo('au-pengguna')"><i class="fas fa-rotate"></i>Cuba Lagi</button></div></div>`;
+  }
+}
+
+function renderAUPenggunaPage(c){
+  const users=APP.pengguna||[];
   c.innerHTML=`
   <div class="space-y-4">
-    <!-- Stats bar -->
-    <div class="grid grid-cols-3 gap-3">
-      <div class="card"><div class="card-body py-3 flex items-center gap-3">
-        <div class="stat-icon bg-amb-50"><i class="fas fa-user-shield text-amb-600"></i></div>
-        <div><div class="stat-val text-xl">${APP.pengguna.filter(u=>u.peranan==="admin_utama").length}</div><div class="stat-lbl">Admin Utama</div></div>
-      </div></div>
-      <div class="card"><div class="card-body py-3 flex items-center gap-3">
-        <div class="stat-icon bg-pri-50"><i class="fas fa-user-tie text-pri-600"></i></div>
-        <div><div class="stat-val text-xl">${APP.pengguna.filter(u=>u.peranan==="admin_kampus").length}</div><div class="stat-lbl">Admin Kampus</div></div>
-      </div></div>
-      <div class="card"><div class="card-body py-3 flex items-center gap-3">
-        <div class="stat-icon bg-navy-50"><i class="fas fa-users text-navy-600"></i></div>
-        <div><div class="stat-val text-xl">${APP.pengguna.length}</div><div class="stat-lbl">Jumlah Pengguna (Sasaran 84)</div></div>
-      </div></div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="card"><div class="card-body py-3"><div class="stat-val text-xl">${users.filter(u=>u.peranan==="admin_utama").length}</div><div class="stat-lbl">Admin Utama</div></div></div>
+      <div class="card"><div class="card-body py-3"><div class="stat-val text-xl">${users.filter(u=>u.peranan==="admin_kampus").length}</div><div class="stat-lbl">Admin Kampus</div></div></div>
+      <div class="card"><div class="card-body py-3"><div class="stat-val text-xl">${users.filter(u=>u.peranan==="kaunselor").length}</div><div class="stat-lbl">Kaunselor</div></div></div>
+      <div class="card"><div class="card-body py-3"><div class="stat-val text-xl">${users.length}</div><div class="stat-lbl">Jumlah Pengguna</div></div></div>
     </div>
 
-    <!-- Penapis & Carian -->
     <div class="card">
-      <div class="card-head">
-        <span class="card-title">Senarai Pengguna Sistem</span>
-        <button class="btn btn-pri btn-sm" onclick="modalPengguna(-1)"><i class="fas fa-plus"></i>Tambah Pengguna</button>
+      <div class="card-head flex-wrap gap-2">
+        <div><span class="card-title">Senarai Pengguna Firestore</span><div class="text-xs text-gray-400 mt-1">Data langsung daripada koleksi <span class="font-mono">pengguna</span></div></div>
+        <div class="flex gap-2">
+          <button class="btn btn-ghost btn-sm" onclick="navTo('au-pengguna')"><i class="fas fa-rotate"></i>Segar Semula</button>
+          <button class="btn btn-pri btn-sm" onclick="modalPengguna(-1)"><i class="fas fa-user-plus"></i>Tambah Pengguna</button>
+        </div>
       </div>
       <div class="card-body pb-2">
         <div class="flex flex-wrap gap-2 mb-3">
-          <input type="text" class="fi" style="max-width:200px" placeholder="Cari ID / nama..." id="fp-cari" oninput="filterPengguna()">
-          <select class="fi" style="width:auto" id="fp-role" onchange="filterPengguna()">
-            <option value="">Semua Jenis</option>
-            <option value="admin_utama">Admin Utama</option>
-            <option value="admin_kampus">Admin Kampus</option>
-            <option value="kaunselor">Kaunselor</option>
-            <option value="admin_eltc">Pentadbir ELTC</option>
-          </select>
-          <select class="fi" style="width:auto" id="fp-zon" onchange="filterPengguna()">
-            <option value="">Semua Zon</option>
-            ${KLIST.map(z=>`<option>${z}</option>`).join("")}
-          </select>
-          <select class="fi" style="width:auto" id="fp-kampus" onchange="filterPengguna()">
-            <option value="">Semua Kampus</option>
-            ${kampusOptgroup()}
-          </select>
+          <input type="text" class="fi" style="max-width:220px" placeholder="Cari ID atau nama..." id="fp-cari" oninput="filterPengguna()">
+          <select class="fi" style="width:auto" id="fp-role" onchange="filterPengguna()"><option value="">Semua Peranan</option><option value="admin_utama">Admin Utama</option><option value="admin_kampus">Admin Kampus</option><option value="kaunselor">Kaunselor</option><option value="admin_eltc">Pentadbir ELTC</option></select>
+          <select class="fi" style="width:auto" id="fp-status" onchange="filterPengguna()"><option value="">Semua Status</option><option value="aktif">Aktif</option><option value="tidak_aktif">Tidak Aktif</option></select>
+          <select class="fi" style="width:auto" id="fp-kampus" onchange="filterPengguna()"><option value="">Semua Kampus</option>${kampusOptgroup()}</select>
           <button class="btn btn-ghost btn-sm" onclick="resetFilterPengguna()"><i class="fas fa-rotate-left"></i>Set Semula</button>
         </div>
-        <div class="text-xs text-gray-400 mb-2" id="fp-count"></div>
+        <div class="text-xs text-gray-400" id="fp-count"></div>
       </div>
-      <div class="overflow-x-auto" id="tbl-pengguna-wrap">${renderTblPengguna(APP.pengguna)}</div>
+      <div class="overflow-x-auto" id="tbl-pengguna-wrap"></div>
     </div>
 
-    <!-- Kemaskini Kata Laluan Pukal -->
-    <div class="card">
-      <div class="card-head"><span class="card-title"><i class="fas fa-key text-amb-500 mr-2"></i>Kemaskini Kata Laluan Pukal</span></div>
-      <div class="card-body">
-        <p class="text-sm text-gray-500 mb-3">Kemaskini kata laluan untuk semua akaun dalam satu kampus serentak.</p>
-        <div class="flex flex-wrap gap-3 items-end">
-          <div><label class="fl">Kampus</label><select id="bulk-kampus" class="fi" style="width:240px"><option value="">— Pilih Kampus —</option>${kampusOptgroup()}</select></div>
-          <div><label class="fl">Kata Laluan Baru</label><input type="text" id="bulk-pw" class="fi" style="width:160px" placeholder="Contoh: IPG123"></div>
-          <button onclick="kemaskiniKataLaluanPukal()" class="btn btn-amb btn-sm" style="background:var(--amb);color:#fff;"><i class="fas fa-key"></i>Kemaskini</button>
-        </div>
-      </div>
+    <div class="card border-amber-200">
+      <div class="card-body text-sm text-gray-600"><i class="fas fa-shield-halved text-amber-600 mr-2"></i><strong>Keselamatan:</strong> Akaun baharu dicipta melalui Firebase Authentication menggunakan sesi sekunder supaya sesi Admin Utama tidak terganggu. Penetapan semula kata laluan dan pemadaman akaun Authentication memerlukan fungsi pelayan Firebase Admin dan belum diaktifkan dalam binaan ini.</div>
     </div>
   </div>`;
   filterPengguna();
@@ -1742,277 +2048,85 @@ function pgAUPengguna(c){
 function filterPengguna(){
   const q=(document.getElementById("fp-cari")?.value||"").toLowerCase();
   const role=document.getElementById("fp-role")?.value||"";
-  const zon=document.getElementById("fp-zon")?.value||"";
+  const status=document.getElementById("fp-status")?.value||"";
   const kid=document.getElementById("fp-kampus")?.value||"";
-  let d=APP.pengguna.filter(u=>{
-    if(q&&!u.id.toLowerCase().includes(q)&&!u.nama.toLowerCase().includes(q))return false;
+  const d=(APP.pengguna||[]).filter(u=>{
+    if(q&&!String(u.id||"").toLowerCase().includes(q)&&!String(u.nama||"").toLowerCase().includes(q))return false;
     if(role&&u.peranan!==role)return false;
-    if(kid&&u.kampus!==kid)return false;
-    if(zon&&u.kampus){const k=KAMPUS.find(x=>x.id===u.kampus);if(!k||k.zona!==zon)return false;}
+    if(kid&&u.kampus!==kid&&u.kodKampus!==kid)return false;
+    if(status==="aktif"&&u.aktif===false)return false;
+    if(status==="tidak_aktif"&&u.aktif!==false)return false;
     return true;
   });
   const wrap=document.getElementById("tbl-pengguna-wrap");
   const cnt=document.getElementById("fp-count");
   if(wrap)wrap.innerHTML=renderTblPengguna(d);
-  if(cnt)cnt.textContent=`Menunjukkan ${d.length} daripada ${APP.pengguna.length} pengguna`;
+  if(cnt)cnt.textContent=`Menunjukkan ${d.length} daripada ${(APP.pengguna||[]).length} pengguna`;
 }
 
-function resetFilterPengguna(){
-  ["fp-cari","fp-role","fp-zon","fp-kampus"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
-  filterPengguna();
-}
+function resetFilterPengguna(){["fp-cari","fp-role","fp-status","fp-kampus"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});filterPengguna();}
 
 function renderTblPengguna(data){
-  if(!data.length)return`<p class="text-sm text-gray-400 p-4 text-center">Tiada pengguna ditemui.</p>`;
-  return`<table class="tbl">
-    <thead><tr><th>ID Pengguna</th><th>Nama</th><th>Jenis Akaun</th><th>Kampus</th><th>Zon</th><th>Kata Laluan</th><th>Tindakan</th></tr></thead>
-    <tbody>${data.map(u=>{
-      const idx=APP.pengguna.findIndex(x=>x.id===u.id);
-      const k=u.kampus?KAMPUS.find(x=>x.id===u.kampus):null;
-      return`<tr>
-        <td class="font-mono text-xs font-semibold text-navy-700">${u.id}</td>
-        <td class="font-medium">${u.nama}</td>
-        <td><span class="bdg ${u.peranan==="admin_utama"?"bdg-amber":"bdg-pri"}">${roleLabel(u.peranan)}</span></td>
-        <td class="text-xs">${k?k.nama.replace("IPG Kampus ",""):"Semua Kampus"}</td>
-        <td class="text-xs">${k?`<span class="bdg bdg-gray">${k.zona}</span>`:"—"}</td>
-        <td>
-          <div class="flex items-center gap-1">
-            <span class="font-mono text-xs text-gray-400" id="pw-${u.id}">${"•".repeat(Math.min(u.kataLaluan.length,8))}</span>
-            <button onclick="togPw('${u.id}','${u.kataLaluan}')" class="text-gray-300 hover:text-gray-500 text-xs ml-1"><i class="fas fa-eye"></i></button>
-          </div>
-        </td>
-        <td>
-          <div class="flex gap-1">
-            <button onclick="modalPengguna(${idx})" class="btn btn-ghost btn-xs" title="Edit"><i class="fas fa-pen"></i></button>
-            ${APP.pengguna.length>1&&u.peranan!=="admin_utama"?`<button onclick="hapusPengguna(${idx})" class="btn btn-danger btn-xs" title="Padam"><i class="fas fa-trash"></i></button>`:""}
-          </div>
-        </td>
-      </tr>`;
-    }).join("")}
-    </tbody></table>`;
-}
-
-function togPw(uid,pw){
-  const el=document.getElementById("pw-"+uid);
-  if(!el)return;
-  el.textContent=el.textContent.includes("•")?pw:"•".repeat(Math.min(pw.length,8));
+  if(!data.length)return`<p class="text-sm text-gray-400 p-8 text-center">Tiada pengguna ditemui.</p>`;
+  return`<table class="tbl"><thead><tr><th>ID Pengguna</th><th>Nama</th><th>Peranan</th><th>Kampus</th><th>Status</th><th>Tindakan</th></tr></thead><tbody>${data.map(u=>{
+    const idx=(APP.pengguna||[]).findIndex(x=>x.uid===u.uid);
+    const role={admin_utama:"Admin Utama",admin_kampus:"Admin Kampus",kaunselor:"Kaunselor",admin_eltc:"Pentadbir ELTC"}[u.peranan]||u.peranan||"—";
+    const kampus=u.kampus||u.kodKampus||"IPGM";
+    return`<tr><td><div class="font-mono font-semibold">${esc(u.id||"—")}</div><div class="text-xs text-gray-400">${esc(u.uid||"")}</div></td><td><div class="font-medium">${esc(u.nama||"—")}</div><div class="text-xs text-gray-400">${esc(u.jawatan||"")}</div></td><td><span class="bdg bdg-pri">${esc(role)}</span></td><td>${esc(kampus||"—")}</td><td><span class="bdg ${u.aktif===false?'bdg-red':'bdg-green'}"><span class="${u.aktif===false?'dot-off':'dot-on'}"></span>${u.aktif===false?'Tidak Aktif':'Aktif'}</span></td><td><div class="flex gap-1"><button onclick="modalPengguna(${idx})" class="btn btn-ghost btn-xs" title="Edit"><i class="fas fa-pen"></i></button>${u.uid!==SES?.uid?`<button onclick="toggleAktifPengguna(${idx})" class="btn ${u.aktif===false?'btn-pri':'btn-danger'} btn-xs" title="${u.aktif===false?'Aktifkan':'Nyahaktifkan'}"><i class="fas ${u.aktif===false?'fa-user-check':'fa-user-slash'}"></i></button>`:""}</div></td></tr>`;
+  }).join("")}</tbody></table>`;
 }
 
 function modalPengguna(idx){
+  const isE=idx>=0, u=isE?{...APP.pengguna[idx]}:{id:"",nama:"",peranan:"kaunselor",kampus:"",jawatan:"Kaunselor Pelajar",aktif:true};
+  document.getElementById("modal-wrap").innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal-box" style="max-width:560px"><div class="flex items-center justify-between mb-5"><div><h3 class="font-display font-bold text-lg text-navy-800">${isE?'Kemaskini Pengguna':'Tambah Pengguna Baharu'}</h3><div class="text-xs text-gray-400">${isE?'Profil Firestore':'Firebase Authentication dan profil Firestore akan dicipta serentak'}</div></div><button onclick="closeModal()" class="text-xl text-gray-400">&times;</button></div><div class="space-y-4">
+  <div><label class="fl">ID Pengguna *</label><input id="pu-id" class="fi font-mono" value="${esc(u.id||"")}" ${isE?'readonly':''} placeholder="Contoh: KSR_IPGKBA01"><div class="text-xs text-gray-400 mt-1">ID tidak boleh diubah selepas akaun Authentication dicipta.</div></div>
+  <div><label class="fl">Nama Penuh *</label><input id="pu-nama" class="fi" value="${esc(u.nama||"")}"></div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3"><div><label class="fl">Peranan *</label><select id="pu-role" class="fi" onchange="document.getElementById('pu-krow').classList.toggle('hidden',['admin_utama','admin_eltc'].includes(this.value))"><option value="kaunselor"${u.peranan==='kaunselor'?' selected':''}>Kaunselor</option><option value="admin_kampus"${u.peranan==='admin_kampus'?' selected':''}>Admin Kampus</option><option value="admin_eltc"${u.peranan==='admin_eltc'?' selected':''}>Pentadbir ELTC</option><option value="admin_utama"${u.peranan==='admin_utama'?' selected':''}>Admin Utama</option></select></div><div><label class="fl">Status</label><select id="pu-aktif" class="fi"><option value="true"${u.aktif!==false?' selected':''}>Aktif</option><option value="false"${u.aktif===false?' selected':''}>Tidak Aktif</option></select></div></div>
+  <div id="pu-krow" class="${['admin_utama','admin_eltc'].includes(u.peranan)?'hidden':''}"><label class="fl">Kampus *</label><select id="pu-kampus" class="fi"><option value="">— Pilih Kampus —</option>${kampusOptgroup(u.kampus||u.kodKampus||"")}</select></div>
+  <div><label class="fl">Jawatan</label><input id="pu-jawatan" class="fi" value="${esc(u.jawatan||"")}"></div>
+  ${!isE?`<div><label class="fl">Kata Laluan Sementara *</label><input id="pu-pw" type="text" class="fi font-mono" value="Temp@6644"><div class="text-xs text-gray-400 mt-1">Minimum 6 aksara. Serahkan secara sulit kepada pengguna.</div></div>`:''}
+  <div class="flex justify-end gap-2 pt-3 border-t"><button class="btn btn-ghost" onclick="closeModal()">Batal</button><button class="btn btn-pri" onclick="simpanPengguna(${idx})"><i class="fas fa-save"></i>${isE?'Simpan Perubahan':'Cipta Akaun'}</button></div></div></div></div>`;
+}
+
+async function simpanPengguna(idx){
   const isE=idx>=0;
-  const u=isE?APP.pengguna[idx]:{id:"",nama:"",peranan:"kaunselor",kampus:null,kataLaluan:"Temp@6644",jawatan:"Kaunselor Pelajar",aktif:true,wajibTukarKataLaluan:true};
-  const oldId=u.id;
-  document.getElementById("modal-wrap").innerHTML=`
-  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
-    <div class="modal-box" style="max-width:520px">
-
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-5">
-        <div class="flex items-center gap-3">
-          <div style="width:36px;height:36px;border-radius:8px;background:${isE?"var(--pri)":"var(--navy)"};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas ${isE?"fa-user-pen":"fa-user-plus"} text-white text-sm"></i>
-          </div>
-          <div>
-            <h3 class="font-display font-700 text-lg text-navy-800">${isE?"Kemaskini Maklumat Pengguna":"Tambah Pengguna Baharu"}</h3>
-            <div class="text-xs text-gray-400">${isE?"Semua maklumat boleh dikemaskini":"Isi semua maklumat yang diperlukan"}</div>
-          </div>
-        </div>
-        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
-      </div>
-
-      <!-- Divider -->
-      <div style="height:1px;background:var(--border);margin-bottom:20px;"></div>
-
-      <div class="space-y-4">
-
-        <!-- ID Pengguna -->
-        <div>
-          <label class="fl">ID Pengguna <span class="text-red-400">*</span></label>
-          <input type="text" id="pu-id" class="fi font-mono"
-            value="${u.id}"
-            placeholder="Nombor kad pengenalan tanpa sengkang"
-            ${isE?`oninput="checkIdChange('${oldId}',this.value)"`:""}
-          >
-          <div class="text-xs mt-1 ${isE?"text-amb-600":"text-gray-400"}" id="pu-id-hint">
-            ${isE?`<i class="fas fa-triangle-exclamation mr-1"></i>Perubahan ID akan mempengaruhi log masuk pengguna ini`
-                 :"Gunakan nombor kad pengenalan tanpa sengkang bagi akaun individu"}
-          </div>
-        </div>
-
-        <!-- Nama -->
-        <div>
-          <label class="fl">Nama Penuh <span class="text-red-400">*</span></label>
-          <input type="text" id="pu-nama" class="fi" value="${u.nama}" placeholder="Nama penuh pengguna">
-        </div>
-
-        <!-- Jenis Akaun -->
-        <div>
-          <label class="fl">Jenis Akaun <span class="text-red-400">*</span></label>
-          <select id="pu-role" class="fi"
-            onchange="const v=this.value;document.getElementById('pu-krow').classList.toggle('hidden',v==='admin_utama'||v==='admin_eltc')">
-            <option value="kaunselor"${u.peranan==="kaunselor"?" selected":""}>Kaunselor</option>
-            <option value="admin_kampus"${u.peranan==="admin_kampus"?" selected":""}>Admin Kampus — Ketua Kaunselor</option>
-            <option value="admin_eltc"${u.peranan==="admin_eltc"?" selected":""}>Pentadbir ELTC</option>
-            <option value="admin_utama"${u.peranan==="admin_utama"?" selected":""}>Admin Utama (Kebangsaan)</option>
-          </select>
-        </div>
-
-        <!-- Kampus -->
-        <div id="pu-krow" class="${["admin_utama","admin_eltc"].includes(u.peranan)?"hidden":""}">
-          <label class="fl">Kampus <span class="text-red-400">*</span></label>
-          <select id="pu-kampus" class="fi">
-            <option value="">— Pilih Kampus —</option>
-            ${kampusOptgroup(u.kampus||"")}
-          </select>
-        </div>
-
-        <!-- Kata Laluan -->
-        <div>
-          <label class="fl">Kata Laluan <span class="text-red-400">*</span></label>
-          <div class="flex gap-2">
-            <div class="relative flex-1">
-              <input type="text" id="pu-pw" class="fi font-mono"
-                value="${u.kataLaluan||"Temp@6644"}"
-                placeholder="Masukkan kata laluan">
-            </div>
-            ${isE?`<button type="button" onclick="document.getElementById('pu-pw').value='Temp@6644'" class="btn btn-ghost btn-sm whitespace-nowrap" title="Set semula ke IPG123"><i class="fas fa-rotate-left"></i> Set Semula</button>`:""}
-          </div>
-          <div class="text-xs text-gray-400 mt-1"><i class="fas fa-info-circle mr-1"></i>Kata laluan sementara: <span class="font-mono bg-gray-100 px-1 rounded">Temp@6644</span></div>
-        </div>
-
-        <!-- Status Akaun -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label class="fl">Jawatan</label>
-            <select id="pu-jawatan" class="fi">
-              ${["Ketua Kaunselor Kampus","Kaunselor Pelajar","Kaunselor Pentadbir","Admin Utama","Pentadbir ELTC"].map(j=>`<option value="${j}"${(u.jawatan||"")===j?" selected":""}>${j}</option>`).join("")}
-            </select>
-          </div>
-          <div>
-            <label class="fl">Status Akaun</label>
-            <select id="pu-aktif" class="fi"><option value="true"${u.aktif!==false?" selected":""}>Aktif</option><option value="false"${u.aktif===false?" selected":""}>Tidak Aktif</option></select>
-          </div>
-        </div>
-
-        <!-- Butang -->
-        <div class="flex gap-3 pt-3 border-t border-gray-100">
-          ${isE&&u.peranan!=="admin_utama"?`<button onclick="hapusPengguna(${idx})" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i>Padam</button>`:""}
-          <div class="flex-1"></div>
-          <button onclick="closeModal()" class="btn btn-ghost">Batal</button>
-          <button onclick="simpanPengguna(${idx},'${oldId}')" class="btn btn-pri"><i class="fas fa-save"></i>Simpan Perubahan</button>
-        </div>
-      </div>
-    </div>
-  </div>`;
+  const id=document.getElementById("pu-id").value.trim().toUpperCase(), nama=document.getElementById("pu-nama").value.trim();
+  const peranan=document.getElementById("pu-role").value, aktif=document.getElementById("pu-aktif").value!=="false";
+  const kampus=['admin_utama','admin_eltc'].includes(peranan)?(peranan==='admin_eltc'?'ELTC':null):document.getElementById("pu-kampus").value;
+  const jawatan=document.getElementById("pu-jawatan").value.trim();
+  const password=isE?'':document.getElementById("pu-pw").value;
+  if(!id||!nama){toast("ID dan nama pengguna wajib diisi","err");return;}
+  if(!['admin_utama','admin_eltc'].includes(peranan)&&!kampus){toast("Sila pilih kampus","err");return;}
+  if(!isE&&password.length<6){toast("Kata laluan mesti sekurang-kurangnya 6 aksara","err");return;}
+  if(!isE&&(APP.pengguna||[]).some(u=>String(u.id).toUpperCase()===id)){toast("ID pengguna sudah wujud","err");return;}
+  showCoreLoading(isE?"Menyimpan perubahan...":"Mencipta akaun...","Sila tunggu, data sedang dihantar ke Firebase.");
+  try{
+    const payload={id,nama,peranan,kampus,kodKampus:kampus,jawatan,aktif};
+    if(isE) await window.MYFB.updateManagedUser(APP.pengguna[idx].uid,payload,SES?.uid);
+    else await window.MYFB.createManagedUser(payload,password,SES?.uid);
+    closeModal(); toast(isE?"Maklumat pengguna berjaya dikemas kini":"Akaun baharu berjaya dicipta","ok"); navTo("au-pengguna");
+  }catch(err){
+    console.error(err); let msg=err.message||String(err);
+    if(String(err.code).includes('email-already-in-use'))msg="ID pengguna ini sudah mempunyai akaun Firebase Authentication";
+    if(String(err.code).includes('permission-denied'))msg="Firestore Rules belum membenarkan Admin Utama mengurus pengguna";
+    toast(msg,"err");
+  }finally{hideCoreLoading();}
 }
 
-function checkIdChange(oldId, newVal){
-  const hint = document.getElementById("pu-id-hint");
-  if(!hint) return;
-  if(newVal.trim() !== oldId){
-    hint.innerHTML = `<i class="fas fa-triangle-exclamation mr-1"></i>ID akan ditukar dari <span class="font-mono bg-amber-100 px-1 rounded">${oldId}</span> ke <span class="font-mono bg-green-100 px-1 rounded">${newVal||"..."}</span> — pengguna perlu guna ID baharu untuk log masuk`;
-    hint.className = "text-xs mt-1 text-amb-600";
-  } else {
-    hint.innerHTML = `<i class="fas fa-triangle-exclamation mr-1"></i>Perubahan ID akan mempengaruhi log masuk pengguna ini`;
-    hint.className = "text-xs mt-1 text-gray-400";
-  }
+async function toggleAktifPengguna(idx){
+  const u=APP.pengguna[idx]; if(!u||u.uid===SES?.uid)return;
+  const next=u.aktif===false;
+  if(!confirm(`${next?'Aktifkan':'Nyahaktifkan'} akaun ${u.nama} (${u.id})?`))return;
+  showCoreLoading("Mengemas kini status...","Sila tunggu.");
+  try{await window.MYFB.setManagedUserActive(u.uid,next,SES?.uid);toast(`Akaun berjaya ${next?'diaktifkan':'dinyahaktifkan'}`,"ok");navTo("au-pengguna");}
+  catch(err){toast(err.code?.includes('permission-denied')?"Firestore Rules belum membenarkan tindakan ini":(err.message||String(err)),"err");}
+  finally{hideCoreLoading();}
 }
 
-function modalTukarPw(idx){
-  const u=APP.pengguna[idx];
-  document.getElementById("modal-wrap").innerHTML=`
-  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
-    <div class="modal-box" style="max-width:400px">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-display font-700 text-lg text-navy-800"><i class="fas fa-key text-amb-500 mr-2"></i>Tukar Kata Laluan</h3>
-        <button onclick="closeModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
-      </div>
-      <div class="bg-gray-50 rounded-lg p-3 mb-4 text-sm">
-        <div class="font-semibold text-navy-800">${u.nama}</div>
-        <div class="text-xs text-gray-400 mt-0.5 font-mono">${u.id} &nbsp;·&nbsp; ${roleLabel(u.peranan)}</div>
-      </div>
-      <div class="space-y-3">
-        <div>
-          <label class="fl">Kata Laluan Baharu <span class="text-red-400">*</span></label>
-          <input type="text" id="tp-pw1" class="fi" placeholder="Masukkan kata laluan baharu">
-        </div>
-        <div>
-          <label class="fl">Sahkan Kata Laluan <span class="text-red-400">*</span></label>
-          <input type="text" id="tp-pw2" class="fi" placeholder="Masukkan semula">
-        </div>
-        <div class="flex gap-3 pt-1">
-          <button onclick="closeModal()" class="btn btn-ghost flex-1 justify-center">Batal</button>
-          <button onclick="simpanTukarPw(${idx})" class="btn btn-pri flex-1 justify-center"><i class="fas fa-save"></i>Simpan</button>
-        </div>
-      </div>
-    </div>
-  </div>`;
-}
-
-function simpanTukarPw(idx){
-  const pw1=document.getElementById("tp-pw1").value.trim();
-  const pw2=document.getElementById("tp-pw2").value.trim();
-  if(!pw1){toast("Kata laluan tidak boleh kosong","err");return;}
-  if(pw1!==pw2){toast("Kata laluan tidak sepadan","err");return;}
-  APP.pengguna[idx].kataLaluan=pw1;
-  APP.pengguna[idx].wajibTukarKataLaluan=true;
-  saveApp(); closeModal(); navTo("au-pengguna"); toast("Kata laluan berjaya dikemaskini","ok");
-}
-
-function simpanPengguna(idx, oldId=""){
-  const id=document.getElementById("pu-id").value.trim();
-  const nama=document.getElementById("pu-nama").value.trim();
-  const role=document.getElementById("pu-role").value;
-  const kampus=role==="admin_utama"?null:(role==="admin_eltc"?"ELTC":document.getElementById("pu-kampus").value);
-  const pw=document.getElementById("pu-pw").value.trim();
-  const jawatan=document.getElementById("pu-jawatan")?.value||"";
-  const aktif=document.getElementById("pu-aktif")?.value!=="false";
-
-  // Validasi
-  if(!id){toast("ID pengguna tidak boleh kosong","err");return;}
-  if(!nama){toast("Nama pengguna tidak boleh kosong","err");return;}
-  if(!pw){toast("Kata laluan tidak boleh kosong","err");return;}
-  if(["admin_kampus","kaunselor"].includes(role)&&!kampus){toast("Sila pilih kampus","err");return;}
-
-  if(idx>=0){
-    // KEMASKINI — semak jika ID ditukar
-    if(id !== oldId){
-      // Semak ID baru tidak konflik dengan pengguna lain
-      const conflict = APP.pengguna.find((x,i)=>x.id===id && i!==idx);
-      if(conflict){toast(`ID "${id}" sudah digunakan oleh ${conflict.nama}. Sila guna ID lain`,"err");return;}
-    }
-    APP.pengguna[idx]={...APP.pengguna[idx],id:id.toUpperCase(),nama,peranan:role,kampus,kataLaluan:pw,jawatan,aktif,wajibTukarKataLaluan:APP.pengguna[idx].wajibTukarKataLaluan||false};
-    toast(`Maklumat ${nama} berjaya dikemaskini`,"ok");
-  } else {
-    // TAMBAH BAHARU
-    if(APP.pengguna.find(x=>x.id===id)){toast(`ID "${id}" sudah wujud. Sila guna ID lain`,"err");return;}
-    APP.pengguna.push({id:id.toUpperCase(),nama,peranan:role,kampus,kataLaluan:pw,jawatan,aktif,wajibTukarKataLaluan:true});
-    toast(`Pengguna baharu ${nama} berjaya ditambah`,"ok");
-  }
-  saveApp(true); closeModal(); navTo("au-pengguna");
-}
-
-function hapusPengguna(i){
-  const u=APP.pengguna[i];
-  if(!confirm(`Padam akaun "${u.nama}" (${u.id})?
-
-Tindakan ini tidak boleh dibatalkan.`))return;
-  APP.pengguna.splice(i,1); saveApp(); navTo("au-pengguna"); toast("Akaun dipadam","ok");
-}
-
-function kemaskiniKataLaluanPukal(){
-  const kid=document.getElementById("bulk-kampus").value;
-  const pw=document.getElementById("bulk-pw").value.trim();
-  if(!kid){toast("Sila pilih kampus","err");return;}
-  if(!pw){toast("Sila masukkan kata laluan baharu","err");return;}
-  const aff=APP.pengguna.filter(u=>u.kampus===kid);
-  if(!aff.length){toast("Tiada pengguna untuk kampus ini","err");return;}
-  if(!confirm(`Kemaskini kata laluan untuk ${aff.length} pengguna kampus ${kNama(kid)}?
-
-Kata Laluan Baharu: ${pw}`))return;
-  aff.forEach(u=>u.kataLaluan=pw);
-  saveApp(); navTo("au-pengguna"); toast(`${aff.length} kata laluan berjaya dikemaskini`,"ok");
-}
+function modalTukarPw(){toast("Penetapan semula kata laluan memerlukan Firebase Admin melalui fungsi pelayan","inf");}
+function simpanTukarPw(){modalTukarPw();}
+function hapusPengguna(){toast("Gunakan Nyahaktifkan. Pemadaman akaun Authentication memerlukan fungsi pelayan Firebase Admin","inf");}
+function kemaskiniKataLaluanPukal(){toast("Fungsi ini memerlukan Firebase Admin melalui fungsi pelayan dan belum diaktifkan","inf");}
 
 async function pgAUHubungi(c){
   // Fetch dari tab "Hubungi" dalam Google Sheets
@@ -5719,13 +5833,21 @@ function closeSb(){document.getElementById("sidebar").classList.remove("open");d
 if(document.readyState === "loading"){
   document.addEventListener("DOMContentLoaded", function(){
     renderPortal();
+    toggleDevPanel(MK_DEV_MODE);
+    handleNetworkState();
+    refreshDevPanel();
     setTimeout(hcInit, 100);
     loadTetapan();
+    initFirebaseAuthObserver();
   });
 } else {
   renderPortal();
+  toggleDevPanel(MK_DEV_MODE);
+  handleNetworkState();
+  refreshDevPanel();
   setTimeout(hcInit, 100);
   loadTetapan();
+  initFirebaseAuthObserver();
 }
 </script>
 </body>
