@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INVENTORI STRES PELAJAR (ISP) - Edisi 2020</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;background:#f5f7fa;color:#172033;min-height:100vh}
+.top-bar{position:fixed;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#1e3a5f,#2d5a8e);z-index:100}
+.container{max-width:900px;width:100%;margin:0 auto;padding:24px 16px 100px}
+
+/* Header */
+.header-card{background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #e2e8f0;margin-bottom:24px;overflow:hidden}
+.header-img{width:100%;height:auto;max-height:200px;object-fit:cover;background:linear-gradient(135deg,#1e3a5f,#2d5a8e);display:flex;align-items:center;justify-content:center;color:#fff;font-size:48px}
+.header-text{padding:16px;text-align:center;background:linear-gradient(90deg,#1e3a5f,#2d5a8e)}
+.header-text h1{color:#fff;font-size:22px;font-weight:700;letter-spacing:.5px}
+.header-text p{color:#93c5fd;font-size:12px;margin-top:4px}
+
+/* Cards */
+.card{background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #e2e8f0;padding:24px;margin-bottom:16px;animation:fadeIn .4s ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.card-title{font-size:17px;font-weight:700;color:#1e3a5f;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f1f5f9}
+
+/* Progress */
+.progress-card{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #e2e8f0;padding:14px 20px;margin-bottom:20px}
+.progress-label{display:flex;justify-content:space-between;font-size:13px;font-weight:600;color:#334155;margin-bottom:8px}
+.progress-track{width:100%;height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#1e3a5f,#2d5a8e);border-radius:5px;transition:width .5s ease}
+
+/* Form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.form-group.full{grid-column:1/-1}
+.form-label{display:block;font-size:13px;font-weight:600;color:#334155;margin-bottom:6px}
+.form-label .req{color:#ef4444;margin-left:2px}
+.form-input,.form-select{width:100%;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;color:#172033;outline:none;transition:all .2s}
+.form-input:focus,.form-select:focus{background:#fff;border-color:#1e3a5f;box-shadow:0 0 0 3px rgba(30,58,95,.12)}
+.form-input::placeholder{color:#94a3b8}
+.radio-grid{display:flex;flex-wrap:wrap;gap:8px}
+.radio-opt{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .2s;background:#fff}
+.radio-opt:hover{border-color:#93c5fd;background:#eff6ff}
+.radio-opt input{display:none}
+.radio-opt.active{border-color:#1e3a5f;background:#1e3a5f;color:#fff}
+.radio-opt.active span{color:#fff}
+
+/* Question rows */
+.q-row{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #e2e8f0;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;transition:all .2s}
+.q-row:hover{box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.q-num{font-size:13px;font-weight:700;color:#1e3a5f;min-width:28px;padding-top:2px}
+.q-text{font-size:13px;color:#334155;line-height:1.6;flex:1;padding-top:2px}
+.q-opts{display:flex;gap:6px;flex-shrink:0}
+.q-btn{width:36px;height:36px;border-radius:50%;border:2px solid #cbd5e1;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#64748b;cursor:pointer;transition:all .2s}
+.q-btn:hover{border-color:#1e3a5f;color:#1e3a5f}
+.q-btn.active{background:#1e3a5f;border-color:#1e3a5f;color:#fff;transform:scale(1.1);box-shadow:0 4px 12px rgba(30,58,95,.3)}
+
+/* Results */
+.result-center{text-align:center;margin-bottom:16px}
+.result-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;border-radius:24px;color:#fff;font-weight:700;font-size:15px}
+.result-badge.green{background:#22c55e}
+.result-badge.amber{background:#f59e0b}
+.result-badge.red{background:#ef4444}
+.result-score{font-size:36px;font-weight:900;color:#172033;margin-top:12px}
+.result-score span{font-size:15px;font-weight:400;color:#94a3b8}
+.interp-box{border-radius:12px;padding:16px;margin-top:12px;border:1px solid #e2e8f0}
+.interp-box.green{background:#f0fdf4}
+.interp-box.amber{background:#fffbeb}
+.interp-box.red{background:#fef2f2}
+.interp-label{font-size:12px;font-weight:700;margin-bottom:4px}
+.interp-label.green{color:#15803d}
+.interp-label.amber{color:#b45309}
+.interp-label.red{color:#b91c1c}
+.interp-text{font-size:13px;color:#475569;line-height:1.6;margin-bottom:10px}
+
+/* Subscale bars */
+.sub-item{margin-bottom:20px}
+.sub-item:last-child{margin-bottom:0}
+.sub-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.sub-name{font-weight:600;font-size:13px;color:#334155;display:flex;align-items:center;gap:6px}
+.sub-badge{padding:3px 12px;border-radius:12px;color:#fff;font-size:10px;font-weight:700}
+.sub-badge.green{background:#22c55e}
+.sub-badge.amber{background:#f59e0b}
+.sub-badge.red{background:#ef4444}
+.bar-track{width:100%;height:10px;background:#e2e8f0;border-radius:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:6px;transition:width .5s ease}
+.bar-fill.emerald{background:#10b981}
+.bar-fill.amber{background:#f59e0b}
+.bar-fill.blue{background:#3b82f6}
+.bar-fill.purple{background:#8b5cf6}
+.bar-info{display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-top:4px}
+
+/* Info grid */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
+.info-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.info-row.full{grid-column:1/-1}
+.info-key{color:#64748b}
+.info-val{font-weight:600;color:#172033}
+
+/* Bottom nav */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f0;padding:14px 16px;z-index:50}
+.bottom-nav-inner{max-width:900px;margin:0 auto;display:flex;justify-content:center;gap:12px}
+.btn{padding:10px 24px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:#1e3a5f;color:#fff;box-shadow:0 4px 12px rgba(30,58,95,.2)}
+.btn-primary:hover{background:#2d5a8e}
+.btn-secondary{background:#f1f5f9;color:#475569}
+.btn-secondary:hover{background:#e2e8f0}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Spinner */
+.spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Toast */
+.toast{position:fixed;bottom:80px;right:20px;padding:12px 20px;border-radius:10px;color:#fff;font-size:13px;font-weight:600;z-index:200;animation:slideIn .3s ease}
+.toast.success{background:#22c55e}
+.toast.error{background:#ef4444}
+.toast.info{background:#1e3a5f}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+
+/* Responsive */
+@media(max-width:640px){
+  .form-grid{grid-template-columns:1fr}
+  .radio-grid{grid-template-columns:repeat(2,1fr)!important}
+  .q-row{flex-wrap:wrap}
+  .q-opts{margin-top:8px;width:100%;justify-content:center}
+  .header-text h1{font-size:18px}
+}
+@media print{
+  .top-bar,.bottom-nav,.no-print{display:none!important}
+  body{background:#fff}
+  .container{padding:0;max-width:none}
+}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="top-bar"></div>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header-card">
+    <div class="header-img">📋</div>
+    <div class="header-text">
+      <h1>INVENTORI STRES PELAJAR (ISP)</h1>
+      <p>Edisi 2020 &middot; Mohammad Aziz Shah et al., UPSI</p>
+    </div>
+  </div>
+
+  <!-- PROGRESS (shown during register/inventory) -->
+  <div id="progressBar" class="progress-card hidden">
+    <div class="progress-label"><span id="progressLabel">Langkah 1/6</span><span id="progressPct" style="color:#1e3a5f">0%</span></div>
+    <div class="progress-track"><div id="progressFill" class="progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <!-- ═══════════ PHASE: WELCOME ═══════════ -->
+  <div id="phaseWelcome" class="card" style="text-align:center;max-width:700px;margin:0 auto 24px">
+    <div style="width:72px;height:72px;background:#eff6ff;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
+      <span style="font-size:36px">📝</span>
+    </div>
+    <h2 style="font-size:22px;font-weight:700;color:#1e3a5f;margin-bottom:6px">Selamat Datang ke Ujian ISP</h2>
+    <p style="color:#64748b;margin-bottom:24px">Inventori Stres Pelajar &mdash; Edisi 2020</p>
+    <div style="background:#f8fafc;border-radius:12px;padding:20px;text-align:left;margin-bottom:24px;font-size:13px;line-height:1.7">
+      <p style="font-weight:700;color:#334155;margin-bottom:10px">Arahan:</p>
+      <p style="color:#475569;margin-bottom:14px">Inventori ini bertujuan mengukur stres <strong>PELAJAR INSTITUSI PENGAJIAN TINGGI</strong> yang dihadapi dalam akademik dan kehidupan seharian. Tiada jawapan betul atau salah. Baca setiap pernyataan dan bulatkan jawapan yang terbaik menggambarkan diri anda.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <span style="padding:6px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:20px;font-size:12px;font-weight:600">1 = Tidak Pernah</span>
+        <span style="padding:6px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:20px;font-size:12px;font-weight:600">2 = Sedikit Kerap</span>
+        <span style="padding:6px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:20px;font-size:12px;font-weight:600">3 = Kerap</span>
+        <span style="padding:6px 12px;background:#fff;border:1px solid #e2e8f0;border-radius:20px;font-size:12px;font-weight:600">4 = Sentiasa</span>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="goPhase('register')" style="padding:12px 32px;font-size:15px">Mula Ujian</button>
+  </div>
+
+  <!-- ═══════════ PHASE: REGISTER ═══════════ -->
+  <div id="phaseRegister" class="hidden">
+    <div class="card">
+      <h2 class="card-title">Bahagian A: Maklumat Demografi</h2>
+      <p style="color:#64748b;font-size:13px;margin-bottom:20px">Sila lengkapkan maklumat di bawah.</p>
+      <div class="form-grid" id="demoForm">
+        <!-- NAMA -->
+        <div class="form-group">
+          <label class="form-label">NAMA PENUH<span class="req">*</span></label>
+          <input type="text" class="form-input" id="f_nama" placeholder="Contoh: AHMAD BIN ABU">
+        </div>
+        <!-- MYKAD -->
+        <div class="form-group">
+          <label class="form-label">NO. MYKAD (Tanpa sempang)<span class="req">*</span></label>
+          <input type="text" class="form-input" id="f_mykid" placeholder="Contoh: 010203040506">
+        </div>
+        <!-- JANTINA -->
+        <div class="form-group">
+          <label class="form-label">JANTINA<span class="req">*</span></label>
+          <div class="radio-grid" data-field="jantina">
+            <label class="radio-opt" onclick="pickRadio(this,'jantina')"><input type="radio" name="d_jantina" value="LELAKI"><span>LELAKI</span></label>
+            <label class="radio-opt" onclick="pickRadio(this,'jantina')"><input type="radio" name="d_jantina" value="PEREMPUAN"><span>PEREMPUAN</span></label>
+          </div>
+        </div>
+        <!-- BANGSA -->
+        <div class="form-group">
+          <label class="form-label">BANGSA<span class="req">*</span></label>
+          <div class="radio-grid" style="grid-template-columns:repeat(3,1fr)" data-field="bangsa">
+            <label class="radio-opt" onclick="pickRadio(this,'bangsa')"><input type="radio" name="d_bangsa" value="MELAYU"><span>MELAYU</span></label>
+            <label class="radio-opt" onclick="pickRadio(this,'bangsa')"><input type="radio" name="d_bangsa" value="CINA"><span>CINA</span></label>
+            <label class="radio-opt" onclick="pickRadio(this,'bangsa')"><input type="radio" name="d_bangsa" value="INDIA"><span>INDIA</span></label>
+            <label class="radio-opt" onclick="pickRadio(this,'bangsa')"><input type="radio" name="d_bangsa" value="BUMIPUTERA SABAH"><span>BUMIPUTERA SABAH</span></label>
+            <label class="radio-opt" onclick="pickRadio(this,'bangsa')"><input type="radio" name="d_bangsa" value="BUMIPUTERA SARAWAK"><span>BUMIPUTERA SARAWAK</span></label>
+            <label class="radio-opt" onclick="pickRadio(this,'bangsa')"><input type="radio" name="d_bangsa" value="LAIN-LAIN"><span>LAIN-LAIN</span></label>
+          </div>
+        </div>
+        <!-- AGAMA -->
+        <div class="form-group full">
+          <label class="form-label">AGAMA<span class="req">*</span></label>
+          <div class="radio-grid" style="grid-template-columns:repeat(5,1fr)" data-field="agama">
+            <label class="radio-opt" onclick="pickRadio(this,'agama')"><input type="radio" name="d_agama" value="ISLAM"><span>ISLAM</span></label>
+            <label class="radio-opt" onclick="pickRadio(this,'agama')"><input type="radio" name="d_agama" value="BUDDHA"><span>BUDDHA</span></label>
+            <label class="radio-opt" onclick="pickRadio(this,'agama')"><input type="radio" name="d_agama" value="HINDU"><span>HINDU</span></label>
+            <label class="radio-opt" onclick="pickRadio(this,'agama')"><input type="radio" name="d_agama" value="KRISTIAN"><span>KRISTIAN</span></label>
+            <label class="radio-opt" onclick="pickRadio(this,'agama')"><input type="radio" name="d_agama" value="LAIN-LAIN"><span>LAIN-LAIN</span></label>
+          </div>
+        </div>
+        <!-- NO TEL -->
+        <div class="form-group">
+          <label class="form-label">NO. TELEFON (BIMBIT)<span class="req">*</span></label>
+          <input type="text" class="form-input" id="f_noTel" placeholder="Contoh: 0123456789">
+        </div>
+        <!-- KAMPUS -->
+        <div class="form-group full">
+          <label class="form-label">PILIH IPG KAMPUS<span class="req">*</span></label>
+          <select class="form-select" id="f_ipgmKampus">
+            <option value="">-- Sila Pilih --</option>
+            <option>IPG Kampus TEMENGGONG IBRAHIM</option>
+            <option>IPG Kampus TUN HUSSEIN ONN</option>
+            <option>IPG Kampus PEREMPUAN MELAYU</option>
+            <option>IPG Kampus RAJA MELEWAR</option>
+            <option>IPG Kampus PENDIDIKAN TEKNIK</option>
+            <option>IPG Kampus PENDIDIKAN ISLAM</option>
+            <option>IPG Kampus ILMU KHAS</option>
+            <option>IPG Kampus BAHASA MELAYU</option>
+            <option>IPG Kampus BAHASA ANTARABANGSA</option>
+            <option>IPG Kampus IPOH</option>
+            <option>IPG Kampus DARULAMAN</option>
+            <option>IPG Kampus PERLIS</option>
+            <option>IPG Kampus PULAU PINANG</option>
+            <option>IPG Kampus TUANKU BAINUN</option>
+            <option>IPG Kampus TENGKU AMPUAN AFZAN</option>
+            <option>IPG Kampus DATO' RAZALI ISMAIL</option>
+            <option>IPG Kampus SULTAN MIZAN</option>
+            <option>IPG Kampus KOTA BHARU</option>
+            <option>IPG Kampus RAJANG</option>
+            <option>IPG Kampus KENT</option>
+            <option>IPG Kampus BATU LINTANG</option>
+            <option>IPG Kampus TAWAU</option>
+            <option>IPG Kampus KENINGAU</option>
+            <option>IPG Kampus TUN ABDUL RAZAK</option>
+            <option>IPG Kampus SULTAN ABDUL HALIM</option>
+            <option>IPG Kampus GAYA</option>
+            <option>IPG Kampus SARAWAK</option>
+          </select>
+        </div>
+        <!-- PROGRAM -->
+        <div class="form-group">
+          <label class="form-label">PROGRAM PENGAJIAN<span class="req">*</span></label>
+          <select class="form-select" id="f_program">
+            <option value="">-- Sila Pilih --</option>
+            <option>PROGRAM PERSEDIAAN IJAZAH SARJANA MUDA PERGURUAN</option>
+            <option>PROGRAM IJAZAH SARJANA MUDA PERGURUAN</option>
+            <option>PROGRAM DIPLOMA PASCA SISWAZAH</option>
+          </select>
+        </div>
+        <!-- BIDANG -->
+        <div class="form-group">
+          <label class="form-label">BIDANG PENGAJIAN<span class="req">*</span></label>
+          <select class="form-select" id="f_bidang">
+            <option value="">-- Sila Pilih --</option>
+            <option>BAHASA MELAYU</option><option>BAHASA INGGERIS (TESL)</option>
+            <option>SAINS</option><option>MATEMATIK</option><option>SEJARAH</option>
+            <option>PENDIDIKAN ISLAM</option><option>BAHASA CINA</option><option>BAHASA TAMIL</option>
+            <option>BIMBINGAN DAN KAUNSELING</option><option>REKABENTUK TEKNOLOGI (RBT)</option>
+            <option>PENDIDIKAN AWAL KANAK-KANAK</option><option>PENDIDIKAN KHAS</option>
+            <option>PENDIDIKAN MUZIK</option><option>PENDIDIKAN JASMANI</option>
+            <option>PENDIDIKAN SENI VISUAL</option><option>LAIN-LAIN</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ PHASE: INVENTORY ═══════════ -->
+  <div id="phaseInventory" class="hidden">
+    <div class="card" style="position:sticky;top:8px;z-index:10">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="subIcon" style="font-size:18px">❤️</span>
+        <div>
+          <h2 style="font-size:17px;font-weight:700;color:#1e3a5f">SOAL SELIDIK ISP</h2>
+          <p id="subLabel" style="font-size:12px;color:#64748b"></p>
+        </div>
+      </div>
+    </div>
+    <div id="questionsContainer" style="margin-top:12px"></div>
+  </div>
+
+  <!-- ═══════════ PHASE: RESULTS ═══════════ -->
+  <div id="phaseResults" class="hidden">
+    <div id="resultsContent"></div>
+  </div>
+
+</div><!-- end .container -->
+
+<!-- BOTTOM NAV -->
+<div id="bottomNav" class="bottom-nav hidden">
+  <div class="bottom-nav-inner" id="bottomNavInner"></div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════
+   DATA
+   ═══════════════════════════════════════ */
+const ITEMS = [
+  "Sakit kepala.","Sakit belakang.","Masalah tidur.","Kesukaran bernafas.","Bimbang yang berlebihan.","Sakit perut / loya.","Keletihan yang melampau.","Tangan berpeluh.","Sering selesma / demam.","Hilang berat badan secara drastik.",
+  "Rasa bersalah jika gagal memenuhi harapan ibu bapa.","Sukar meluahkan emosi kepada ibu bapa.","Ibu bapa hanya berharap kejayaan saya.","Sukar memperoleh bantuan akademik dari rakan-rakan.","Sering bermasalah dengan teman rapat / lelaki / wanita.","Kawan-kawan tidak mempedulikan saya.","Malu berjumpa pensyarah.","Keluarga tidak memberi sokongan kepada saya.","Pensyarah tidak memberi sokongan kepada saya.","Sukar berkomunikasi dengan pihak pengurusan institusi pengajian.",
+  "Bermasalah menguasai pelajaran yang sukar.","Sukar mengimbangi masa belajar dan aktiviti sosial.","Gementar ketika pembentangan kelas.","Tertekan apabila tarikh penghantaran tugasan semakin dekat.","Tidak bersedia menduduki peperiksaan.","Selalu datang lewat ke kuliah / kelas.","Hilang minat terhadap akademik.","Tidak memahami pengajaran pensyarah.","Putus asa dengan subjek / tugasan yang sukar.","Keputusan akademik tidak memuaskan.",
+  "Mempunyai masalah pengangkutan di institusi pengajian.","Kehidupan di asrama / rumah kediaman tidak selesa.","Bunyi persekitaran sering mengganggu saya.","Terdapat pencemaran bau yang tidak selesa.","Tidak yakin dengan keselamatan di asrama / rumah kediaman.","Kehidupan tidak tersusun mengganggu saya.","Kecewa kerana kemudahan di pusat pengajian tidak mencukupi.","Orang ramai membuat saya tidak selesa keluar rumah.","Berbaris panjang membuat saya berasa tidak selesa.","Takut kerana berfikir berada di tempat yang tidak selamat."
+];
+
+const SUBS = [
+  {key:'fizikal',label:'Stres Fizikal',icon:'❤️',color:'emerald',start:0,end:9},
+  {key:'interpersonal',label:'Stres Hubungan Interpersonal',icon:'👥',color:'amber',start:10,end:19},
+  {key:'akademik',label:'Stres Akademik',icon:'📚',color:'blue',start:20,end:29},
+  {key:'persekitaran',label:'Stres Persekitaran',icon:'🏠',color:'purple',start:30,end:39}
+];
+
+const TAHAP_SUB = [
+  {key:'rendah',label:'Stres Rendah',max:18},
+  {key:'sederhana',label:'Stres Sederhana',max:29},
+  {key:'teruk',label:'Stres Teruk',max:40}
+];
+
+const TAHAP_KES = [
+  {key:'rendah',label:'Stres Rendah',max:80,cls:'green',
+   inter:'Mempunyai kemahiran mengatasi masalah (coping skill) yang baik ketika merasa tertekan. Mempunyai sikap yang positif dan kecerdasan diri yang tinggi. Mempunyai hubungan yang baik dengan orang lain dan mampu menyesuaikan diri dengan persekitaran yang baru.',
+   langkah:'Teruskan sikap yang baik dan berkesan. Teruskan menguasai kemahiran baru dan menangani stres dengan berkesan. Sentiasa menjaga diri sendiri dan kekalkan perhubungan baik dengan orang lain.'},
+  {key:'sederhana',label:'Stres Sederhana',max:121,cls:'amber',
+   inter:'Mempunyai coping skill sederhana apabila merasa tertekan. Mempunyai sikap keberkesanan diri (self-efficacy) yang sederhana. Mempunyai hubungan yang sederhana dengan orang lain dan sederhana dalam menyesuaikan diri dengan persekitaran yang baru.',
+   langkah:'Perlu lebih bijak menangani permasalahan dan krisis kehidupan dengan meningkatkan kemahiran diri. Kurangkan konflik dengan orang lain. Belajar dan kuasai teknik pengurusan stres dan kemahiran kehidupan baharu.'},
+  {key:'teruk',label:'Stres Teruk',max:160,cls:'red',
+   inter:'Mempunyai coping skill yang lemah apabila merasa tertekan. Mempunyai sikap yang buruk dan self-efficacy yang lemah. Mempunyai masalah dalam perhubungan dengan orang lain dan tidak dapat menyesuaikan diri dalam persekitaran yang baharu. Stres boleh menyebabkan masalah fizikal dan kesihatan.',
+   langkah:'Analisis faktor stres dan ambil tindakan segera. Fokus strategi menangani krisis dan konflik kehidupan. Jika stres berlanjutan, sila berjumpa dengan pakar psikologis / kaunselor untuk terapi.'}
+];
+
+/* ═══════════════════════════════════════
+   STATE
+   ═══════════════════════════════════════ */
+let phase = 'welcome';
+let section = 0;
+const PER_PAGE = 10;
+const TOTAL_PAGES = 4;
+let answers = {};
+let demo = {};
+
+/* ═══════════════════════════════════════
+   FUNCTIONS
+   ═══════════════════════════════════════ */
+function $(id){return document.getElementById(id)}
+
+function pickRadio(el, field){
+  demo[field] = el.querySelector('input').value;
+  const siblings = el.parentElement.querySelectorAll('.radio-opt');
+  siblings.forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function getTahapSub(score){
+  if(score<=18) return TAHAP_SUB[0];
+  if(score<=29) return TAHAP_SUB[1];
+  return TAHAP_SUB[2];
+}
+function getTahapKes(score){
+  if(score<=80) return TAHAP_KES[0];
+  if(score<=121) return TAHAP_KES[1];
+  return TAHAP_KES[2];
+}
+function calcSub(s,e){let s2=0;for(let i=s;i<=e;i++)s2+=(answers[i]||0);return s2;}
+
+function updateProgress(){
+  const bar = $('progressBar');
+  if(phase==='register'||phase==='inventory'){
+    bar.classList.remove('hidden');
+    let step, pct;
+    if(phase==='register'){step=1;pct=16;}
+    else{step=2+section;pct=16+((section+1)/TOTAL_PAGES)*80;}
+    $('progressLabel').textContent='Langkah '+step+'/6';
+    $('progressPct').textContent=Math.round(pct)+'%';
+    $('progressFill').style.width=pct+'%';
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+function goPhase(p){
+  phase=p;
+  $('phaseWelcome').classList.toggle('hidden',p!=='welcome');
+  $('phaseRegister').classList.toggle('hidden',p!=='register');
+  $('phaseInventory').classList.toggle('hidden',p!=='inventory');
+  $('phaseResults').classList.toggle('hidden',p!=='results');
+  updateProgress();
+  updateNav();
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(p==='inventory') renderQuestions();
+  if(p==='results') renderResults();
+}
+
+function updateNav(){
+  const nav=$('bottomNav');
+  const inner=$('bottomNavInner');
+  if(phase==='register'){
+    nav.classList.remove('hidden');
+    inner.innerHTML='<button class="btn btn-primary" onclick="nextStep()">Seterusnya ➜</button>';
+  } else if(phase==='inventory'){
+    nav.classList.remove('hidden');
+    const isLast = section===TOTAL_PAGES-1;
+    inner.innerHTML=
+      '<button class="btn btn-secondary" onclick="prevStep()" '+(section===0?'style="visibility:hidden"':'')+'>➜ Kembali</button>'+
+      '<div style="flex:1"></div>'+
+      '<button class="btn btn-primary" onclick="nextStep()">'+(isLast?'Lihat Keputusan ✓':'Seterusnya ➜')+'</button>';
+  } else if(phase==='results'){
+    nav.classList.remove('hidden');
+    inner.innerHTML=
+      '<button class="btn btn-primary" onclick="downloadSlip()">📥 Muat Turun Slip</button>'+
+      '<button class="btn btn-secondary" onclick="resetAll()">🔄 Jawab Semula</button>';
+  } else {
+    nav.classList.add('hidden');
+  }
+}
+
+function nextStep(){
+  if(phase==='register'){
+    if(!validateDemo()) return;
+    collectDemo();
+    section=0;
+    goPhase('inventory');
+  } else if(phase==='inventory'){
+    if(!validatePage()) return;
+    if(section<TOTAL_PAGES-1){section++;renderQuestions();window.scrollTo({top:0,behavior:'smooth'});}
+    else { goPhase('results'); }
+  }
+  updateProgress();
+}
+
+function prevStep(){
+  if(section>0){section--;renderQuestions();window.scrollTo({top:0,behavior:'smooth'});}
+}
+
+function validateDemo(){
+  const nama=$('f_nama').value.trim();
+  const mykid=$('f_mykid').value.trim();
+  const noTel=$('f_noTel').value.trim();
+  const kampus=$('f_ipgmKampus').value;
+  const prog=$('f_program').value;
+  const bid=$('f_bidang').value;
+  if(!nama){showToast('Sila masukkan nama penuh.','error');return false;}
+  if(!mykid){showToast('Sila masukkan No. MyKad.','error');return false;}
+  if(!demo.jantina){showToast('Sila pilih jantina.','error');return false;}
+  if(!demo.bangsa){showToast('Sila pilih bangsa.','error');return false;}
+  if(!demo.agama){showToast('Sila pilih agama.','error');return false;}
+  if(!noTel){showToast('Sila masukkan no. telefon.','error');return false;}
+  if(!kampus){showToast('Sila pilih IPG Kampus.','error');return false;}
+  if(!prog){showToast('Sila pilih program pengajian.','error');return false;}
+  if(!bid){showToast('Sila pilih bidang pengajian.','error');return false;}
+  return true;
+}
+
+function collectDemo(){
+  demo.nama=$('f_nama').value.trim();
+  demo.mykid=$('f_mykid').value.trim();
+  demo.noTel=$('f_noTel').value.trim();
+  demo.ipgmKampus=$('f_ipgmKampus').value;
+  demo.program=$('f_program').value;
+  demo.bidang=$('f_bidang').value;
+}
+
+function validatePage(){
+  const start=section*PER_PAGE;
+  const end=Math.min(start+PER_PAGE,ITEMS.length);
+  for(let i=start;i<end;i++){
+    if(!answers[i]){showToast('Sila jawab semua soalan pada halaman ini.','error');return false;}
+  }
+  return true;
+}
+
+function renderQuestions(){
+  const sub=SUBS[section];
+  const start=section*PER_PAGE;
+  const end=Math.min(start+PER_PAGE,ITEMS.length);
+  $('subIcon').textContent=sub.icon;
+  $('subLabel').textContent=sub.label+' \u2014 Item '+(start+1)+' hingga '+end+' daripada '+ITEMS.length;
+  let html='';
+  for(let i=start;i<end;i++){
+    const idx=i-start;
+    const v=answers[i]||0;
+    html+='<div class="q-row"><span class="q-num">'+(i+1)+'.</span><span class="q-text">'+ITEMS[i]+'</span><div class="q-opts">';
+    for(let j=1;j<=4;j++){
+      html+='<div class="q-btn'+(v===j?' active':'')+'" onclick="pickAnswer('+i+','+j+',this)">'+j+'</div>';
+    }
+    html+='</div></div>';
+  }
+  $('questionsContainer').innerHTML=html;
+}
+
+function pickAnswer(idx,val,el){
+  answers[idx]=val;
+  if(el){
+    const siblings=el.parentElement.querySelectorAll('.q-btn');
+    siblings.forEach(s=>s.classList.remove('active'));
+    el.classList.add('active');
+  }
+}
+
+function renderResults(){
+  const sF=calcSub(0,9), sI=calcSub(10,19), sA=calcSub(20,29), sP=calcSub(30,39);
+  const sK=sF+sI+sA+sP;
+  const tK=getTahapKes(sK);
+  const subs=[
+    {info:SUBS[0],skor:sF,tahap:getTahapSub(sF)},
+    {info:SUBS[1],skor:sI,tahap:getTahapSub(sI)},
+    {info:SUBS[2],skor:sA,tahap:getTahapSub(sA)},
+    {info:SUBS[3],skor:sP,tahap:getTahapSub(sP)}
+  ];
+  const now=new Date().toLocaleString('ms-MY');
+
+  let html='';
+  // Header slip
+  html+='<div class="card" style="text-align:center"><h2 style="font-size:20px;font-weight:700;color:#1e3a5f">Slip Keputusan ISP</h2><p style="color:#94a3b8;font-size:11px;margin-top:4px">Inventori Stres Pelajar (ISP) &mdash; Edisi 2020</p><p style="color:#94a3b8;font-size:11px">Dijana pada '+now+'</p></div>';
+
+  // Overall
+  html+='<div class="card"><h3 class="card-title">Keputusan Keseluruhan</h3>';
+  html+='<div class="result-center"><div class="result-badge '+tK.cls+'">'+tK.label+'</div>';
+  html+='<div class="result-score">'+sK+' <span>/ 160</span></div></div>';
+  html+='<div class="interp-box '+tK.cls+'"><p class="interp-label '+tK.cls+'">Interpretasi:</p><p class="interp-text">'+tK.inter+'</p>';
+  html+='<p class="interp-label '+tK.cls+'">Langkah berjaga-jaga:</p><p class="interp-text" style="margin-bottom:0">'+tK.langkah+'</p></div></div>';
+
+  // Subscales
+  html+='<div class="card"><h3 class="card-title">Keputusan Subskala</h3>';
+  subs.forEach(s=>{
+    const pct=Math.min((s.skor/40)*100,100);
+    html+='<div class="sub-item"><div class="sub-header"><span class="sub-name">'+s.info.icon+' '+s.info.label+'</span>';
+    html+='<span class="sub-badge '+s.tahap.key==='rendah'?'green':s.tahap.key==='sederhana'?'amber':'red'+'">'+s.tahap.label+'</span></div>';
+    html+='<div class="bar-track"><div class="bar-fill '+s.info.color+'" style="width:'+pct+'%"></div></div>';
+    html+='<div class="bar-info"><span>Skor: '+s.skor+' / 40</span><span>Min: 10 &middot; Maks: 40</span></div></div>';
+  });
+  html+='</div>';
+
+  // Info
+  html+='<div class="card"><h3 class="card-title">Maklumat Diri</h3><div class="info-grid">';
+  const rows=[['Nama',demo.nama],['No. MyKad',demo.mykid],['Jantina',demo.jantina],['Bangsa',demo.bangsa],['Agama',demo.agama],['No. Telefon',demo.noTel]];
+  rows.forEach(r=>{html+='<div class="info-row"><span class="info-key">'+r[0]+'</span><span class="info-val">'+(r[1]||'-')+'</span></div>';});
+  html+='<div class="info-row full"><span class="info-key">IPG Kampus</span><span class="info-val" style="text-align:right">'+(demo.ipgmKampus||'-')+'</span></div>';
+  html+='<div class="info-row"><span class="info-key">Program</span><span class="info-val">'+(demo.program||'-')+'</span></div>';
+  html+='<div class="info-row"><span class="info-key">Bidang</span><span class="info-val">'+(demo.bidang||'-')+'</span></div>';
+  html+='</div></div>';
+
+  $('resultsContent').innerHTML=html;
+  updateNav();
+}
+
+/* ═══════════════════════════════════════
+   DOWNLOAD HTML SLIP
+   ═══════════════════════════════════════ */
+function downloadSlip(){
+  const sF=calcSub(0,9),sI=calcSub(10,19),sA=calcSub(20,29),sP=calcSub(30,39);
+  const sK=sF+sI+sA+sP;
+  const tK=getTahapKes(sK);
+  const subs=[
+    {info:SUBS[0],skor:sF,tahap:getTahapSub(sF)},
+    {info:SUBS[1],skor:sI,tahap:getTahapSub(sI)},
+    {info:SUBS[2],skor:sA,tahap:getTahapSub(sA)},
+    {info:SUBS[3],skor:sP,tahap:getTahapSub(sP)}
+  ];
+  const now=new Date().toLocaleString('ms-MY');
+
+  const slipHTML = '<!DOCTYPE html><html lang="ms"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>SLIP ISP - '+(demo.nama||'PELAJAR')+'</title><style>@page{size:A4;margin:10mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:"Segoe UI",Arial,sans-serif;color:#172033;background:#fff;padding:24px 32px;max-width:800px;margin:0 auto;font-size:13px;line-height:1.5}@media print{body{padding:0;max-width:none}.no-print{display:none!important}}.header{text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #1e3a5f}.header h1{font-size:20px;color:#1e3a5f;margin-bottom:4px}.header .sub{font-size:11px;color:#667085}.header .date{font-size:10px;color:#94a3b8;margin-top:2px}.card{background:#f8f9fb;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:18px}.card-title{font-size:14px;font-weight:700;color:#1e3a5f;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #e2e8f0}.overall{text-align:center;margin-bottom:16px}.badge{display:inline-block;padding:6px 22px;border-radius:24px;color:#fff;font-weight:700;font-size:14px;margin-bottom:10px}.badge-green{background:#22c55e}.badge-amber{background:#f59e0b}.badge-red{background:#ef4444}.big-score{font-size:36px;font-weight:900;color:#172033}.big-score span{font-size:14px;font-weight:400;color:#94a3b8}.interp-box{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-top:12px}.interp-box .lbl{font-size:11px;font-weight:700;color:#1e3a5f;margin-bottom:4px}.interp-box .txt{font-size:12px;color:#475569;margin-bottom:10px;line-height:1.6}.sub{margin-bottom:16px}.sub:last-child{margin-bottom:0}.sub-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.sub-n{font-weight:600;font-size:13px;color:#172033}.sub-b{padding:3px 12px;border-radius:14px;color:#fff;font-size:10px;font-weight:700}.bar-t{width:100%;height:10px;background:#e2e8f0;border-radius:6px;overflow:hidden}.bar-f{height:100%;border-radius:6px}.bar-i{display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-top:4px}.info-g{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}.info-r{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:12px}.info-r.full{grid-column:1/-1}.info-k{color:#667085}.info-v{font-weight:600;color:#172033}.footer{text-align:center;color:#94a3b8;font-size:9px;margin-top:20px;font-style:italic}.print-btn{display:block;margin:20px auto 0;padding:10px 28px;background:#1e3a5f;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}.print-btn:hover{background:#2d5a8e}</style></head><body><div class="header"><h1>SLIP KEPUTUSAN ISP</h1><p class="sub">Inventori Stres Pelajar (ISP) &mdash; Edisi 2020</p><p class="date">Dijana pada '+now+'</p></div><div class="card"><div class="card-title">Keputusan Keseluruhan</div><div class="overall"><div class="badge badge-'+tK.cls+'">'+tK.label+'</div><div class="big-score">'+sK+' <span>/ 160</span></div></div><div class="interp-box"><p class="lbl">Interpretasi:</p><p class="txt">'+tK.inter+'</p><p class="lbl">Langkah berjaga-jaga:</p><p class="txt" style="margin-bottom:0">'+tK.langkah+'</p></div></div><div class="card"><div class="card-title">Keputusan Subskala</div>';
+
+  subs.forEach(s=>{
+    const pct=Math.min((s.skor/40)*100,100);
+    const cls=s.tahap.key==='rendah'?'green':s.tahap.key==='sederhana'?'amber':'red';
+    const barCls=s.info.color==='emerald'?'#10b981':s.info.color==='amber'?'#f59e0b':s.info.color==='blue'?'#3b82f6':'#8b5cf6';
+    slipHTML+='<div class="sub"><div class="sub-h"><span class="sub-n">'+s.info.icon+' '+s.info.label+'</span><span class="sub-b badge-'+cls+'">'+s.tahap.label+'</span></div><div class="bar-t"><div class="bar-f" style="width:'+pct+'%;background:'+barCls+'"></div></div><div class="bar-i"><span>Skor: '+s.skor+' / 40</span><span>Min: 10 &middot; Maks: 40</span></div></div>';
+  });
+
+  slipHTML+='</div><div class="card"><div class="card-title">Maklumat Diri</div><div class="info-g"><div class="info-r"><span class="info-k">Nama</span><span class="info-v">'+(demo.nama||'-')+'</span></div><div class="info-r"><span class="info-k">No. MyKad</span><span class="info-v">'+(demo.mykid||'-')+'</span></div><div class="info-r"><span class="info-k">Jantina</span><span class="info-v">'+(demo.jantina||'-')+'</span></div><div class="info-r"><span class="info-k">Bangsa</span><span class="info-v">'+(demo.bangsa||'-')+'</span></div><div class="info-r"><span class="info-k">Agama</span><span class="info-v">'+(demo.agama||'-')+'</span></div><div class="info-r"><span class="info-k">No. Telefon</span><span class="info-v">'+(demo.noTel||'-')+'</span></div><div class="info-r full"><span class="info-k">IPG Kampus</span><span class="info-v">'+(demo.ipgmKampus||'-')+'</span></div><div class="info-r"><span class="info-k">Program</span><span class="info-v">'+(demo.program||'-')+'</span></div><div class="info-r"><span class="info-k">Bidang</span><span class="info-v">'+(demo.bidang||'-')+'</span></div></div></div><p class="footer">Disediakan oleh: Prof. Dr. Mohammad Aziz Shah Mohamed Arip et al. (2015). Universiti Pendidikan Sultan Idris.</p><button class="print-btn no-print" onclick="window.print()">🖨️ Cetak / Simpan sebagai PDF</button></body></html>';
+
+  const blob=new Blob([slipHTML],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='SLIP_ISP_'+(demo.nama||'PELAJAR').replace(/[^a-zA-Z0-9]+/g,'_')+'.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Slip keputusan HTML telah dimuat turun.','success');
+}
+
+function resetAll(){
+  answers={};demo={};section=0;
+  // Reset radio visuals
+  document.querySelectorAll('.radio-opt').forEach(r=>r.classList.remove('active'));
+  goPhase('welcome');
+}
+
+/* ═══════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════ */
+function showToast(msg,type){
+  const t=document.createElement('div');
+  t.className='toast '+type;
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+/* ═══════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════ */
+goPhase('welcome');
+</script>
+</body>
+</html>
