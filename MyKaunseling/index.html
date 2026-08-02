@@ -905,6 +905,11 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
 <style id="mk-kaunselor-detail-responsive">
 @media(max-width:640px){#modal-wrap .modal-box [style*="grid-template-columns:repeat(2"]{grid-template-columns:1fr!important;}#modal-wrap .modal-box [style*="grid-column:span 2"]{grid-column:span 1!important;}}
 </style>
+
+<style id="mk-production-cleanup">
+  #mk-dev-panel, #mk-dev-panel.show { display:none !important; }
+</style>
+
 </head>
 <body>
 <div id="mk-loading" role="status" aria-live="polite">
@@ -916,18 +921,6 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
   </div>
 </div>
 <div id="mk-net-banner"><i class="fas fa-wifi mr-1"></i> Sambungan internet terputus</div>
-<div id="mk-dev-panel" aria-label="Panel status pembangunan">
-  <div class="mk-dev-head"><span><i class="fas fa-code mr-1"></i> Status Sistem</span><button onclick="toggleDevPanel(false)" style="background:none;border:0;color:#fff;cursor:pointer"><i class="fas fa-times"></i></button></div>
-  <div class="mk-dev-body">
-    <div class="mk-dev-row"><span>Firebase</span><b id="dev-firebase" class="mk-status-pill warn">Memulakan</b></div>
-    <div class="mk-dev-row"><span>Internet</span><b id="dev-network" class="mk-status-pill">—</b></div>
-    <div class="mk-dev-row"><span>Pengesahan</span><b id="dev-auth" class="mk-status-pill">Belum log masuk</b></div>
-    <div class="mk-dev-row"><span>Firestore</span><b id="dev-firestore" class="mk-status-pill">Belum diuji</b></div>
-    <div class="mk-dev-row"><span>Peranan</span><b id="dev-role">—</b></div>
-    <div class="mk-dev-row"><span>UID</span><b id="dev-uid">—</b></div>
-  </div>
-</div>
-
 <div id="toast-wrap"></div>
 <div id="modal-wrap"></div>
 <div class="sidebar-overlay" id="sb-overlay" onclick="toggleSb()"></div>
@@ -963,9 +956,11 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
   <nav style="background:var(--navy);border-bottom:1px solid rgba(255,255,255,0.08);">
     <div class="max-w-7xl mx-auto px-5 flex items-center justify-between h-11">
       <div class="flex items-center gap-5">
-        <a href="https://mypdpp.moe.gov.my/myipg/index.cfm" target="_blank" class="text-white/50 hover:text-white/80 text-xs transition flex items-center gap-1.5"><i class="fas fa-external-link-alt text-xs"></i>myIPG</a>
+        <a href="https://mypdpp.moe.gov.my/myipg/index.cfm" target="_blank" rel="noopener noreferrer" class="text-white/50 hover:text-white/80 text-xs transition flex items-center gap-1.5"><i class="fas fa-external-link-alt text-xs"></i>myIPG</a>
         <span class="text-white/15">|</span>
-        <a href="https://e2pk.moe.gov.my" target="_blank" class="text-white/50 hover:text-white/80 text-xs transition flex items-center gap-1.5"><i class="fas fa-graduation-cap text-xs"></i>e2PK 3.0</a>
+        <a href="https://e2pk.moe.gov.my" target="_blank" rel="noopener noreferrer" class="text-white/50 hover:text-white/80 text-xs transition flex items-center gap-1.5"><i class="fas fa-graduation-cap text-xs"></i>e2PK 3.0</a>
+        <span class="text-white/15">|</span>
+        <a href="https://myelkm.kpwkm.gov.my/login" target="_blank" rel="noopener noreferrer" class="text-white/50 hover:text-white/80 text-xs transition flex items-center gap-1.5"><i class="fas fa-id-card text-xs"></i>MYeLKM</a>
       </div>
       <button onclick="showLogin()" class="bg-pri-600 hover:bg-pri-500 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition">
         <i class="fas fa-sign-in-alt mr-1"></i>Log Masuk
@@ -1050,7 +1045,7 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
   <footer style="background:var(--navy);padding:20px 24px;">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
       <div><div class="text-white/70 text-sm font-semibold font-display">MyKaunseling — IPGKPM</div><div class="text-white/30 text-xs mt-1" id="footer-alamat">Unit Psikologi & Kaunseling, Institut Pendidikan Guru Malaysia (IPGM)</div></div>
-      <div class="text-white/25 text-xs text-right">&copy; 2025 Bahagian Pendidikan Guru, KPM<br>Versi 2.0 &nbsp;|&nbsp; Dasar Privasi &nbsp;|&nbsp; Penafian</div>
+      <div class="text-white/25 text-xs text-right">&copy; 2026 Unit Psikologi &amp; Kaunseling, IPGM<br>Versi 2.0 &nbsp;|&nbsp; Dasar Privasi &nbsp;|&nbsp; Penafian</div>
     </div>
   </footer>
 </div>
@@ -1735,9 +1730,8 @@ function showCoreLoading(title="Sedang memproses...",sub="Sila tunggu sebentar."
 function hideCoreLoading(){document.getElementById("mk-loading")?.classList.remove("show");}
 function updateCoreLoading(msg){const s=document.getElementById("mk-loading-sub");if(s)s.textContent=msg;}
 function toggleDevPanel(force){
-  const el=document.getElementById("mk-dev-panel"); if(!el)return;
-  const on=typeof force==="boolean"?force:!el.classList.contains("show");
-  el.classList.toggle("show",on&&MK_DEV_MODE);
+  const el=document.getElementById("mk-dev-panel");
+  if(el) el.classList.remove("show");
 }
 function setDevStatus(id,text,state=""){
   const el=document.getElementById(id);if(!el)return;el.textContent=text;
@@ -1775,23 +1769,20 @@ function showLogin(){
         </div>
         <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-lg"><i class="fas fa-times"></i></button>
       </div>
-      <div class="rounded-lg p-3 mb-4" style="background:#FFF7ED;border:1px solid #FED7AA;">
-        <div class="text-xs" style="color:#9A3412;"><i class="fas fa-flask mr-1"></i><strong>MOD DEMO AKTIF</strong> — Sistem berjalan tanpa Firebase. Masukkan sebarang ID dari senarai 84 akaun.</div>
-        <div class="text-xs mt-1" style="color:#9A3412;"><i class="fas fa-key mr-1"></i>Kata laluan default: <strong id="dflt-pw-display">666444</strong> <button type="button" onclick="navigator.clipboard.writeText('666444');toast('Kata laluan disalin','ok')" style="background:none;border:none;cursor:pointer;color:#9A3412;"><i class="fas fa-copy"></i></button></div>
-      </div>
       <div class="space-y-4">
         <div>
           <label class="fl">ID Pengguna</label>
-          <input type="text" id="lg-id" class="fi" placeholder="Contoh: KSR_IPGM01 atau KSR_IPGKBA01" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+          <input type="text" id="lg-id" class="fi" placeholder="Masukkan ID pengguna" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
         </div>
         <div>
           <label class="fl">Kata Laluan</label>
           <div class="relative">
-            <input type="password" id="lg-pw" class="fi" placeholder="666444" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-            <button type="button" onclick="toggleLoginPw()" style="position:absolute;right:10px;top:9px;color:#64748B;background:none;border:none;cursor:pointer;"><i id="lg-eye" class="fas fa-eye"></i></button>
+            <input type="password" id="lg-pw" class="fi" placeholder="Masukkan kata laluan" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+            <button type="button" onclick="toggleLoginPw()" aria-label="Papar atau sembunyikan kata laluan" style="position:absolute;right:10px;top:9px;color:#64748B;background:none;border:none;cursor:pointer;"><i id="lg-eye" class="fas fa-eye"></i></button>
           </div>
         </div>
-        <button onclick="doLogin()" class="btn btn-pri w-full justify-center"><i class="fas fa-sign-in-alt"></i>Log Masuk (Demo)</button>
+        <button onclick="doLogin()" class="btn btn-pri w-full justify-center"><i class="fas fa-sign-in-alt"></i>Log Masuk</button>
+        <div class="text-xs text-center text-gray-400" style="line-height:1.5;">Sistem ini hanya boleh diakses oleh pengguna berdaftar Unit Psikologi &amp; Kaunseling, IPGM.</div>
       </div>
     </div>
   </div>`;
@@ -1809,9 +1800,9 @@ async function doLogin(){
   const id=(idEl?.value||"").trim().toUpperCase().replace(/[\s-]/g,"");
   const pw=pwEl?.value||"";
   if(!id){toast("Sila masukkan ID pengguna","err");return;}
-  // Jika Firebase tidak dikonfigurasi, automatik guna mod demo
+  // Versi produksi: log masuk hanya melalui Firebase Authentication.
   if(!window.MYFB_CONFIGURED || !window.MYFB){
-    doDemoLogin();
+    toast("Sistem pengesahan belum tersedia. Sila semak sambungan internet atau konfigurasi Firebase.","err");
     return;
   }
 
@@ -1851,7 +1842,7 @@ async function doLogin(){
 // DEMO / OFFLINE LOGIN MODE
 // ══════════════════════════════════════════
 let DEMO_MODE = false;
-const DFLT_KATA_LALUAN = "666444"; // Kata laluan default untuk semua 84 akaun demo
+const DFLT_KATA_LALUAN = "666444"; // Kata laluan default untuk semua 84 
 
 function doDemoLogin(){
   const idEl=document.getElementById("lg-id"), pwEl=document.getElementById("lg-pw");
@@ -2995,7 +2986,7 @@ function renderAUPenggunaPage(c){
         <div class="flex flex-wrap gap-2 items-center">
           <button class="btn btn-pri btn-sm" onclick="bukaImportPengguna()"><i class="fas fa-file-import"></i>Import Excel</button>
           <button class="btn btn-ghost btn-sm" onclick="muatTurunTemplatPengguna()"><i class="fas fa-download"></i>Templat</button>
-          <button class="btn btn-ghost btn-sm" onclick="doSeedUsers()" style="color:#E88D3A;border:1px solid #E88D3A;"><i class="fas fa-seedling"></i>Seed 84 Akaun Demo</button>
+          <button class="btn btn-ghost btn-sm" onclick="doSeedUsers()" style="color:#E88D3A;border:1px solid #E88D3A;"><i class="fas fa-seedling"></i>Seed 84 </button>
           <button class="btn btn-ghost btn-sm" onclick="navTo('au-pengguna')"><i class="fas fa-rotate"></i>Segar Semula</button>
         </div>
       </div>
