@@ -195,7 +195,7 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
   import {
-    getAuth, setPersistence, browserLocalPersistence, inMemoryPersistence,
+    getAuth, setPersistence, browserSessionPersistence, inMemoryPersistence,
     signInWithEmailAndPassword, createUserWithEmailAndPassword,
     signOut, onAuthStateChanged
   } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
@@ -346,7 +346,7 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
-    await setPersistence(auth, browserLocalPersistence);
+    await setPersistence(auth, browserSessionPersistence);
     // Dedahkan fungsi Firestore untuk penggunaan di luar modul
     window.__FS = { getDocs, collection, writeBatch, updateDoc, setDoc, getDoc, doc, db, query, where, limit, orderBy, startAfter, FieldPath };
     window.MYFB_CONFIGURED = true;
@@ -16720,6 +16720,266 @@ function spkInjectMenu(){
 const spkObserver=new MutationObserver(()=>spkInjectMenu());
 spkObserver.observe(document.documentElement,{childList:true,subtree:true});
 setTimeout(spkInjectMenu,1000);
+</script>
+
+
+<script id="mk-security-session-v1">
+/* ══════════════════════════════════════════════════════════════
+   KESELAMATAN SESI MYKAUNSELING
+   - Auto log keluar selepas 3 minit tanpa aktiviti
+   - Tiada amaran kira detik
+   - Firebase menggunakan browserSessionPersistence
+   - Satu akaun hanya satu sesi aktif
+   - Audit log masuk/log keluar
+══════════════════════════════════════════════════════════════ */
+(function(){
+  "use strict";
+
+  const IDLE_LIMIT_MS = 3 * 60 * 1000;
+  const SESSION_CHECK_MS = 20 * 1000;
+  const ACTIVITY_EVENTS = ["pointerdown","keydown","scroll","touchstart","mousemove"];
+
+  let idleTimer = null;
+  let sessionCheckTimer = null;
+  let activeUid = "";
+  let activeSessionId = "";
+  let lastActivityReset = 0;
+  let securityStarted = false;
+  let signingOut = false;
+
+  function makeSessionId(){
+    if(window.crypto?.randomUUID) return window.crypto.randomUUID();
+    return "SES_"+Date.now()+"_"+Math.random().toString(36).slice(2,12);
+  }
+
+  function browserInfo(){
+    return {
+      pelayar:navigator.userAgent || "",
+      platform:navigator.platform || "",
+      bahasa:navigator.language || "",
+      skrin:`${screen.width || 0}x${screen.height || 0}`
+    };
+  }
+
+  async function audit(eventType, reason){
+    try{
+      if(!window.__FS?.db || !activeUid) return;
+      const {db,collection,doc,setDoc}=window.__FS;
+      const ref=doc(collection(db,"audit_sesi"));
+      await setDoc(ref,{
+        uid:activeUid,
+        idPengguna:window.SES?.id || "",
+        nama:window.SES?.nama || "",
+        peranan:window.SES?.peranan || "",
+        kodKampus:window.SES?.kodKampus || window.SES?.kampus || "",
+        jenis:eventType,
+        sebab:reason || "",
+        sessionId:activeSessionId,
+        masa:new Date().toISOString(),
+        ...browserInfo()
+      });
+    }catch(error){
+      console.warn("[AUDIT SESI]",error);
+    }
+  }
+
+  async function registerSingleSession(user){
+    if(!window.__FS?.db || !user?.uid) return;
+    const {db,doc,setDoc}=window.__FS;
+
+    activeUid=user.uid;
+    activeSessionId=makeSessionId();
+
+    await setDoc(
+      doc(db,"sesi_pengguna",activeUid),
+      {
+        uid:activeUid,
+        sessionId:activeSessionId,
+        aktif:true,
+        mulaPada:new Date().toISOString(),
+        kemasKiniPada:new Date().toISOString(),
+        ...browserInfo()
+      },
+      {merge:true}
+    );
+
+    await audit("LOG_MASUK","Log masuk berjaya");
+  }
+
+  async function checkSingleSession(){
+    try{
+      if(!activeUid || !activeSessionId || !window.__FS?.db) return;
+      const {db,doc,getDoc}=window.__FS;
+      const snapshot=await getDoc(doc(db,"sesi_pengguna",activeUid));
+      if(!snapshot.exists()) return;
+      const data=snapshot.data() || {};
+
+      if(data.aktif===false || (data.sessionId && data.sessionId!==activeSessionId)){
+        await secureLogout("Sesi akaun telah dibuka pada peranti atau tab lain.");
+      }
+    }catch(error){
+      console.warn("[SEMAK SESI]",error);
+    }
+  }
+
+  function clearSensitiveSessionData(){
+    try{
+      const reason=sessionStorage.getItem("mk_logout_reason") || "";
+      sessionStorage.clear();
+      if(reason) sessionStorage.setItem("mk_logout_reason",reason);
+    }catch(_error){}
+  }
+
+  async function secureLogout(reason){
+    if(signingOut) return;
+    signingOut=true;
+
+    clearTimeout(idleTimer);
+    clearInterval(sessionCheckTimer);
+
+    try{
+      sessionStorage.setItem(
+        "mk_logout_reason",
+        reason || "Sesi telah tamat."
+      );
+    }catch(_error){}
+
+    await audit(
+      reason && reason.includes("tidak aktif") ? "LOG_KELUAR_AUTOMATIK" : "LOG_KELUAR",
+      reason || ""
+    );
+
+    try{
+      if(activeUid && activeSessionId && window.__FS?.db){
+        const {db,doc,setDoc}=window.__FS;
+        const ref=doc(db,"sesi_pengguna",activeUid);
+        const current=await window.__FS.getDoc(ref);
+        if(current.exists() && current.data()?.sessionId===activeSessionId){
+          await setDoc(ref,{
+            aktif:false,
+            tamatPada:new Date().toISOString(),
+            sebabTamat:reason || "Log keluar"
+          },{merge:true});
+        }
+      }
+    }catch(error){
+      console.warn("[TAMAT SESI]",error);
+    }
+
+    clearSensitiveSessionData();
+
+    try{
+      if(window.MYFB?.signOut) await window.MYFB.signOut();
+    }catch(error){
+      console.warn("[FIREBASE SIGNOUT]",error);
+    }
+
+    window.location.reload();
+  }
+
+  function resetIdleTimer(){
+    if(!activeUid || signingOut) return;
+
+    // Mousemove can fire very frequently. Limit resets to once per second.
+    const now=Date.now();
+    if(now-lastActivityReset<1000) return;
+    lastActivityReset=now;
+
+    clearTimeout(idleTimer);
+    idleTimer=setTimeout(()=>{
+      secureLogout("Sesi ditamatkan kerana pengguna tidak aktif melebihi 3 minit.");
+    },IDLE_LIMIT_MS);
+  }
+
+  function bindActivity(){
+    ACTIVITY_EVENTS.forEach(eventName=>{
+      window.addEventListener(eventName,resetIdleTimer,{
+        passive:true,
+        capture:true
+      });
+    });
+  }
+
+  async function startSecurity(user){
+    if(!user?.uid || securityStarted) return;
+    securityStarted=true;
+    signingOut=false;
+
+    await registerSingleSession(user);
+    bindActivity();
+    resetIdleTimer();
+
+    clearInterval(sessionCheckTimer);
+    sessionCheckTimer=setInterval(checkSingleSession,SESSION_CHECK_MS);
+  }
+
+  async function waitForFirebase(){
+    try{
+      await (window.MYFB_READY || Promise.resolve(false));
+
+      let attempts=0;
+      while(!window.MYFB?.auth && attempts<100){
+        await new Promise(resolve=>setTimeout(resolve,100));
+        attempts++;
+      }
+      if(!window.MYFB?.auth) return;
+
+      window.MYFB.onAuthStateChanged(async user=>{
+        if(user){
+          await startSecurity(user);
+        }else{
+          activeUid="";
+          activeSessionId="";
+          securityStarted=false;
+          clearTimeout(idleTimer);
+          clearInterval(sessionCheckTimer);
+        }
+      });
+    }catch(error){
+      console.warn("[KESELAMATAN SESI]",error);
+    }
+  }
+
+  // Record manual sign-out too.
+  const wrapSignOut=setInterval(()=>{
+    if(!window.MYFB?.signOut || window.MYFB.__securityWrapped) return;
+    clearInterval(wrapSignOut);
+
+    const originalSignOut=window.MYFB.signOut.bind(window.MYFB);
+    window.MYFB.signOut=async function(){
+      if(!signingOut){
+        signingOut=true;
+        await audit("LOG_KELUAR","Log keluar oleh pengguna");
+        try{
+          if(activeUid && activeSessionId && window.__FS?.db){
+            const {db,doc,setDoc}=window.__FS;
+            await setDoc(doc(db,"sesi_pengguna",activeUid),{
+              aktif:false,
+              tamatPada:new Date().toISOString(),
+              sebabTamat:"Log keluar oleh pengguna"
+            },{merge:true});
+          }
+        }catch(_error){}
+        clearSensitiveSessionData();
+      }
+      return originalSignOut();
+    };
+    window.MYFB.__securityWrapped=true;
+  },100);
+
+  document.addEventListener("DOMContentLoaded",()=>{
+    const reason=sessionStorage.getItem("mk_logout_reason");
+    if(reason){
+      sessionStorage.removeItem("mk_logout_reason");
+      setTimeout(()=>{
+        if(typeof window.toast==="function") window.toast(reason,"inf");
+        else console.info(reason);
+      },700);
+    }
+  });
+
+  waitForFirebase();
+})();
 </script>
 
 </body>
