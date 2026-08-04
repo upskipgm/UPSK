@@ -201,7 +201,7 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
   } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc,
-    collection, getDocs, query, where, limit, orderBy, startAfter, FieldPath, serverTimestamp, writeBatch
+    collection, getDocs, query, where, limit, orderBy, startAfter, FieldPath, serverTimestamp, writeBatch, runTransaction
   } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
   /*
@@ -348,7 +348,7 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
     db = getFirestore(app);
     await setPersistence(auth, browserSessionPersistence);
     // Dedahkan fungsi Firestore untuk penggunaan di luar modul
-    window.__FS = { getDocs, collection, writeBatch, updateDoc, setDoc, getDoc, doc, db, query, where, limit, orderBy, startAfter, FieldPath };
+    window.__FS = { getDocs, collection, writeBatch, updateDoc, setDoc, getDoc, doc, db, query, where, limit, orderBy, startAfter, FieldPath, runTransaction };
     window.MYFB_CONFIGURED = true;
 
     // Pastikan UID Admin Utama mempunyai profil Firestore. setDoc + merge tidak
@@ -1045,7 +1045,13 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
   <footer style="background:var(--navy);padding:20px 24px;">
     <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
       <div><div class="text-white/70 text-sm font-semibold font-display">MyKaunseling — IPGKPM</div><div class="text-white/30 text-xs mt-1" id="footer-alamat">Unit Psikologi & Kaunseling, Institut Pendidikan Guru Malaysia (IPGM)</div></div>
-      <div class="text-white/25 text-xs text-right">&copy; 2026 Unit Psikologi &amp; Kaunseling, IPGM<br>Versi 2.0 &nbsp;|&nbsp; Dasar Privasi &nbsp;|&nbsp; Penafian</div>
+      <div class="text-white/25 text-xs text-right">
+        &copy; 2026 Unit Psikologi &amp; Kaunseling, IPGM<br>
+        Versi 2.0 &nbsp;|&nbsp; Dasar Privasi &nbsp;|&nbsp; Penafian<br>
+        <span id="mk-visit-counter" style="display:inline-flex;align-items:center;gap:5px;margin-top:5px;">
+          <i class="fas fa-eye"></i> Jumlah kunjungan: <b id="mk-visit-count">—</b>
+        </span>
+      </div>
     </div>
   </footer>
 </div>
@@ -3479,7 +3485,7 @@ function simpanHubungi(){
 // ══════════════════════════════════════════
 function showUjianModal(){
   const instrumen=[
-    {n:"PPP",p:"Profil Kesihatan Psikologi Pelajar",i:"fa-user-graduate",url:"https://upskipgm.com/pk"},
+    {n:"PKPP",p:"Profil Kesihatan Psikologi Pelajar",i:"fa-user-graduate",url:"https://upskipgm.com/pk"},
     {n:"PKPW",p:"Profil Kesihatan Psikologi Warga",i:"fa-users",url:""},
     {n:"DASS-21",p:"Saringan kemurungan, kebimbangan dan tekanan",i:"fa-brain",url:"https://upskipgm.com/DASS"},
     {n:"Inventori Stres Pelajar (ISP)",p:"Penilaian tahap stres pelajar",i:"fa-gauge-high",url:"https://upskipgm.com/ISP"},
@@ -3500,7 +3506,7 @@ function showUjianModal(){
         <button type="button" class="w-full flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100 hover:border-pri-300 hover:bg-pri-50 transition text-left" onclick="bukaInstrumen(${i})">
           <div class="lc-icon bg-pri-100 text-pri-600 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"><i class="fas ${u.i} text-sm"></i></div>
           <div class="flex-1 min-w-0"><div class="font-semibold text-sm text-navy-800">${u.n}</div><div class="text-xs text-gray-500 mt-0.5">${u.p}</div></div>
-          ${u.url?'<span class="text-[10px] font-semibold text-pri-700 bg-pri-100 px-2 py-1 rounded-full">ATIF</span>':'<span class="text-[10px] font-semibold text-gray-500 bg-gray-200 px-2 py-1 rounded-full">AKAN DATANG</span>'}
+          ${u.url?'<span class="text-[10px] font-semibold text-pri-700 bg-pri-100 px-2 py-1 rounded-full">AKTIF</span>':'<span class="text-[10px] font-semibold text-gray-500 bg-gray-200 px-2 py-1 rounded-full">AKAN DATANG</span>'}
           <i class="fas ${u.url?'fa-arrow-up-right-from-square':'fa-chevron-right'} text-gray-300 text-xs"></i>
         </button>`).join("")}</div>
     </div>
@@ -16980,6 +16986,76 @@ setTimeout(spkInjectMenu,1000);
   });
 
   waitForFirebase();
+})();
+</script>
+
+
+<script id="mk-public-visit-counter-v1">
+/* Kaunter kunjungan portal awam.
+   Satu kiraan bagi setiap sesi tab/pelayar.
+   Rekod Firestore: statistik_portal/kunjungan */
+(function(){
+  "use strict";
+
+  const STORAGE_KEY = "mykaunseling_visit_counted_v1";
+  const DISPLAY_ID = "mk-visit-count";
+
+  function formatCount(value){
+    const number = Number(value || 0);
+    return Number.isFinite(number) ? number.toLocaleString("ms-MY") : "—";
+  }
+
+  async function updateVisitCounter(){
+    const display = document.getElementById(DISPLAY_ID);
+    try{
+      await (window.MYFB_READY || Promise.resolve(false));
+
+      let attempts = 0;
+      while((!window.__FS?.db || !window.__FS?.runTransaction) && attempts < 100){
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+
+      if(!window.__FS?.db || !window.__FS?.runTransaction){
+        if(display) display.textContent = "—";
+        return;
+      }
+
+      const { db, doc, getDoc, runTransaction } = window.__FS;
+      const counterRef = doc(db, "statistik_portal", "kunjungan");
+      const alreadyCounted = sessionStorage.getItem(STORAGE_KEY) === "1";
+
+      if(!alreadyCounted){
+        await runTransaction(db, async transaction => {
+          const snapshot = await transaction.get(counterRef);
+          const current = snapshot.exists() ? Number(snapshot.data()?.jumlah || 0) : 0;
+
+          transaction.set(counterRef, {
+            jumlah: current + 1,
+            kemasKiniPada: new Date().toISOString()
+          }, { merge: true });
+        });
+
+        sessionStorage.setItem(STORAGE_KEY, "1");
+      }
+
+      const latest = await getDoc(counterRef);
+      if(display){
+        display.textContent = latest.exists()
+          ? formatCount(latest.data()?.jumlah)
+          : "0";
+      }
+    }catch(error){
+      console.warn("[KAUNTER KUNJUNGAN]", error);
+      if(display) display.textContent = "—";
+    }
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", updateVisitCounter, { once:true });
+  }else{
+    updateVisitCounter();
+  }
 })();
 </script>
 
