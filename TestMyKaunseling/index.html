@@ -203,7 +203,7 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
   } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc,
-    collection, getDocs, query, where, limit, orderBy, startAfter, FieldPath, serverTimestamp, writeBatch, runTransaction, deleteDoc
+    collection, getDocs, query, where, limit, orderBy, startAfter, FieldPath, serverTimestamp, writeBatch, runTransaction
   } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
   /*
@@ -17249,6 +17249,7 @@ setTimeout(spkInjectMenu,1000);
 let AUP_DATA={isp:[],ssp:[]};
 let AUP_CHARTS=[];
 let AUP_VISIBLE_ROWS=[];
+let AUP_CONSTRUCT_HIGH=[];
 const AUP_ZONE_ORDER=["Zon IPGM","Zon Tengah","Zon Selatan","Zon Timur","Zon Utara","Zon Sabah","Zon Sarawak"];
 
 function aupText(v){return String(v??"").replace(/\s+/g," ").trim();}
@@ -17265,6 +17266,80 @@ function aupCampusCode(r){return resolveMasterKampusCode(r)||canonicalKodKampusG
 function aupScore(r){return aupNum(aupPick(r,["jumlahSkor","skorKeseluruhan","skor","totalScore","score","jumlah","markah","total"]));}
 function aupLevel(r){return aupText(aupPick(r,["tahap","kategori","interpretasi","statusRisiko","riskLevel","keputusan","aras","level","rumusan"]))||"Belum dikategorikan";}
 function aupNeedsAttention(r){const level=aupLevel(r).toUpperCase();return ["TINGGI","SANGAT TINGGI","KRITIKAL","BERISIKO","PERLU INTERVENSI","TERUK","SANGAT TERUK","BAHAYA","MENGGANGGU","SANGAT MENGGANGGU"].some(k=>level.includes(k));}
+
+function aupObjectValue(value){
+  if(value && typeof value==="object") return value;
+  if(typeof value==="string"){
+    const text=value.trim();
+    if((text.startsWith("{")&&text.endsWith("}"))||(text.startsWith("[")&&text.endsWith("]"))){
+      try{return JSON.parse(text);}catch(_e){}
+    }
+  }
+  return null;
+}
+function aupConstructSource(row){
+  const keys=[
+    "scores","constructScores","konstrukScores","skorKonstruk",
+    "domainScores","subscaleScores","dimensiScores","constructs",
+    "konstruk","domains","subscales"
+  ];
+  for(const key of keys){
+    const obj=aupObjectValue(row?.[key]);
+    if(obj && !Array.isArray(obj)) return obj;
+  }
+  return null;
+}
+function aupConstructEntries(row){
+  const source=aupConstructSource(row);
+  if(!source)return [];
+  return Object.entries(source).map(([name,raw])=>{
+    let score=null,max=null,level="";
+    if(typeof raw==="number" || (typeof raw==="string" && raw.trim()!=="" && !isNaN(Number(raw)))){
+      score=aupNum(raw);
+    }else if(raw && typeof raw==="object"){
+      score=aupNum(aupPick(raw,["score","skor","jumlahSkor","total","value","nilai"]));
+      max=aupNum(aupPick(raw,["max","skorMaksimum","maximum","maksimum"]));
+      level=aupText(aupPick(raw,["tahap","kategori","interpretasi","level","status"]));
+    }
+    const upper=level.toUpperCase();
+    let high=["TINGGI","SANGAT TINGGI","KRITIKAL","TERUK","SANGAT TERUK"].some(k=>upper.includes(k));
+    if(!high && score!==null){
+      if(max!==null && max>0) high=score >= (max*2/3);
+      else if(row._instrument==="SSP") high=score>=21;
+    }
+    return {name:aupText(name),score,max,level,high};
+  }).filter(x=>x.name);
+}
+function aupHighConstructSummary(rows){
+  const map=new Map();
+  rows.forEach(row=>{
+    aupConstructEntries(row).filter(x=>x.high).forEach(x=>{
+      if(!map.has(x.name))map.set(x.name,{name:x.name,count:0,students:[]});
+      const item=map.get(x.name);
+      item.count++;
+      item.students.push({row,construct:x});
+    });
+  });
+  return [...map.values()].sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,"ms"));
+}
+function aupShowConstructStudents(index){
+  const item=AUP_CONSTRUCT_HIGH[index];
+  if(!item)return;
+  document.getElementById("modal-wrap").innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:980px;padding:0;overflow:hidden">
+      <div style="padding:18px 22px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between">
+        <div><h3 style="font-size:1.1rem;font-weight:800;color:var(--navy)">Konstruk Skor Tinggi: ${esc(item.name)}</h3>
+        <div style="font-size:.72rem;color:#64748B;margin-top:3px">${item.count} rekod pelajar terlibat</div></div>
+        <button class="user-drawer-close" onclick="closeModal()">×</button>
+      </div>
+      <div style="padding:18px 22px;overflow:auto;max-height:68vh">
+        <table class="tbl"><thead><tr><th>Instrumen</th><th>Nama</th><th>ID Pelajar</th><th>Zon</th><th>Kampus</th><th>Skor Konstruk</th><th>Tahap</th><th>Tarikh</th></tr></thead>
+        <tbody>${item.students.map(({row,construct})=>`<tr><td>${esc(row._instrument)}</td><td><b>${esc(row._name)}</b></td><td>${esc(row._id||"—")}</td><td>${esc(row._zone)}</td><td>${esc(row._campus)}</td><td>${construct.score===null?"—":construct.score}${construct.max!==null?` / ${construct.max}`:""}</td><td>${esc(construct.level||"Tinggi")}</td><td>${esc(row._date)}</td></tr>`).join("")}</tbody></table>
+      </div>
+    </div>
+  </div>`;
+}
 function aupNormalize(record,instrument){const code=aupCampusCode(record);const info=MASTER_KAMPUS_BY_ID[code]||{};return {...record,_instrument:instrument,_code:code,_campus:info.nama||aupText(aupPick(record,["organisasi","namaKampus","ipgmKampus","kampus"]))||code||"Tidak dikenal pasti",_zone:info.zon||aupText(record.zon)||"Tidak dikenal pasti",_state:info.negeri||aupText(record.negeri)||"—",_name:aupName(record),_id:aupId(record),_program:aupProgram(record),_gender:aupGender(record),_date:aupDateLabel(record),_year:aupYear(record),_score:aupScore(record),_level:aupLevel(record),_attention:aupNeedsAttention(record)};}
 
 async function aupReadCollection(name){
@@ -17332,7 +17407,7 @@ function aupRefresh(){
     ${[["Jumlah Respons",rows.length,"sc-navy","fa-clipboard-check"],["Jumlah Responden",unique.size,"sc-pri","fa-users"],["ISP",isp.length,"sc-pri","fa-gauge-high"],["SSP",ssp.length,"sc-amb","fa-list-check"],["Perlu Perhatian",attention.length,"sc-red","fa-triangle-exclamation"]].map(([l,v,cl,icon])=>`<div class="stat-card ${cl}" style="cursor:pointer" onclick="aupCardFilter('${l}')"><div class="stat-icon" style="background:#F1F5F9"><i class="fas ${icon}"></i></div><div class="stat-val">${Number(v).toLocaleString("ms-MY")}</div><div class="stat-lbl">${l}</div></div>`).join("")}
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-    <div class="card"><div class="card-head"><div class="card-title">Respon Mengikut Instrumen</div></div><div class="card-body" style="height:290px"><canvas id="aup-chart-instrument"></canvas></div></div>
+    <div class="card"><div class="card-head"><div><div class="card-title">Bilangan Pelajar Skor Tinggi Mengikut Konstruk</div><div style="font-size:.7rem;color:var(--muted);margin-top:3px">Klik konstruk untuk melihat senarai pelajar</div></div></div><div class="card-body" style="height:290px"><canvas id="aup-chart-instrument"></canvas></div></div>
     <div class="card"><div class="card-head"><div class="card-title">Respon Mengikut Zon</div></div><div class="card-body" style="height:290px"><canvas id="aup-chart-zone"></canvas></div></div>
   </div>
   <div style="display:grid;grid-template-columns:1.35fr .65fr;gap:14px;margin-bottom:14px">
@@ -17357,8 +17432,20 @@ function aupSelectZone(zone){const s=document.getElementById("aup-zone");if(!s||
 function aupCardFilter(label){const s=document.getElementById("aup-instrument");if(label==="ISP"){s.value="ISP";aupRefresh();}else if(label==="SSP"){s.value="SSP";aupRefresh();}else if(label==="Jumlah Respons"||label==="Jumlah Responden"){s.value="";aupRefresh();}else if(label==="Perlu Perhatian")aupShowAttention(aupFiltered().filter(r=>r._attention));}
 function aupDrawCharts(rows,summary){
   AUP_CHARTS.forEach(c=>{try{c.destroy()}catch(_e){}});AUP_CHARTS=[];
-  const instLabels=["ISP","SSP"],instData=[rows.filter(r=>r._instrument==="ISP").length,rows.filter(r=>r._instrument==="SSP").length];
-  const c1=document.getElementById("aup-chart-instrument");if(c1)AUP_CHARTS.push(new Chart(c1,{type:"doughnut",data:{labels:instLabels,datasets:[{data:instData,backgroundColor:["#2563EB","#F59E0B"],borderColor:"#fff",borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right"}},onClick:(_e,els)=>{if(els.length){document.getElementById("aup-instrument").value=instLabels[els[0].index];aupRefresh();}}}}));
+  AUP_CONSTRUCT_HIGH=aupHighConstructSummary(rows);
+  const constructLabels=AUP_CONSTRUCT_HIGH.map(x=>x.name);
+  const constructData=AUP_CONSTRUCT_HIGH.map(x=>x.count);
+  const c1=document.getElementById("aup-chart-instrument");
+  if(c1)AUP_CHARTS.push(new Chart(c1,{
+    type:"bar",
+    data:{labels:constructLabels,datasets:[{label:"Bilangan Pelajar",data:constructData,backgroundColor:"#2563EB",borderRadius:5}]},
+    options:{
+      indexAxis:"y",responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{beginAtZero:true,ticks:{precision:0}},y:{grid:{display:false}}},
+      onClick:(_e,els)=>{if(els.length)aupShowConstructStudents(els[0].index);}
+    }
+  }));
   const zoneMap=aupCountMap(rows,"_zone"),zoneLabels=Object.keys(zoneMap).sort((a,b)=>{const ia=AUP_ZONE_ORDER.indexOf(a),ib=AUP_ZONE_ORDER.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib);});
   const c2=document.getElementById("aup-chart-zone");if(c2)AUP_CHARTS.push(new Chart(c2,{type:"pie",data:{labels:zoneLabels,datasets:[{data:zoneLabels.map(z=>zoneMap[z]),backgroundColor:["#0E7C61","#2563EB","#F59E0B","#8B5CF6","#DC2626","#0891B2","#64748B"],borderColor:"#fff",borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right"}},onClick:(_e,els)=>{if(els.length)aupSelectZone(zoneLabels[els[0].index]);}}}));
   const c3=document.getElementById("aup-chart-campus");if(c3)AUP_CHARTS.push(new Chart(c3,{type:"bar",data:{labels:summary.map(v=>v.code),datasets:[{data:summary.map(v=>v.total),backgroundColor:"#0E7C61",borderRadius:4}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true},y:{grid:{display:false}}},onClick:(_e,els)=>{if(els.length)aupSelectCampus(summary[els[0].index].code);}}}));
