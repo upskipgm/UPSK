@@ -166,6 +166,8 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
 #pg-body.pbi-dashboard canvas{max-height:250px;}
 
 </style>
+
+
 <style id="print-base">
   @media print {
     .sidebar, #sidebar, .topbar, button, .btn,
@@ -910,6 +912,17 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
   #mk-dev-panel, #mk-dev-panel.show { display:none !important; }
 </style>
 
+
+<style id="mk-countvisit-nav-responsive">
+@media(max-width:640px){
+  #mk-visit-counter-nav span{display:none;}
+  #mk-visit-counter-nav{font-size:.7rem!important;gap:4px!important;}
+}
+@media print{
+  #mk-visit-counter-nav{display:none!important;}
+}
+</style>
+
 </head>
 <body>
 <div id="mk-loading" role="status" aria-live="polite">
@@ -962,9 +975,16 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
         <span class="text-white/15">|</span>
         <a href="https://myelkm.kpwkm.gov.my/login" target="_blank" rel="noopener noreferrer" class="text-white/50 hover:text-white/80 text-xs transition flex items-center gap-1.5"><i class="fas fa-id-card text-xs"></i>MYeLKM</a>
       </div>
-      <button onclick="showLogin()" class="bg-pri-600 hover:bg-pri-500 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition">
-        <i class="fas fa-sign-in-alt mr-1"></i>Log Masuk
-      </button>
+      <div class="flex items-center gap-3">
+        <div id="mk-visit-counter-nav" class="text-white/60 text-xs flex items-center gap-1.5 whitespace-nowrap">
+          <i class="fas fa-eye text-pri-300"></i>
+          <span>Anda pelawat ke-</span>
+          <b id="mk-visit-count-top" class="text-white font-semibold">—</b>
+        </div>
+        <button onclick="showLogin()" class="bg-pri-600 hover:bg-pri-500 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition">
+          <i class="fas fa-sign-in-alt mr-1"></i>Log Masuk
+        </button>
+      </div>
     </div>
   </nav>
 
@@ -1047,10 +1067,7 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
       <div><div class="text-white/70 text-sm font-semibold font-display">MyKaunseling — IPGKPM</div><div class="text-white/30 text-xs mt-1" id="footer-alamat">Unit Psikologi & Kaunseling, Institut Pendidikan Guru Malaysia (IPGM)</div></div>
       <div class="text-white/25 text-xs text-right">
         &copy; 2026 Unit Psikologi &amp; Kaunseling, IPGM<br>
-        Versi 2.0 &nbsp;|&nbsp; Dasar Privasi &nbsp;|&nbsp; Penafian<br>
-        <span id="mk-visit-counter" style="display:inline-flex;align-items:center;gap:5px;margin-top:5px;">
-          <i class="fas fa-eye"></i> Jumlah kunjungan: <b id="mk-visit-count">—</b>
-        </span>
+        Versi 2.0 &nbsp;|&nbsp; Dasar Privasi &nbsp;|&nbsp; Penafian
       </div>
     </div>
   </footer>
@@ -16998,15 +17015,21 @@ setTimeout(spkInjectMenu,1000);
   "use strict";
 
   const STORAGE_KEY = "mykaunseling_visit_counted_v1";
-  const DISPLAY_ID = "mk-visit-count";
+  const DISPLAY_IDS = ["mk-visit-count-top"];
 
   function formatCount(value){
     const number = Number(value || 0);
     return Number.isFinite(number) ? number.toLocaleString("ms-MY") : "—";
   }
 
+  function setVisitDisplays(value){
+    DISPLAY_IDS.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.textContent=value;
+    });
+  }
+
   async function updateVisitCounter(){
-    const display = document.getElementById(DISPLAY_ID);
     try{
       await (window.MYFB_READY || Promise.resolve(false));
 
@@ -17017,7 +17040,7 @@ setTimeout(spkInjectMenu,1000);
       }
 
       if(!window.__FS?.db || !window.__FS?.runTransaction){
-        if(display) display.textContent = "—";
+        setVisitDisplays("—");
         return;
       }
 
@@ -17040,14 +17063,10 @@ setTimeout(spkInjectMenu,1000);
       }
 
       const latest = await getDoc(counterRef);
-      if(display){
-        display.textContent = latest.exists()
-          ? formatCount(latest.data()?.jumlah)
-          : "0";
-      }
+      setVisitDisplays(latest.exists() ? formatCount(latest.data()?.jumlah) : "0");
     }catch(error){
       console.warn("[KAUNTER KUNJUNGAN]", error);
-      if(display) display.textContent = "—";
+      setVisitDisplays("—");
     }
   }
 
