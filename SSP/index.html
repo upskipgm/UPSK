@@ -136,17 +136,17 @@
 <script>
 const MOONEY_ITEMS = ["Saya mudah mengalami masalah kesihatan.", "Saya sering berasa cepat penat.", "Saya tidak mendapat rehat atau tidur yang mencukupi.", "Saya kurang melakukan aktiviti fizikal atau bersenam.", "Saya kurang berpuas hati terhadap keadaan fizikal atau penampilan diri.", "Saya mempunyai tabiat yang menjejaskan kesihatan diri.", "Saya mengalami masalah kesihatan yang mengganggu pembelajaran.", "Saya sukar mengekalkan gaya hidup yang sihat.", "Saya menghadapi kesukaran mendapatkan kemudahan penjagaan kesihatan apabila diperlukan.", "Keadaan kesihatan saya menjejaskan keyakinan diri.", "Saya menghadapi masalah kewangan.", "Perbelanjaan harian saya tidak mencukupi.", "Saya bergantung kepada keluarga untuk menampung perbelanjaan pengajian.", "Saya memerlukan bantuan kewangan bagi meneruskan pengajian.", "Keadaan kewangan keluarga membimbangkan saya.", "Saya perlu bekerja sambilan bagi menampung perbelanjaan.", "Saya sukar menguruskan kewangan dengan baik.", "Kos sara hidup memberi tekanan kepada saya.", "Saya bimbang tentang komitmen kewangan pada masa hadapan.", "Masalah kewangan mengganggu tumpuan saya terhadap pembelajaran.", "Saya sukar berkenalan dengan rakan baharu.", "Saya berasa kekok apabila bergaul dengan orang lain.", "Saya sukar meneruskan perbualan dengan orang lain.", "Saya kurang melibatkan diri dalam aktiviti pelajar di IPG.", "Saya kurang mempunyai masa untuk aktiviti riadah atau rekreasi.", "Saya tidak menggunakan masa lapang dengan baik.", "Saya kurang mempunyai aktiviti atau hobi yang memberi kepuasan kepada diri.", "Saya kurang peluang menyertai aktiviti sukan atau kokurikulum.", "Saya berasa kehidupan harian saya terlalu padat sehingga tiada masa untuk diri sendiri.", "Saya sukar menyesuaikan diri dengan kehidupan kampus.", "Saya sukar menjalinkan hubungan percintaan yang sihat.", "Saya berasa malu untuk meluahkan perasaan kepada seseorang yang saya minati.", "Saya menghadapi masalah dalam hubungan percintaan.", "Saya kecewa dalam hubungan percintaan.", "Saya bimbang kehilangan orang yang saya sayangi.", "Saya keliru tentang hubungan percintaan yang sedang saya jalinkan.", "Saya menghadapi konflik dengan pasangan atau orang yang saya minati.", "Saya kurang pengetahuan tentang batasan dalam hubungan percintaan.", "Saya berasa keliru berkaitan isu seksual dalam hubungan percintaan", "Hubungan percintaan mengganggu emosi dan kehidupan saya.", "Saya mudah berasa malu apabila berhadapan dengan orang lain.", "Saya berasa rendah diri.", "Saya bimbang terhadap pandangan orang lain terhadap diri saya.", "Saya sering menjadi sasaran kritikan atau ejekan.", "Saya sering terlibat dalam konflik dengan orang lain.", "Saya merasakan diri tidak diterima oleh orang lain.", "Saya sering berasa kesunyian.", "Saya merasakan tiada siapa yang memahami saya.", "Saya tiada tempat untuk berkongsi masalah.", "Saya sukar membina hubungan yang baik dengan orang lain.", "Saya sukar mengawal kemarahan.", "Saya mudah berasa cemas.", "Saya sering berasa bimbang.", "Saya sering berasa sedih.", "Saya kurang yakin terhadap diri sendiri.", "Saya takut melakukan kesilapan.", "Saya mudah berputus asa apabila menghadapi cabaran.", "Saya sukar berhenti memikirkan masalah yang saya hadapi.", "Saya sukar melupakan pengalaman yang menyakitkan.", "Saya berasa hilang semangat untuk meneruskan aktiviti harian", "Saya kurang menghayati amalan agama.", "Saya mempunyai keraguan berkaitan pegangan agama atau nilai hidup.", "Saya keliru menentukan perkara yang betul dan salah.", "Saya berasa hubungan saya dengan Tuhan tidak seperti yang saya harapkan", "Saya sering berasa bersalah atas kesilapan yang pernah dilakukan.", "Saya sukar mengawal tingkah laku yang tidak baik.", "Saya kurang jujur terhadap diri sendiri.", "Saya mudah terpengaruh dengan perkara yang negatif.", "Saya bimbang terhadap akibat daripada kesalahan yang pernah dilakukan.", "Nilai hidup saya sering bercanggah dengan tindakan saya.", "Ibu bapa atau penjaga kurang memahami saya.", "Saya sering berselisih faham dengan ahli keluarga.", "Saya kurang gembira apabila bersama keluarga.", "Saya merasakan keluarga terlalu mengongkong kehidupan saya.", "Keluarga mengharapkan terlalu banyak daripada saya.", "Saya kurang mendapat kepercayaan daripada keluarga.", "Saya bimbang terhadap keadaan ahli keluarga saya.", "Saya memerlukan lebih kasih sayang daripada keluarga.", "Saya sukar berbincang tentang masalah dengan keluarga.", "Masalah keluarga mengganggu pembelajaran saya.", "Saya ragu-ragu terhadap bidang pengajian yang saya pilih.", "Saya tidak pasti tentang kerjaya saya sebagai guru pada masa hadapan.", "Saya kurang mengenali kebolehan dan potensi diri.", "Saya berasa kurang mendapat bimbingan berkaitan kerjaya", "Saya bimbang tidak mendapat penempatan atau pekerjaan selepas tamat pengajian.", "Saya kurang yakin dapat melaksanakan tugas sebagai seorang guru.", "Saya kurang jelas tentang hala tuju kerjaya saya.", "Saya menghadapi kesukaran merancang kerjaya masa depan", "Saya bimbang tentang masa depan kerjaya saya.", "Perkara berkaitan kerjaya sering mengganggu fikiran saya.", "Saya sukar memahami kandungan pembelajaran.", "Saya kurang berminat untuk belajar.", "Saya tidak menguasai teknik belajar yang berkesan.", "Saya sukar menyiapkan tugasan mengikut tempoh yang ditetapkan.", "Saya sukar menumpukan perhatian semasa belajar.", "Saya sukar mengambil nota pembelajaran.", "Saya sukar menyediakan laporan atau tugasan akademik.", "Saya bimbang menghadapi peperiksaan atau pentaksiran.", "Saya kurang berpuas hati dengan pencapaian akademik saya.", "Saya bimbang gagal menamatkan pengajian dengan cemerlang.", "Kaedah pengajaran pensyarah sukar saya fahami.", "Bahan pembelajaran yang disediakan kurang membantu pembelajaran saya", "Kursus yang dipelajari kurang berkaitan dengan amalan profesion keguruan.", "Saya kurang berminat terhadap beberapa kursus yang diikuti.", "Beban tugasan kursus terlalu banyak.", "Perbincangan dalam kelas tidak mencukupi.", "Saya kurang selesa berinteraksi dengan pensyarah.", "Saya menghadapi kesukaran mendapatkan bimbingan akademik daripada pensyarah apabila diperlukan.", "Kaedah pentaksiran kursus kurang membantu saya menunjukkan kemampuan sebenar.", "Sistem pengajaran dan pembelajaran di IPG kurang memenuhi keperluan pembelajaran saya."];
 const MOONEY_DOMAINS = [
-    {key:"hpd",label:"Kesihatan",short:"Kesihatan"},
-    {key:"kew",label:"Kewangan",short:"Kewangan"},
-    {key:"sos",label:"Sosial",short:"Sosial"},
-    {key:"hpc",label:"Hubungan Percintaan",short:"Hub. Percintaan"},
-    {key:"itp",label:"Interpersonal",short:"Interpersonal"},
-    {key:"emo",label:"Emosi",short:"Emosi"},
-    {key:"nkr",label:"Nilai dan Kerohanian",short:"Nilai & Kerohanian"},
-    {key:"kel",label:"Keluarga",short:"Keluarga"},
-    {key:"krj",label:"Kerjaya",short:"Kerjaya"},
-    {key:"pmb",label:"Pembelajaran",short:"Pembelajaran"},
-    {key:"png",label:"Pengajaran",short:"Pengajaran"},
+    {key:"hpd",label:"Kesihatan",short:"Kesihatan",desc:"Mengukur masalah berkaitan kesihatan fizikal, kecergasan, gaya hidup sihat, rehat, tidur dan keadaan fizikal yang boleh menjejaskan pembelajaran serta kesejahteraan pelajar."},
+    {key:"kew",label:"Kewangan",short:"Kewangan",desc:"Mengukur masalah berkaitan kewangan, kos sara hidup, pengurusan kewangan, bantuan kewangan dan tekanan kewangan yang mempengaruhi kehidupan sebagai pelajar."},
+    {key:"sos",label:"Sosial",short:"Sosial",desc:"Mengukur tahap penyesuaian sosial pelajar, penglibatan dalam aktiviti kampus, kemahiran bergaul, penggunaan masa lapang serta hubungan dengan komuniti kampus."},
+    {key:"hpc",label:"Hubungan Percintaan",short:"Hub. Percintaan",desc:"Mengukur masalah berkaitan hubungan percintaan, konflik pasangan, kebimbangan terhadap hubungan, batasan dalam perhubungan serta isu berkaitan seksualiti."},
+    {key:"itp",label:"Interpersonal",short:"Interpersonal",desc:"Mengukur hubungan dengan individu lain seperti keyakinan berinteraksi, penerimaan sosial, konflik, komunikasi serta sokongan sosial."},
+    {key:"emo",label:"Emosi",short:"Emosi",desc:"Mengukur masalah berkaitan emosi seperti kebimbangan, kesedihan, kemarahan, keyakinan diri, tekanan emosi dan keupayaan mengurus emosi."},
+    {key:"nkr",label:"Nilai dan Kerohanian",short:"Nilai & Kerohanian",desc:"Mengukur isu berkaitan pegangan agama, nilai hidup, integriti, kawalan diri serta penghayatan terhadap nilai dan kerohanian."},
+    {key:"kel",label:"Keluarga",short:"Keluarga",desc:"Mengukur hubungan dengan keluarga, komunikasi, sokongan keluarga, konflik keluarga serta pengaruh keluarga terhadap kehidupan pelajar."},
+    {key:"krj",label:"Kerjaya",short:"Kerjaya",desc:"Mengukur kejelasan hala tuju kerjaya, keyakinan menjadi guru, perancangan kerjaya dan kebimbangan terhadap masa depan profesion keguruan."},
+    {key:"pmb",label:"Pembelajaran",short:"Pembelajaran",desc:"Mengukur kesukaran belajar, pengurusan pembelajaran, pencapaian akademik, kemahiran belajar dan kebimbangan terhadap peperiksaan."},
+    {key:"png",label:"Pengajaran",short:"Pengajaran",desc:"Mengukur persepsi pelajar terhadap proses pengajaran dan pembelajaran seperti kaedah pengajaran, pensyarah, tugasan, pentaksiran dan sistem akademik IPG."},
 ];
 const DEMO_QUESTIONS = [
     {"id": "nama", "label": "NAMA PENUH", "type": "text", "required": true, "placeholder": "Contoh: AHMAD BIN ABU"},
@@ -230,8 +230,14 @@ const app = {
             firebase.initializeApp(FIREBASE_CONFIG);
             db = firebase.firestore();
             await firebase.auth().signInAnonymously();
+            console.log('Firebase OK — Auth UID:', firebase.auth().currentUser?.uid);
         } catch (err) {
             console.error('Firebase init error:', err);
+            const msg = err.code === 'auth/operation-not-allowed'
+                ? 'Anonymous Auth tidak diaktifkan. Sila aktifkan di Firebase Console > Authentication > Sign-in method.'
+                : err.message || 'Gagal menyambung ke Firebase.';
+            document.getElementById('main-content').innerHTML = '<div class="flex items-center justify-center min-h-[60vh]"><div class="text-center bg-red-50 border border-red-200 rounded-2xl p-8 max-w-md mx-auto"><svg class="w-12 h-12 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg><p class="font-bold text-red-800 mb-2">Gagal Menyambung</p><p class="text-sm text-red-700">' + msg + '</p></div></div>';
+            return;
         }
         this.renderWelcome();
     },
@@ -405,25 +411,26 @@ const app = {
         const scores = this.calcScores();
         const a = this.answers.A;
 
-        let totalProblemItems = 0, totalWeighted = 0, totalS3 = 0;
+        let totalWeighted = 0, totalS3 = 0;
         const domainData = [];
+        let countRendah = 0, countSederhana = 0, countTinggi = 0;
 
         MOONEY_DOMAINS.forEach((d, idx) => {
             const sc = scores[d.key];
             const problemItems = sc.s1 + sc.s2 + sc.s3;
-            totalProblemItems += problemItems;
             totalWeighted += sc.totalScore;
             totalS3 += sc.s3;
-            domainData.push({ ...d, ...sc, problemItems, idx });
+            const tahapInfo = this.getTahap(sc.totalScore);
+            if (tahapInfo.tahap === 'Rendah') countRendah++;
+            else if (tahapInfo.tahap === 'Sederhana') countSederhana++;
+            else countTinggi++;
+            domainData.push({ ...d, ...sc, problemItems, idx, tahapInfo });
         });
 
-        // Only domains with problems (totalScore > 0), sorted highest first
-        const problemDomains = domainData
-            .filter(d => d.totalScore > 0)
-            .sort((a, b) => b.totalScore - a.totalScore);
-
-        const highest = problemDomains[0] || null;
-        const allZero = problemDomains.length === 0;
+        // All domains sorted by score descending for chart
+        const sortedDomains = [...domainData].sort((a, b) => b.totalScore - a.totalScore);
+        const highest = sortedDomains[0];
+        const allRendah = totalWeighted === 0;
 
         let html = `<div id="result-slip" class="fade-in space-y-6">
 
@@ -440,91 +447,123 @@ const app = {
                     Ringkasan Keseluruhan
                 </h3>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div class="text-center p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                        <div class="text-2xl font-bold text-slate-800">${totalProblemItems}</div>
-                        <div class="text-xs text-slate-500 font-medium mt-1">Item Bermasalah</div>
-                        <div class="text-xs text-slate-400">daripada 110 item</div>
+                    <div class="text-center p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                        <div class="text-2xl font-bold text-emerald-700">${countRendah}</div>
+                        <div class="text-xs text-emerald-600 font-medium mt-1">Tahap Rendah</div>
+                        <div class="text-xs text-emerald-400">(skor 0-10)</div>
                     </div>
                     <div class="text-center p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                        <div class="text-2xl font-bold text-amber-700">${totalWeighted}</div>
-                        <div class="text-xs text-amber-600 font-medium mt-1">Jumlah Skor</div>
-                        <div class="text-xs text-amber-400">max 330</div>
+                        <div class="text-2xl font-bold text-amber-700">${countSederhana}</div>
+                        <div class="text-xs text-amber-600 font-medium mt-1">Tahap Sederhana</div>
+                        <div class="text-xs text-amber-400">(skor 11-20)</div>
                     </div>
                     <div class="text-center p-3 bg-red-50 border border-red-200 rounded-xl">
-                        <div class="text-2xl font-bold text-red-700">${totalS3}</div>
-                        <div class="text-xs text-red-600 font-medium mt-1">Masalah Besar</div>
-                        <div class="text-xs text-red-400">perlu perhatian segera</div>
+                        <div class="text-2xl font-bold text-red-700">${countTinggi}</div>
+                        <div class="text-xs text-red-600 font-medium mt-1">Tahap Tinggi</div>
+                        <div class="text-xs text-red-400">(skor 21-30)</div>
                     </div>
-                    <div class="text-center p-3 ${allZero ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200'} border rounded-xl">
-                        <div class="text-2xl font-bold ${allZero ? 'text-emerald-700' : 'text-blue-700'}">${problemDomains.length}</div>
-                        <div class="text-xs ${allZero ? 'text-emerald-600' : 'text-blue-600'} font-medium mt-1">Konstruk Bermasalah</div>
-                        <div class="text-xs ${allZero ? 'text-emerald-400' : 'text-blue-400'}">daripada 11 konstruk</div>
+                    <div class="text-center p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div class="text-2xl font-bold text-slate-700">${totalWeighted}</div>
+                        <div class="text-xs text-slate-500 font-medium mt-1">Jumlah Keseluruhan</div>
+                        <div class="text-xs text-slate-400">max 330</div>
                     </div>
                 </div>
-                ${allZero ? '<div class="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center"><p class="text-sm font-bold text-emerald-800">Tiada masalah yang dilaporkan</p><p class="text-xs text-emerald-600 mt-1">Semua 110 item dilaporkan sebagai Bukan Masalah.</p></div>' : ''}
+                ${allRendah ? '<div class="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center"><p class="text-sm font-bold text-emerald-800">Tiada masalah yang dilaporkan</p><p class="text-xs text-emerald-600 mt-1">Semua 110 item dilaporkan sebagai Bukan Masalah.</p></div>' : ''}
             </div>`;
 
-        // ── CHART + TABLE (only if problems exist) ──
-        if (!allZero) {
-            html += `
+        // ── ALL 11 CONSTRUCTS TABLE ──
+        html += `
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                 <h3 class="text-md font-bold text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
-                    <span class="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center text-xs font-bold text-amber-700">!</span>
-                    Profil Masalah Mengikut Konstruk
+                    <span class="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center text-xs font-bold text-blue-700">!</span>
+                    Analisis Tahap Mengikut Konstruk
                 </h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    <div class="flex justify-center p-2 bg-slate-50 border border-slate-100 rounded-xl" style="position:relative; height:${Math.max(280, problemDomains.length * 42)}px; width:100%;">
+                    <div class="flex justify-center p-2 bg-slate-50 border border-slate-100 rounded-xl" style="position:relative; height:420px; width:100%;">
                         <canvas id="mooneyBarChart"></canvas>
                     </div>
                     <div class="space-y-3">
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Skor Mengikut Konstruk</p>
                         <table class="w-full text-xs border-collapse">
                             <thead><tr class="bg-slate-50">
                                 <th class="text-left p-2 font-bold text-slate-600 rounded-tl-lg">Konstruk</th>
-                                <th class="text-center p-2 font-bold text-blue-700">Bil. Masalah</th>
-                                <th class="text-center p-2 font-bold text-amber-700">Sangat</th>
-                                <th class="text-center p-2 font-bold text-slate-700 rounded-tr-lg">Skor</th>
+                                <th class="text-center p-1.5 font-bold text-slate-600">Skor</th>
+                                <th class="text-center p-1.5 font-bold text-blue-600" title="Bilangan item Masalah Kecil">Kecil</th>
+                                <th class="text-center p-1.5 font-bold text-amber-600" title="Bilangan item Masalah Sederhana">Sederhana</th>
+                                <th class="text-center p-1.5 font-bold text-red-600" title="Bilangan item Masalah Besar">Besar</th>
+                                <th class="text-center p-2 font-bold text-slate-600 rounded-tr-lg">Tahap</th>
                             </tr></thead>
                             <tbody>`;
 
-            problemDomains.forEach((d, i) => {
-                const bg = i % 2 === 0 ? 'bg-white' : 'bg-slate-50';
-                const isHighest = highest && d.key === highest.key;
-                const rowClass = isHighest ? 'bg-red-50 font-bold' : bg;
-                const indicator = isHighest ? ' <span class="text-red-500">▲</span>' : '';
-                // Severity color for score
-                let scoreColor = 'text-slate-800';
-                const pct = d.totalScore / 30;
-                if (pct >= 0.5) scoreColor = 'text-red-700';
-                else if (pct >= 0.25) scoreColor = 'text-amber-700';
-                else scoreColor = 'text-blue-700';
-                html += `<tr class="${rowClass}">
-                    <td class="p-2 text-slate-700">${d.short}${indicator}</td>
-                    <td class="text-center p-2 text-blue-700">${d.problemItems}/10</td>
-                    <td class="text-center p-2 text-red-600">${d.s3}</td>
-                    <td class="text-center p-2 font-bold ${scoreColor}">${d.totalScore}</td>
-                </tr>`;
-            });
+        MOONEY_DOMAINS.forEach((d, idx) => {
+            const dd = domainData[idx];
+            const ti = dd.tahapInfo;
+            const isHighest = highest && d.key === highest.key;
+            const rowClass = isHighest ? 'bg-red-50 font-bold' : (idx % 2 === 0 ? 'bg-white' : 'bg-slate-50');
+            const indicator = isHighest ? ' <span class="text-red-500">&#9650;</span>' : '';
+            html += `<tr class="${rowClass}">
+                <td class="p-2 text-slate-700">${d.short}${indicator}</td>
+                <td class="text-center p-1.5 font-bold ${ti.textColor}">${dd.totalScore}/30</td>
+                <td class="text-center p-1.5 ${dd.s1 > 0 ? 'text-blue-600 font-semibold' : 'text-slate-300'}">${dd.s1}</td>
+                <td class="text-center p-1.5 ${dd.s2 > 0 ? 'text-amber-600 font-semibold' : 'text-slate-300'}">${dd.s2}</td>
+                <td class="text-center p-1.5 ${dd.s3 > 0 ? 'text-red-600 font-semibold' : 'text-slate-300'}">${dd.s3}</td>
+                <td class="text-center p-2"><span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${ti.color}">${ti.tahap}</span></td>
+            </tr>`;
+        });
 
-            html += `           </tbody></table>
+        html += `           </tbody></table>
                         <div class="mt-3 p-3 bg-slate-50 rounded-lg text-xs text-slate-500">
-                            <p class="font-semibold text-slate-600 mb-1">Cara Baca Skor:</p>
-                            <p>Setiap konstruk mempunyai 10 item (skala 0-3). Jumlah skor maksimum = 30.</p>
-                            <p class="mt-1"><span class="text-blue-700 font-bold">0-7</span> = Rendah &nbsp;|&nbsp; <span class="text-amber-700 font-bold">8-15</span> = Sederhana &nbsp;|&nbsp; <span class="text-red-700 font-bold">16-30</span> = Tinggi</p>
+                            <p class="font-semibold text-slate-600 mb-1">Panduan Penskoran (IPGM):</p>
+                            <p><span class="font-bold text-emerald-700">0 - 10</span> = Rendah &nbsp;|&nbsp; <span class="font-bold text-amber-700">11 - 20</span> = Sederhana &nbsp;|&nbsp; <span class="font-bold text-red-700">21 - 30</span> = Tinggi</p>
+                            <p class="mt-1 text-slate-400">Setiap konstruk mempunyai 10 item (skala 0-3). Skor maksimum setiap konstruk = 30.</p>
+                            <p class="mt-1 text-slate-400">Kecil / Sederhana / Besar = bilangan item pada setiap tahap gangguan.</p>
                         </div>
                     </div>
                 </div>
-            </div>
+            </div>`;
 
+        // ── DETAILED INTERPRETATION PER CONSTRUCT ──
+        const nonRendah = domainData.filter(d => d.totalScore > 10);
+        if (nonRendah.length > 0) {
+            html += `<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-md font-bold text-slate-800 mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <span class="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center text-xs font-bold text-amber-700">!</span>
+                    Interpretasi Konstruk Sederhana dan Tinggi
+                </h3>
+                <div class="space-y-3">`;
+            nonRendah.sort((a, b) => b.totalScore - a.totalScore).forEach(d => {
+                const ti = d.tahapInfo;
+                const isTinggi = ti.tahap === 'Tinggi';
+                html += `<div class="p-4 ${isTinggi ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'} border rounded-xl">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+                        <p class="font-bold ${isTinggi ? 'text-red-800' : 'text-amber-800'}">${d.label} (${d.short})</p>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold ${ti.textColor}">Skor: ${d.totalScore}/30</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${ti.color}">${ti.tahap}</span>
+                        </div>
+                    </div>
+                    <p class="text-xs ${isTinggi ? 'text-red-500' : 'text-amber-500'} italic mb-1">${d.desc}</p>
+                    <p class="text-xs ${isTinggi ? 'text-red-600' : 'text-amber-600'}">${ti.interpretasi}</p>
+                </div>`;
+            });
+            html += `</div></div>`;
+        }
+
+        // ── HIGHEST CONSTRUCT ──
+        if (highest && highest.totalScore > 10) {
+            const hti = highest.tahapInfo;
+            html += `
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                 <h3 class="text-md font-bold text-slate-800 mb-3 flex items-center gap-2 border-b border-slate-100 pb-3">
                     <span class="w-7 h-7 bg-red-100 rounded-lg flex items-center justify-center text-xs font-bold text-red-700">!</span>
                     Konstruk Paling Tinggi
                 </h3>
                 <div class="p-4 bg-red-50 border border-red-200 rounded-xl">
-                    <p class="text-base font-bold text-red-800">${highest.short}</p>
-                    <p class="text-sm text-red-700 mt-1">${highest.label}</p>
-                    <p class="text-xs text-red-600 mt-2">Skor: <strong>${highest.totalScore}/30</strong> &nbsp;|&nbsp; Bilangan item bermasalah: <strong>${highest.problemItems}</strong>/10 &nbsp;|&nbsp; Masalah Besar: <strong>${highest.s3}</strong></p>
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-1">
+                        <p class="text-base font-bold text-red-800">${highest.label}</p>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">${hti.tahap} (${highest.totalScore}/30)</span>
+                    </div>
+                    <p class="text-xs text-red-400 italic mb-1">${highest.desc}</p>
+                    <p class="text-sm text-red-700 mt-1">${hti.interpretasi}</p>
                 </div>
             </div>`;
         }
@@ -572,24 +611,21 @@ const app = {
         document.getElementById('main-content').innerHTML = html;
         this.hideNav(); this.hideProgress();
 
-        // Draw chart (only if problems exist)
-        if (!allZero) {
+        // Draw chart (all 11 constructs)
         setTimeout(() => {
             const ctx = document.getElementById('mooneyBarChart');
             if (!ctx) return;
-            const labels = problemDomains.map(d => d.short);
-            const scoreData = problemDomains.map(d => d.totalScore);
-            const barColors = problemDomains.map(d => {
-                const pct = d.totalScore / 30;
-                if (pct >= 0.5) return 'rgba(220, 38, 38, 0.8)';
-                if (pct >= 0.25) return 'rgba(217, 119, 6, 0.8)';
-                return 'rgba(59, 130, 246, 0.8)';
+            const labels = sortedDomains.map(d => d.short);
+            const scoreData = sortedDomains.map(d => d.totalScore);
+            const barColors = sortedDomains.map(d => {
+                if (d.totalScore > 20) return 'rgba(220, 38, 38, 0.8)';
+                if (d.totalScore > 10) return 'rgba(217, 119, 6, 0.8)';
+                return 'rgba(16, 185, 129, 0.8)';
             });
-            const borderColors = problemDomains.map(d => {
-                const pct = d.totalScore / 30;
-                if (pct >= 0.5) return 'rgba(220, 38, 38, 1)';
-                if (pct >= 0.25) return 'rgba(217, 119, 6, 1)';
-                return 'rgba(59, 130, 246, 1)';
+            const borderColors = sortedDomains.map(d => {
+                if (d.totalScore > 20) return 'rgba(220, 38, 38, 1)';
+                if (d.totalScore > 10) return 'rgba(217, 119, 6, 1)';
+                return 'rgba(16, 185, 129, 1)';
             });
 
             new Chart(ctx, {
@@ -598,7 +634,7 @@ const app = {
                     labels: labels,
                     datasets: [
                         {
-                            label: 'Jumlah Skor Masalah',
+                            label: 'Jumlah Skor',
                             data: scoreData,
                             backgroundColor: barColors,
                             borderColor: borderColors,
@@ -626,8 +662,14 @@ const app = {
                         tooltip: {
                             callbacks: {
                                 label: function(ctx) {
-                                    const d = problemDomains[ctx.dataIndex];
-                                    return [`Skor: ${d.totalScore}/30`, `Item Masalah: ${d.problemItems}/10`, `Masalah Besar: ${d.s3}`];
+                                    const d = sortedDomains[ctx.dataIndex];
+                                    return [
+                                        'Skor: ' + d.totalScore + '/30  (' + d.tahapInfo.tahap + ')',
+                                        'Bukan Masalah: ' + d.s0,
+                                        'Masalah Kecil: ' + d.s1,
+                                        'Masalah Sederhana: ' + d.s2,
+                                        'Masalah Besar: ' + d.s3
+                                    ];
                                 }
                             }
                         }
@@ -635,7 +677,6 @@ const app = {
                 }
             });
         }, 80);
-        }
     },
 
     // ─── CORE LOGIC ─────────────────────────────────────────────────────
@@ -666,6 +707,12 @@ const app = {
             return false;
         }
         return true;
+    },
+
+    getTahap(score) {
+        if (score <= 10) return { tahap: 'Rendah', color: 'bg-emerald-100 text-emerald-700', barBg: 'bg-emerald-500', textColor: 'text-emerald-700', border: 'border-emerald-200', interpretasi: 'Tiada atau sangat sedikit masalah dalam konstruk tersebut. Intervensi khusus tidak diperlukan, namun pemantauan berkala digalakkan.' };
+        if (score <= 20) return { tahap: 'Sederhana', color: 'bg-amber-100 text-amber-700', barBg: 'bg-amber-500', textColor: 'text-amber-700', border: 'border-amber-200', interpretasi: 'Menunjukkan terdapat beberapa isu yang mula mempengaruhi kesejahteraan pelajar. Digalakkan mengikuti aktiviti pembangunan diri, bimbingan atau intervensi awal.' };
+        return { tahap: 'Tinggi', color: 'bg-red-100 text-red-700', barBg: 'bg-red-500', textColor: 'text-red-700', border: 'border-red-200', interpretasi: 'Menunjukkan pelajar menghadapi masalah yang ketara dalam konstruk tersebut. Disarankan menjalani sesi bimbingan atau kaunseling bagi mendapatkan bantuan lanjut.' };
     },
 
     calcScores() {
@@ -900,6 +947,7 @@ const app = {
         };
         try {
             await db.collection('ssp_responses').add(studentData);
+            console.log('ssp_responses berjaya ditulis');
             await db.collection('ssp_ic_registry').doc(ic).set({
                 kad_pengenalan: ic,
                 nama: this.answers.A.nama || '',
@@ -907,10 +955,17 @@ const app = {
                 kodKampus: kodKampus,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
+            console.log('ssp_ic_registry berjaya ditulis');
             this.notify('success', 'Berjaya Dihantar', 'Maklumat senarai semak telah direkodkan ke Firestore.');
         } catch (err) {
-            console.error('Submit error:', err);
-            this.notify('error', 'Gagal Dihantar', 'Sila semak sambungan internet dan cuba lagi.');
+            console.error('Submit error:', err.code, err.message);
+            let msg = 'Sila semak sambungan internet dan cuba lagi.';
+            if (err.code === 'permission-denied') {
+                msg = 'Akses ditolak oleh Security Rules. Sila semak Firestore Rules untuk ssp_responses dan ssp_ic_registry.';
+            } else if (err.code === 'unavailable') {
+                msg = 'Perkhidmatan Firestore tidak tersedia. Pastikan fail HTML dibuka melalui pelayan web (localhost) atau HTTPS, bukan terus dari fail (file://).';
+            }
+            this.notify('error', 'Gagal Dihantar', msg);
         }
     },
 
