@@ -364,7 +364,14 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
 
     window.MYFB = {
       auth, db, idToFirebaseEmail,
-      signIn: async (id, password) => signInWithEmailAndPassword(auth, idToFirebaseEmail(id), password),
+      signIn: async (id, password) => {
+        // SSP menggunakan Anonymous Auth pada projek Firebase yang sama.
+        // Pastikan akaun anonim tidak dianggap sebagai pengguna MyKaunseling.
+        if(auth.currentUser?.isAnonymous){
+          await signOut(auth);
+        }
+        return signInWithEmailAndPassword(auth, idToFirebaseEmail(id), password);
+      },
       signOut: async () => signOut(auth),
       readUserProfile: async (uid) => {
         const ref = doc(db, "pengguna", uid);
@@ -1853,46 +1860,122 @@ function toggleLoginPw(){
   if(ic)ic.className=`fas ${el.type==="password"?"fa-eye":"fa-eye-slash"}`;
 }
 
+let AUTH_LOGIN_IN_PROGRESS=false;
+let AUTH_SYSTEM_ENTERED_UID=null;
+
 async function doLogin(){
-  const idEl=document.getElementById("lg-id"), pwEl=document.getElementById("lg-pw");
+  if(AUTH_LOGIN_IN_PROGRESS)return;
+
+  const idEl=document.getElementById("lg-id");
+  const pwEl=document.getElementById("lg-pw");
   const id=(idEl?.value||"").trim().toUpperCase().replace(/[\s-]/g,"");
   const pw=pwEl?.value||"";
-  if(!id){toast("Sila masukkan ID pengguna","err");return;}
-  // Versi produksi: log masuk hanya melalui Firebase Authentication.
-  if(!window.MYFB_CONFIGURED || !window.MYFB){
-    toast("Sistem pengesahan belum tersedia. Sila semak sambungan internet atau konfigurasi Firebase.","err");
+
+  if(!id){
+    toast("Sila masukkan ID pengguna","err");
     return;
   }
 
+  if(!pw){
+    toast("Sila masukkan kata laluan","err");
+    return;
+  }
+
+  if(!window.MYFB_CONFIGURED || !window.MYFB){
+    toast(
+      "Sistem pengesahan belum tersedia. Sila semak sambungan internet atau konfigurasi Firebase.",
+      "err"
+    );
+    return;
+  }
+
+  AUTH_LOGIN_IN_PROGRESS=true;
+
   const btn=document.querySelector('#modal-wrap .btn-pri');
-  if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Mengesahkan...';}
-  showCoreLoading("Sedang mengesahkan...","Firebase sedang menyemak ID pengguna dan kata laluan.");
+  if(btn){
+    btn.disabled=true;
+    btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Mengesahkan...';
+  }
+
+  showCoreLoading(
+    "Sedang mengesahkan...",
+    "Firebase sedang menyemak ID pengguna dan kata laluan."
+  );
+
+  let authenticatedUser=null;
+
   try{
+    // Fasa 1: Firebase Authentication.
     const cred=await window.MYFB.signIn(id,pw);
+    authenticatedUser=cred.user;
+
+    // Fasa 2: Profil Firestore.
     const profile=await window.MYFB.readUserProfile(cred.user.uid);
-    if(!profile) throw new Error("PROFILE_NOT_FOUND");
+
+    if(!profile){
+      await window.MYFB.signOut();
+      throw new Error("PROFILE_NOT_FOUND");
+    }
+
     if(profile.aktif===false){
       await window.MYFB.signOut();
       throw new Error("ACCOUNT_DISABLED");
     }
-    if(String(profile.id||"").toUpperCase().replace(/[\s-]/g,"")!==id){
+
+    const profileId=String(profile.id||"")
+      .toUpperCase()
+      .replace(/[\s-]/g,"");
+
+    if(profileId!==id){
       await window.MYFB.signOut();
       throw new Error("ID_MISMATCH");
     }
-    await enterAuthenticatedSystem(cred.user,profile,true);
+
+    // Masuk sistem sekali sahaja.
+    if(AUTH_SYSTEM_ENTERED_UID!==cred.user.uid || !SES.loggedIn){
+      await enterAuthenticatedSystem(cred.user,profile,true);
+      AUTH_SYSTEM_ENTERED_UID=cred.user.uid;
+    }
+
   }catch(err){
     console.error("Log masuk Firebase gagal:",err);
-    const code=err?.code||err?.message||"";
-    let msg="ID pengguna atau kata laluan tidak sah";
-    if(code.includes("PROFILE_NOT_FOUND")) msg="Profil pengguna belum diwujudkan dalam Cloud Firestore";
-    else if(code.includes("ACCOUNT_DISABLED")) msg="Akaun belum diaktifkan. Sila hubungi Admin Utama IPGM";
-    else if(code.includes("ID_MISMATCH")) msg="ID pengguna tidak sepadan dengan profil akaun";
-    else if(code.includes("auth/too-many-requests")) msg="Terlalu banyak cubaan. Cuba semula kemudian";
-    else if(code.includes("auth/network-request-failed")) msg="Sambungan internet atau Firebase gagal";
+
+    const code=String(err?.code||err?.message||"");
+    let msg="Log masuk gagal";
+
+    if(
+      code.includes("auth/invalid-credential") ||
+      code.includes("auth/invalid-login-credentials") ||
+      code.includes("auth/user-not-found") ||
+      code.includes("auth/wrong-password")
+    ){
+      msg="ID pengguna atau kata laluan tidak sah";
+    }else if(code.includes("PROFILE_NOT_FOUND")){
+      msg="Profil pengguna belum diwujudkan dalam Cloud Firestore";
+    }else if(code.includes("ACCOUNT_DISABLED")){
+      msg="Akaun belum diaktifkan. Sila hubungi Admin Utama IPGM";
+    }else if(code.includes("ID_MISMATCH")){
+      msg="ID pengguna tidak sepadan dengan profil akaun";
+    }else if(code.includes("auth/too-many-requests")){
+      msg="Terlalu banyak cubaan. Cuba semula kemudian";
+    }else if(code.includes("auth/network-request-failed")){
+      msg="Sambungan internet atau Firebase gagal";
+    }else if(code.includes("permission-denied")){
+      msg="Log masuk berjaya tetapi akses Firestore ditolak. Sila semak Security Rules";
+    }else if(authenticatedUser){
+      msg="Log masuk berjaya tetapi paparan sistem gagal dimuatkan";
+    }
+
     toast(msg,"err");
+
   }finally{
+    AUTH_LOGIN_IN_PROGRESS=false;
     hideCoreLoading();
-    if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-sign-in-alt"></i>Log Masuk';}
+
+    if(btn){
+      btn.disabled=false;
+      btn.innerHTML='<i class="fas fa-sign-in-alt"></i>Log Masuk';
+    }
   }
 }
 
@@ -1985,6 +2068,12 @@ function enterDemoSystem(user, profile){
 
 
 async function enterAuthenticatedSystem(user,profile,showWelcome=false){
+  if(AUTH_SYSTEM_ENTERED_UID===user.uid && SES.loggedIn){
+    return;
+  }
+
+  AUTH_SYSTEM_ENTERED_UID=user.uid;
+
   // Normalisasi kampus ke kod pendek (contoh: "IPGKBM" → "BM")
   const _rawKampus = profile.kampus || profile.kodKampus || null;
   const _normKampus = _rawKampus ? normalizeCampusId(_rawKampus) : null;
@@ -2008,6 +2097,9 @@ async function enterAuthenticatedSystem(user,profile,showWelcome=false){
 }
 
 async function doLogout(){
+  AUTH_LOGIN_IN_PROGRESS=false;
+  AUTH_SYSTEM_ENTERED_UID=null;
+
   try{ if(window.MYFB_CONFIGURED && window.MYFB) await window.MYFB.signOut(); }
   catch(err){ console.error("Log keluar Firebase gagal:",err); }
   SES={loggedIn:false,uid:null,role:null,id:null,nama:null,kampus:null,pg:null};
@@ -2155,7 +2247,19 @@ async function initFirebaseAuthObserver(){
   setDbStatus(true,"Firebase aktif");
   setDevStatus("dev-firebase","Bersambung","ok");
   window.MYFB.onAuthStateChanged(async user=>{
+    if(user?.isAnonymous){
+      try{ await window.MYFB.signOut(); }catch(_e){}
+      return;
+    }
+
+    // doLogin() sedang mengurus pengesahan dan profil.
+    // Elakkan observer memasuki sistem pada masa yang sama.
+    if(user && AUTH_LOGIN_IN_PROGRESS){
+      return;
+    }
+
     if(!user){
+      AUTH_SYSTEM_ENTERED_UID=null;
       setDevStatus("dev-auth","Belum log masuk","warn");
       setDevStatus("dev-firestore","Menunggu sesi","warn");
       refreshDevPanel();
@@ -2167,7 +2271,11 @@ async function initFirebaseAuthObserver(){
       }
       return;
     }
-    if(SES.uid===user.uid && SES.loggedIn) return;
+    if(
+      (SES.uid===user.uid && SES.loggedIn) ||
+      AUTH_SYSTEM_ENTERED_UID===user.uid
+    ) return;
+
     try{
       showCoreLoading("Memulihkan sesi...","MyKaunseling sedang membaca profil pengguna daripada Firestore.");
       const profile=await window.MYFB.readUserProfile(user.uid);
@@ -16958,8 +17066,8 @@ setTimeout(spkInjectMenu,1000);
         uid:activeUid,
         idPengguna:window.SES?.id || "",
         nama:window.SES?.nama || "",
-        peranan:window.SES?.peranan || "",
-        kodKampus:window.SES?.kodKampus || window.SES?.kampus || "",
+        peranan:window.SES?.role || "",
+        kodKampus:window.SES?.kampus || "",
         jenis:eventType,
         sebab:reason || "",
         sessionId:activeSessionId,
@@ -17113,7 +17221,7 @@ setTimeout(spkInjectMenu,1000);
       if(!window.MYFB?.auth) return;
 
       window.MYFB.onAuthStateChanged(async user=>{
-        if(user){
+        if(user && !user.isAnonymous){
           await startSecurity(user);
         }else{
           activeUid="";
@@ -17244,13 +17352,28 @@ setTimeout(spkInjectMenu,1000);
 
 
 
-<script id="mk-analisis-ujian-psikologi-isp-ssp-v2">
-/* ANALISIS UJIAN PSIKOLOGI — ISP & SSP | ZON + KAMPUS */
+<script id="mk-analisis-ujian-psikologi-isp-ssp-v3-powerbi">
+/* ═══════════════════════════════════════════════════════════════════
+   ANALISIS UJIAN PSIKOLOGI — ISP & SSP | POWER BI STYLE EDITION
+   ═══════════════════════════════════════════════════════════════════ */
 let AUP_DATA={isp:[],ssp:[]};
 let AUP_CHARTS=[];
 let AUP_VISIBLE_ROWS=[];
-let AUP_CONSTRUCT_HIGH=[];
+let AUP_CONSTRUCT_GROUPS=[];
+let AUP_RISK_ROWS=[];
 const AUP_ZONE_ORDER=["Zon IPGM","Zon Tengah","Zon Selatan","Zon Timur","Zon Utara","Zon Sabah","Zon Sarawak"];
+const AUP_PBI={
+  bg:"#0f0f23",bg2:"#1a1a2e",bg3:"#16213e",bg4:"#1b1b2f",
+  card:"#162447",cardHover:"#1b2a4a",
+  accent:"#e94560",accent2:"#0f3460",accent3:"#533483",
+  green:"#00b894",amber:"#fdcb6e",red:"#e17055",blue:"#74b9ff",
+  purple:"#a29bfe",teal:"#00cec9",pink:"#fd79a8",
+  text:"#f1f1f1",textMuted:"#8395a7",textDim:"#576574",
+  border:"#2d3561",borderLight:"#34495e"
+};
+const AUP_SSP_CONSTRUCTS=["Kesihatan","Kewangan","Sosial","Hubungan Percintaan","Interpersonal","Emosi","Nilai dan Kerohanian","Keluarga","Kerjaya","Pembelajaran","Pengajaran"];
+const AUP_SSP_KEYS=["hpd","kew","sos","hpc","itp","emo","nkr","kel","krj","pmb","png"];
+const AUP_CONSTRUCT_COLORS=["#ef4444","#f97316","#eab308","#84cc16","#22c55e","#14b8a6","#06b6d4","#3b82f6","#6366f1","#8b5cf6","#ec4899"];
 
 function aupText(v){return String(v??"").replace(/\s+/g," ").trim();}
 function aupNum(v){const n=Number(String(v??"").replace(/,/g,"").trim());return Number.isFinite(n)?n:null;}
@@ -17268,220 +17391,593 @@ function aupLevel(r){return aupText(aupPick(r,["tahap","kategori","interpretasi"
 function aupNeedsAttention(r){const level=aupLevel(r).toUpperCase();return ["TINGGI","SANGAT TINGGI","KRITIKAL","BERISIKO","PERLU INTERVENSI","TERUK","SANGAT TERUK","BAHAYA","MENGGANGGU","SANGAT MENGGANGGU"].some(k=>level.includes(k));}
 
 function aupObjectValue(value){
-  if(value && typeof value==="object") return value;
-  if(typeof value==="string"){
-    const text=value.trim();
-    if((text.startsWith("{")&&text.endsWith("}"))||(text.startsWith("[")&&text.endsWith("]"))){
-      try{return JSON.parse(text);}catch(_e){}
-    }
-  }
+  if(value&&typeof value==="object")return value;
+  if(typeof value==="string"){const t=value.trim();if((t.startsWith("{")&&t.endsWith("}"))||(t.startsWith("[")&&t.endsWith("]"))){try{return JSON.parse(t);}catch(_){}}}
   return null;
 }
-function aupConstructSource(row){
-  const keys=[
-    "scores","constructScores","konstrukScores","skorKonstruk",
-    "domainScores","subscaleScores","dimensiScores","constructs",
-    "konstruk","domains","subscales"
-  ];
-  for(const key of keys){
-    const obj=aupObjectValue(row?.[key]);
-    if(obj && !Array.isArray(obj)) return obj;
-  }
+
+function aupNormalizeConstructName(name,index){
+  const raw=aupText(name);const compact=raw.toLowerCase().replace(/[^a-z0-9]/g,"");
+  const aliases={hpd:0,kesihatan:0,kew:1,kewangan:1,sos:2,sosial:2,hpc:3,hubunganpercintaan:3,itp:4,interpersonal:4,emo:5,emosi:5,nkr:6,nilaidankerohanian:6,kel:7,keluarga:7,krj:8,kerjaya:8,pmb:9,pembelajaran:9,png:10,pengajaran:10};
+  if(aliases[compact]!==undefined)return AUP_SSP_CONSTRUCTS[aliases[compact]];
+  const numbered=compact.match(/^(?:konstruk|construct|domain|c|k)?(\d{1,2})$/);
+  if(numbered){const pos=Number(numbered[1])-1;if(pos>=0&&pos<AUP_SSP_CONSTRUCTS.length)return AUP_SSP_CONSTRUCTS[pos];}
+  if(index>=0&&index<AUP_SSP_CONSTRUCTS.length)return AUP_SSP_CONSTRUCTS[index];
+  return raw||`Konstruk ${index+1}`;
+}
+
+function aupItemScore(item){
+  if(typeof item==="number")return item;
+  if(typeof item==="string"&&item.trim()!==""&&!isNaN(Number(item)))return Number(item);
+  if(item&&typeof item==="object")return aupNum(aupPick(item,["score","skor","value","nilai","jawapan","response","markah"]));
   return null;
 }
+
 function aupConstructEntries(row){
-  const source=aupConstructSource(row);
-  if(!source)return [];
-  return Object.entries(source).map(([name,raw])=>{
-    let score=null,max=null,level="";
-    if(typeof raw==="number" || (typeof raw==="string" && raw.trim()!=="" && !isNaN(Number(raw)))){
-      score=aupNum(raw);
-    }else if(raw && typeof raw==="object"){
-      score=aupNum(aupPick(raw,["score","skor","jumlahSkor","total","value","nilai"]));
-      max=aupNum(aupPick(raw,["max","skorMaksimum","maximum","maksimum"]));
-      level=aupText(aupPick(raw,["tahap","kategori","interpretasi","level","status"]));
-    }
-    const upper=level.toUpperCase();
-    let high=["TINGGI","SANGAT TINGGI","KRITIKAL","TERUK","SANGAT TERUK"].some(k=>upper.includes(k));
-    if(!high && score!==null){
-      if(max!==null && max>0) high=score >= (max*2/3);
-      else if(row._instrument==="SSP") high=score>=21;
-    }
-    return {name:aupText(name),score,max,level,high};
-  }).filter(x=>x.name);
-}
-function aupHighConstructSummary(rows){
-  const map=new Map();
-  rows.forEach(row=>{
-    aupConstructEntries(row).filter(x=>x.high).forEach(x=>{
-      if(!map.has(x.name))map.set(x.name,{name:x.name,count:0,students:[]});
-      const item=map.get(x.name);
-      item.count++;
-      item.students.push({row,construct:x});
+  if(row._instrument!=="SSP")return[];
+  const scoresObj=aupObjectValue(row.scores);
+  if(scoresObj&&!Array.isArray(scoresObj)){
+    return AUP_SSP_KEYS.map((key,index)=>{
+      const raw=scoresObj[key]??scoresObj[AUP_SSP_CONSTRUCTS[index]];let score=null;
+      if(typeof raw==="number")score=raw;
+      else if(typeof raw==="string"&&raw.trim()!==""&&!isNaN(Number(raw)))score=Number(raw);
+      else if(raw&&typeof raw==="object")score=aupNum(aupPick(raw,["totalScore","skorKeseluruhan","jumlahSkor","score","skor","value","nilai","jumlah","total"]));
+      let category="Belum dikategorikan";
+      if(score!==null){if(score>=21)category="Tinggi";else if(score>=11)category="Sederhana";else category="Rendah";}
+      return{key,name:AUP_SSP_CONSTRUCTS[index],score,max:30,category,high:category==="Tinggi"};
     });
-  });
-  return [...map.values()].sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,"ms"));
+  }
+  const items=aupObjectValue(row.items)||row.items;
+  if(Array.isArray(items)&&items.length>=110){
+    return AUP_SSP_CONSTRUCTS.map((name,index)=>{
+      const values=items.slice(index*10,(index+1)*10).map(aupItemScore).filter(v=>v!==null);
+      const score=values.length===10?values.reduce((t,v)=>t+v,0):null;
+      let category="Belum dikategorikan";if(score!==null){if(score>=21)category="Tinggi";else if(score>=11)category="Sederhana";else category="Rendah";}
+      return{key:AUP_SSP_KEYS[index],name,score,max:30,category,high:category==="Tinggi"};
+    });
+  }
+  return AUP_SSP_CONSTRUCTS.map((name,index)=>({key:AUP_SSP_KEYS[index],name,score:null,max:30,category:"Belum dikategorikan",high:false}));
 }
-function aupShowConstructStudents(index){
-  const item=AUP_CONSTRUCT_HIGH[index];
-  if(!item)return;
-  document.getElementById("modal-wrap").innerHTML=`
-  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
-    <div class="modal-box" style="max-width:980px;padding:0;overflow:hidden">
-      <div style="padding:18px 22px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between">
-        <div><h3 style="font-size:1.1rem;font-weight:800;color:var(--navy)">Konstruk Skor Tinggi: ${esc(item.name)}</h3>
-        <div style="font-size:.72rem;color:#64748B;margin-top:3px">${item.count} rekod pelajar terlibat</div></div>
-        <button class="user-drawer-close" onclick="closeModal()">×</button>
-      </div>
-      <div style="padding:18px 22px;overflow:auto;max-height:68vh">
-        <table class="tbl"><thead><tr><th>Instrumen</th><th>Nama</th><th>ID Pelajar</th><th>Zon</th><th>Kampus</th><th>Skor Konstruk</th><th>Tahap</th><th>Tarikh</th></tr></thead>
-        <tbody>${item.students.map(({row,construct})=>`<tr><td>${esc(row._instrument)}</td><td><b>${esc(row._name)}</b></td><td>${esc(row._id||"—")}</td><td>${esc(row._zone)}</td><td>${esc(row._campus)}</td><td>${construct.score===null?"—":construct.score}${construct.max!==null?` / ${construct.max}`:""}</td><td>${esc(construct.level||"Tinggi")}</td><td>${esc(row._date)}</td></tr>`).join("")}</tbody></table>
-      </div>
-    </div>
-  </div>`;
+
+function aupStudentRisk(row){
+  const constructs=aupConstructEntries(row);const high=constructs.filter(x=>x.category==="Tinggi");const moderate=constructs.filter(x=>x.category==="Sederhana");
+  let risk="Rendah";if(high.length>=3)risk="Tinggi";else if(high.length>=1||moderate.length>=3)risk="Perlu Perhatian";
+  return{row,constructs,highCount:high.length,moderateCount:moderate.length,risk};
 }
-function aupNormalize(record,instrument){const code=aupCampusCode(record);const info=MASTER_KAMPUS_BY_ID[code]||{};return {...record,_instrument:instrument,_code:code,_campus:info.nama||aupText(aupPick(record,["organisasi","namaKampus","ipgmKampus","kampus"]))||code||"Tidak dikenal pasti",_zone:info.zon||aupText(record.zon)||"Tidak dikenal pasti",_state:info.negeri||aupText(record.negeri)||"—",_name:aupName(record),_id:aupId(record),_program:aupProgram(record),_gender:aupGender(record),_date:aupDateLabel(record),_year:aupYear(record),_score:aupScore(record),_level:aupLevel(record),_attention:aupNeedsAttention(record)};}
+
+function aupBuildConstructGroups(rows){
+  const sspRows=rows.filter(r=>r._instrument==="SSP");
+  const groups=AUP_SSP_CONSTRUCTS.map(name=>({name,Rendah:[],Sederhana:[],Tinggi:[],"Belum dikategorikan":[]}));
+  sspRows.forEach(row=>{aupConstructEntries(row).forEach((construct,index)=>{const group=groups[index];if(!group)return;const category=construct.category in group?construct.category:"Belum dikategorikan";group[category].push({row,construct});});});
+  return groups;
+}
+
+function aupNormalize(record,instrument){
+  const code=aupCampusCode(record);const info=MASTER_KAMPUS_BY_ID[code]||{};
+  const base={...record,_instrument:instrument,_code:code,
+    _campus:info.nama||aupText(aupPick(record,["organisasi","namaKampus","ipgmKampus","ipg","kampus"]))||code||"Tidak dikenal pasti",
+    _zone:info.zon||aupText(record.zon)||"Tidak dikenal pasti",
+    _state:info.negeri||aupText(record.negeri)||"—",
+    _name:aupName(record),_id:aupId(record),_program:aupProgram(record),_gender:aupGender(record),
+    _date:aupDateLabel(record),_year:aupYear(record),_score:aupScore(record),_level:aupLevel(record),_attention:aupNeedsAttention(record)};
+  if(instrument==="SSP"){const constructs=aupConstructEntries(base);const validScores=constructs.map(i=>i.score).filter(s=>s!==null);
+    const totalScore=validScores.length?validScores.reduce((t,s)=>t+s,0):null;
+    const highCount=constructs.filter(i=>i.category==="Tinggi").length;const moderateCount=constructs.filter(i=>i.category==="Sederhana").length;
+    let risk="Rendah";if(highCount>=3)risk="Tinggi";else if(highCount>=1||moderateCount>=3)risk="Perlu Perhatian";
+    base._score=totalScore;base._level=risk;base._attention=risk!=="Rendah";base._highCount=highCount;base._moderateCount=moderateCount;base._constructs=constructs;}
+  return base;
+}
 
 async function aupReadCollection(name){
-  await (window.MYFB_READY||Promise.resolve(true));
-  const {db,collection,getDocs,query,where}=window.__FS;
+  await(window.MYFB_READY||Promise.resolve(true));const{db,collection,getDocs,query,where}=window.__FS;
   const campus=canonicalKodKampusGlobal(SES.kodKampus||SES.kampus_id||SES.kampus||"");
   if(isAdmin()){const snap=await getDocs(collection(db,name));return snap.docs.map(d=>({_docId:d.id,...d.data()}));}
-  if(campus){
-    const exact=await getDocs(query(collection(db,name),where("kodKampus","==",campus)));
-    if(!exact.empty)return exact.docs.map(d=>({_docId:d.id,...d.data()}));
-    const all=await getDocs(collection(db,name));
-    return all.docs.map(d=>({_docId:d.id,...d.data()})).filter(r=>aupCampusCode(r)===campus);
-  }
-  return [];
+  if(campus){const exact=await getDocs(query(collection(db,name),where("kodKampus","==",campus)));return exact.docs.map(d=>({_docId:d.id,...d.data()}));}
+  return[];
 }
-async function aupLoad(c){
-  c.innerHTML=`<div style="padding:45px;text-align:center;color:var(--muted)"><i class="fas fa-spinner fa-spin" style="font-size:30px;color:var(--pri);display:block;margin-bottom:10px"></i>Memuatkan analisis ISP dan SSP...</div>`;
-  try{
-    const [ispRaw,sspRaw]=await Promise.all([aupReadCollection("kesihatan_mental_klien"),aupReadCollection("ssp_responses")]);
-    AUP_DATA={isp:ispRaw.map(r=>aupNormalize(r,"ISP")),ssp:sspRaw.map(r=>aupNormalize(r,"SSP"))};
-    aupRender(c);
-  }catch(error){
-    console.error(error);
-    c.innerHTML=`<div class="card"><div class="card-body" style="padding:26px;color:#B91C1C"><b>Data ISP/SSP gagal dimuatkan.</b><div style="margin-top:5px">${esc(error.message||error)}</div></div></div>`;
-  }
-}
-function aupAllRows(){return [...AUP_DATA.isp,...AUP_DATA.ssp];}
+
+function aupAllRows(){return[...AUP_DATA.isp,...AUP_DATA.ssp];}
 function aupRoleCampus(){return canonicalKodKampusGlobal(SES.kodKampus||SES.kampus_id||SES.kampus||"")||"";}
 function aupRoleZone(){return MASTER_KAMPUS_BY_ID[aupRoleCampus()]?.zon||"";}
-function aupCampusOptions(zone=""){let rows=aupAllRows();if(zone)rows=rows.filter(r=>r._zone===zone);const map=new Map();rows.forEach(r=>{if(r._code&&!map.has(r._code))map.set(r._code,r._campus);});return [...map.entries()].sort((a,b)=>a[1].localeCompare(b[1],"ms"));}
+function aupCampusOptions(zone=""){let rows=aupAllRows();if(zone)rows=rows.filter(r=>r._zone===zone);const map=new Map();rows.forEach(r=>{if(r._code&&!map.has(r._code))map.set(r._code,r._campus);});return[...map.entries()].sort((a,b)=>a[1].localeCompare(b[1],"ms"));}
 function aupUpdateCampusFilter(){const zone=document.getElementById("aup-zone")?.value||"";const select=document.getElementById("aup-campus");if(!select)return;const current=select.value,own=aupRoleCampus(),options=aupCampusOptions(zone);select.innerHTML=`<option value="">Semua Kampus</option>`+options.map(([c,n])=>`<option value="${esc(c)}">${esc(c)} · ${esc(n)}</option>`).join("");if(!isAdmin()&&own){select.value=own;select.disabled=true;}else{select.disabled=false;select.value=options.some(([c])=>c===current)?current:"";}}
 function aupFiltered(){const instrument=document.getElementById("aup-instrument")?.value||"";const year=document.getElementById("aup-year")?.value||"";const zone=document.getElementById("aup-zone")?.value||"";const campus=document.getElementById("aup-campus")?.value||"";const level=document.getElementById("aup-level")?.value||"";const search=aupText(document.getElementById("aup-search")?.value).toLowerCase();return aupAllRows().filter(r=>(!instrument||r._instrument===instrument)&&(!year||String(r._year)===year)&&(!zone||r._zone===zone)&&(!campus||r._code===campus)&&(!level||r._level===level)&&(!search||[r._name,r._id,r._program,r._campus,r._zone,r._state,r._level,r._instrument].join(" ").toLowerCase().includes(search)));}
+function aupCountMap(rows,key){const map={};rows.forEach(r=>{const v=r[key]||"Tidak dikenal pasti";map[v]=(map[v]||0)+1;});return map;}
+function aupCampusSummary(rows){const map=new Map();rows.forEach(r=>{const key=r._code||r._campus;if(!map.has(key))map.set(key,{code:r._code||"—",campus:r._campus,zone:r._zone,state:r._state,total:0,isp:0,ssp:0,attention:0,scoreTotal:0,scoreCount:0});const x=map.get(key);x.total++;x[r._instrument.toLowerCase()]++;if(r._attention)x.attention++;if(r._score!==null){x.scoreTotal+=r._score;x.scoreCount++;}});return[...map.values()].map(v=>({...v,average:v.scoreCount?v.scoreTotal/v.scoreCount:null})).sort((a,b)=>b.total-a.total||a.campus.localeCompare(b.campus,"ms"));}
+
+/* ══════════════════ POWER BI RENDERING ══════════════════ */
+
+async function aupLoad(c){
+  c.innerHTML=`<div style="padding:60px;text-align:center;color:${AUP_PBI.textMuted}"><div style="font-size:48px;margin-bottom:16px;opacity:.3">&#x1F4CA;</div><div style="font-size:1.1rem;font-weight:600;color:${AUP_PBI.text}">Memuatkan analisis ISP dan SSP...</div><div style="font-size:.8rem;margin-top:8px">Menyambung ke Firebase Firestore</div><div style="margin-top:20px;width:200px;height:4px;background:${AUP_PBI.border};border-radius:2px;margin:0 auto;overflow:hidden"><div style="width:40%;height:100%;background:${AUP_PBI.accent};border-radius:2px;animation:aupPulse 1.5s ease-in-out infinite"></div></div></div><style>@keyframes aupPulse{0%,100%{opacity:.4;transform:scaleX(.6)}50%{opacity:1;transform:scaleX(1)}}</style>`;
+  try{const[ispRaw,sspRaw]=await Promise.all([aupReadCollection("kesihatan_mental_klien"),aupReadCollection("ssp_responses")]);AUP_DATA={isp:ispRaw.map(r=>aupNormalize(r,"ISP")),ssp:sspRaw.map(r=>aupNormalize(r,"SSP"))};aupRender(c);}catch(error){console.error(error);c.innerHTML=`<div style="padding:40px;text-align:center;background:${AUP_PBI.card};border-radius:12px;border:1px solid ${AUP_PBI.red}"><div style="font-size:40px;margin-bottom:12px">&#x26A0;&#xFE0F;</div><div style="font-size:1rem;font-weight:700;color:${AUP_PBI.red}">Data ISP/SSP gagal dimuatkan</div><div style="font-size:.85rem;color:${AUP_PBI.textMuted};margin-top:8px">${esc(error.message||error)}</div></div>`;}
+}
+
 function aupRender(c){
   const all=aupAllRows();
   const years=[...new Set(all.map(r=>r._year).filter(Boolean))].sort((a,b)=>b-a);
   const levels=[...new Set(all.map(r=>r._level).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ms"));
-  const zones=[...new Set(all.map(r=>r._zone).filter(Boolean))].sort((a,b)=>{const ia=AUP_ZONE_ORDER.indexOf(a),ib=AUP_ZONE_ORDER.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,"ms");});
+  const zones=[...new Set(all.map(r=>r._zone).filter(Boolean))].sort((a,b)=>{const ia=AUP_ZONE_ORDER.indexOf(a),ib=AUP_ZONE_ORDER.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,"ms");});
+  const P=AUP_PBI;
   c.innerHTML=`
-  <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:11px 14px;margin-bottom:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-    <i class="fas fa-chart-pie" style="color:#2563EB"></i><b style="font-size:.78rem">Analisis Ujian Psikologi: ISP dan SSP</b>
-    <span style="font-size:.72rem;color:#64748B">${isAdmin()?"Paparan kebangsaan mengikut zon dan kampus":"Paparan terhad kepada "+esc(kNama(SES.kampus))}</span>
-    <div style="margin-left:auto;display:flex;gap:7px"><button class="btn btn-out btn-sm" onclick="aupExportExcel()"><i class="fas fa-file-excel"></i> Excel Ditapis</button><button class="btn btn-out btn-sm" onclick="aupLoad(document.getElementById('pg-body'))"><i class="fas fa-rotate-right"></i> Muat Semula</button></div>
-  </div>
-  <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:13px">
-    <select class="fi" id="aup-instrument" onchange="aupRefresh()"><option value="">Semua Instrumen</option><option>ISP</option><option>SSP</option></select>
-    <select class="fi" id="aup-year" onchange="aupRefresh()"><option value="">Semua Tahun</option>${years.map(y=>`<option>${y}</option>`).join("")}</select>
-    <select class="fi" id="aup-zone" onchange="aupUpdateCampusFilter();aupRefresh()" ${!isAdmin()?"disabled":""}><option value="">Semua Zon</option>${zones.map(z=>`<option value="${esc(z)}">${esc(z)}</option>`).join("")}</select>
-    <select class="fi" id="aup-campus" onchange="aupRefresh()"><option value="">Semua Kampus</option></select>
-    <select class="fi" id="aup-level" onchange="aupRefresh()"><option value="">Semua Tahap/Kategori</option>${levels.map(v=>`<option>${esc(v)}</option>`).join("")}</select>
-    <input class="fi" id="aup-search" oninput="aupRefresh()" placeholder="Cari nama, ID, program...">
-  </div><div id="aup-content"></div>`;
+  <style>
+    .pbi-wrap{font-family:'DM Sans',sans-serif;color:${P.text};}
+    .pbi-slicer{background:${P.card};border:1px solid ${P.border};border-radius:8px;padding:10px 12px;color:${P.text};font-size:.8rem;width:100%;outline:none;transition:border-color .2s;}
+    .pbi-slicer:focus{border-color:${P.accent};}
+    .pbi-slicer option{background:${P.bg2};color:${P.text};}
+    .pbi-search{background:${P.card};border:1px solid ${P.border};border-radius:8px;padding:10px 12px 10px 36px;color:${P.text};font-size:.8rem;width:100%;outline:none;transition:border-color .2s;}
+    .pbi-search:focus{border-color:${P.accent};}
+    .pbi-search::placeholder{color:${P.textDim};}
+    .pbi-card{background:${P.card};border:1px solid ${P.border};border-radius:12px;overflow:hidden;transition:box-shadow .2s,border-color .2s;}
+    .pbi-card:hover{border-color:${P.borderLight};box-shadow:0 4px 24px rgba(0,0,0,.3);}
+    .pbi-card-head{padding:14px 18px 10px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid ${P.border};}
+    .pbi-card-title{font-family:'Outfit',sans-serif;font-size:.88rem;font-weight:700;color:${P.text};line-height:1.3;}
+    .pbi-card-sub{font-size:.7rem;color:${P.textMuted};margin-top:2px;}
+    .pbi-card-body{padding:16px 18px;}
+    .pbi-kpi{background:${P.card};border:1px solid ${P.border};border-radius:12px;padding:18px 16px;position:relative;overflow:hidden;cursor:default;transition:all .25s;}
+    .pbi-kpi:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.4);}
+    .pbi-kpi-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;margin-bottom:10px;}
+    .pbi-kpi-val{font-family:'Outfit',sans-serif;font-size:1.7rem;font-weight:800;line-height:1.1;}
+    .pbi-kpi-lbl{font-size:.72rem;color:${P.textMuted};margin-top:4px;text-transform:uppercase;letter-spacing:.5px;font-weight:500;}
+    .pbi-kpi-sub{font-size:.68rem;margin-top:6px;font-weight:600;}
+    .pbi-btn{background:${P.bg3};border:1px solid ${P.border};color:${P.text};padding:7px 14px;border-radius:8px;font-size:.75rem;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .2s;font-family:'DM Sans',sans-serif;}
+    .pbi-btn:hover{background:${P.border};border-color:${P.textDim};}
+    .pbi-tbl{width:100%;border-collapse:collapse;font-size:.76rem;}
+    .pbi-tbl thead th{background:${P.bg3};color:${P.textMuted};font-weight:600;text-transform:uppercase;font-size:.65rem;letter-spacing:.5px;padding:10px 12px;text-align:left;border-bottom:1px solid ${P.border};white-space:nowrap;}
+    .pbi-tbl tbody tr{border-bottom:1px solid ${P.border};transition:background .15s;}
+    .pbi-tbl tbody tr:hover{background:rgba(255,255,255,.03);}
+    .pbi-tbl tbody td{padding:9px 12px;color:${P.text};}
+    .pbi-bdg{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.68rem;font-weight:600;}
+    .pbi-bdg-green{background:rgba(0,184,148,.15);color:${P.green};}
+    .pbi-bdg-amber{background:rgba(253,203,110,.15);color:${P.amber};}
+    .pbi-bdg-red{background:rgba(225,112,85,.15);color:${P.red};}
+    .pbi-bdg-blue{background:rgba(116,185,255,.15);color:${P.blue};}
+    .pbi-heat{display:grid;grid-template-columns:140px repeat(3,1fr);gap:1px;background:${P.border};border-radius:8px;overflow:hidden;}
+    .pbi-heat-cell{background:${P.card};padding:8px 10px;font-size:.72rem;display:flex;align-items:center;justify-content:center;font-weight:600;}
+    .pbi-heat-label{background:${P.bg3};padding:8px 10px;font-size:.72rem;color:${P.text};display:flex;align-items:center;font-weight:500;}
+    .pbi-heat-hdr{background:${P.bg2};padding:8px 10px;font-size:.68rem;color:${P.textMuted};display:flex;align-items:center;justify-content:center;font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+    .pbi-empty{text-align:center;padding:30px;color:${P.textDim};font-size:.85rem;}
+    .pbi-filter-bar{background:${P.bg2};border:1px solid ${P.border};border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+    .pbi-filter-label{font-size:.68rem;color:${P.textMuted};text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:2px;}
+    .pbi-scroll{overflow:auto;max-height:480px;}
+    .pbi-scroll::-webkit-scrollbar{width:6px;}
+    .pbi-scroll::-webkit-scrollbar-track{background:${P.bg2};}
+    .pbi-scroll::-webkit-scrollbar-thumb{background:${P.border};border-radius:3px;}
+    .pbi-scroll::-webkit-scrollbar-thumb:hover{background:${P.textDim};}
+  </style>
+  <div class="pbi-wrap">
+    <div class="pbi-filter-bar">
+      <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:200px">
+        <i class="fas fa-chart-pie" style="color:${P.accent};font-size:1rem"></i>
+        <div>
+          <div style="font-size:.85rem;font-weight:700;color:${P.text}">Analisis Ujian Psikologi</div>
+          <div style="font-size:.7rem;color:${P.textMuted}">${isAdmin()?"Paparan kebangsaan — semua zon dan kampus":"Paparan terhad: "+esc(kNama(SES.kampus))}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="pbi-btn" onclick="aupExportExcel()"><i class="fas fa-file-excel" style="color:${P.green}"></i> Excel</button>
+        <button class="pbi-btn" onclick="aupExportPDF()"><i class="fas fa-file-pdf" style="color:${P.red}"></i> PDF</button>
+        <button class="pbi-btn" onclick="aupLoad(document.getElementById('pg-body'))"><i class="fas fa-rotate-right"></i> Muat Semula</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:16px">
+      <div><div class="pbi-filter-label">Instrumen</div><select class="pbi-slicer" id="aup-instrument" onchange="aupRefresh()"><option value="">Semua Instrumen</option><option>ISP</option><option selected>SSP</option></select></div>
+      <div><div class="pbi-filter-label">Tahun</div><select class="pbi-slicer" id="aup-year" onchange="aupRefresh()"><option value="">Semua Tahun</option>${years.map(y=>`<option>${y}</option>`).join("")}</select></div>
+      <div><div class="pbi-filter-label">Zon</div><select class="pbi-slicer" id="aup-zone" onchange="aupUpdateCampusFilter();aupRefresh()" ${!isAdmin()?"disabled":""}><option value="">Semua Zon</option>${zones.map(z=>`<option value="${esc(z)}">${esc(z)}</option>`).join("")}</select></div>
+      <div><div class="pbi-filter-label">Kampus</div><select class="pbi-slicer" id="aup-campus" onchange="aupRefresh()"><option value="">Semua Kampus</option></select></div>
+      <div><div class="pbi-filter-label">Tahap Risiko</div><select class="pbi-slicer" id="aup-level" onchange="aupRefresh()"><option value="">Semua Tahap</option>${levels.map(v=>`<option>${esc(v)}</option>`).join("")}</select></div>
+      <div><div class="pbi-filter-label">Carian</div><div style="position:relative"><i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:${P.textDim};font-size:.75rem"></i><input class="pbi-search" id="aup-search" oninput="aupRefresh()" placeholder="Nama, ID, program..."></div></div>
+    </div>
+    <div id="aup-content"></div>
+  </div>`;
   if(!isAdmin()&&aupRoleZone())document.getElementById("aup-zone").value=aupRoleZone();
   aupUpdateCampusFilter();
   if(!isAdmin()&&aupRoleCampus())document.getElementById("aup-campus").value=aupRoleCampus();
   aupRefresh();
 }
-function aupCountMap(rows,key){const map={};rows.forEach(r=>{const v=r[key]||"Tidak dikenal pasti";map[v]=(map[v]||0)+1;});return map;}
-function aupCampusSummary(rows){const map=new Map();rows.forEach(r=>{const key=r._code||r._campus;if(!map.has(key))map.set(key,{code:r._code||"—",campus:r._campus,zone:r._zone,state:r._state,total:0,isp:0,ssp:0,attention:0,scoreTotal:0,scoreCount:0});const x=map.get(key);x.total++;x[r._instrument.toLowerCase()]++;if(r._attention)x.attention++;if(r._score!==null){x.scoreTotal+=r._score;x.scoreCount++;}});return [...map.values()].map(v=>({...v,average:v.scoreCount?v.scoreTotal/v.scoreCount:null})).sort((a,b)=>b.total-a.total||a.campus.localeCompare(b.campus,"ms"));}
+
 function aupRefresh(){
-  const rows=aupFiltered();AUP_VISIBLE_ROWS=[...rows].sort((a,b)=>(aupDateValue(b)||0)-(aupDateValue(a)||0));
-  const isp=rows.filter(r=>r._instrument==="ISP"),ssp=rows.filter(r=>r._instrument==="SSP"),attention=rows.filter(r=>r._attention),unique=new Set(rows.map(r=>r._id||`${r._name}|${r._code}`)),summary=aupCampusSummary(rows);
-  const target=document.getElementById("aup-content");if(!target)return;
+  const rows=aupFiltered();
+  AUP_VISIBLE_ROWS=[...rows].sort((a,b)=>(aupDateValue(b)||0)-(aupDateValue(a)||0));
+  const sspRows=rows.filter(r=>r._instrument==="SSP");
+  AUP_RISK_ROWS=sspRows.map(aupStudentRisk);
+  AUP_CONSTRUCT_GROUPS=aupBuildConstructGroups(rows);
+  const unique=new Set(sspRows.map(r=>r._id||`${r._name}|${r._code}`));
+  const highRisk=AUP_RISK_ROWS.filter(r=>r.risk==="Tinggi");
+  const attention=AUP_RISK_ROWS.filter(r=>r.risk==="Perlu Perhatian");
+  const campusCount=new Set(sspRows.map(r=>r._code).filter(Boolean)).size;
+  const constructRanking=AUP_CONSTRUCT_GROUPS.map((g,i)=>({index:i,name:g.name,high:g.Tinggi.length,moderate:g.Sederhana.length,total:g.Tinggi.length+g.Sederhana.length})).sort((a,b)=>b.high-a.high||b.total-a.total);
+  const dominant=constructRanking[0]||{name:"Tiada data",high:0,moderate:0};
+  const target=document.getElementById("aup-content");
+  if(!target)return;
+  const P=AUP_PBI;
+  const scopeLabel=isAdmin()?`${campusCount} kampus`:(MASTER_KAMPUS_BY_ID[aupRoleCampus()]?.nama||kNama(SES.kampus)||"Kampus sendiri");
+  const summary=aupCampusSummary(sspRows);
+  const priority=[...AUP_RISK_ROWS].filter(x=>x.risk!=="Rendah").sort((a,b)=>b.highCount-a.highCount||b.moderateCount-a.moderateCount||a.row._name.localeCompare(b.row._name,"ms"));
   target.innerHTML=`
-  <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px">
-    ${[["Jumlah Respons",rows.length,"sc-navy","fa-clipboard-check"],["Jumlah Responden",unique.size,"sc-pri","fa-users"],["ISP",isp.length,"sc-pri","fa-gauge-high"],["SSP",ssp.length,"sc-amb","fa-list-check"],["Perlu Perhatian",attention.length,"sc-red","fa-triangle-exclamation"]].map(([l,v,cl,icon])=>`<div class="stat-card ${cl}" style="cursor:pointer" onclick="aupCardFilter('${l}')"><div class="stat-icon" style="background:#F1F5F9"><i class="fas ${icon}"></i></div><div class="stat-val">${Number(v).toLocaleString("ms-MY")}</div><div class="stat-lbl">${l}</div></div>`).join("")}
+  <!-- KPI ROW -->
+  <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:16px">
+    <div class="pbi-kpi" ${highRisk.length?'style="cursor:pointer" onclick="aupShowRiskStudents(\'Tinggi\')" ':''}>
+      <div style="position:absolute;top:-10px;right:-10px;width:80px;height:80px;background:radial-gradient(circle,rgba(225,112,85,.15) 0%,transparent 70%);border-radius:50%"></div>
+      <div class="pbi-kpi-icon" style="background:rgba(225,112,85,.12)"><i class="fas fa-users" style="color:${P.red}"></i></div>
+      <div class="pbi-kpi-val" style="color:${P.text}">${unique.size}</div>
+      <div class="pbi-kpi-lbl">Responden SSP</div>
+      <div class="pbi-kpi-sub" style="color:${P.textDim}">${sspRows.length} respons</div>
+    </div>
+    <div class="pbi-kpi" style="cursor:pointer" onclick="aupShowRiskStudents('Tinggi')">
+      <div style="position:absolute;top:-10px;right:-10px;width:80px;height:80px;background:radial-gradient(circle,rgba(225,112,85,.15) 0%,transparent 70%);border-radius:50%"></div>
+      <div class="pbi-kpi-icon" style="background:rgba(225,112,85,.12)"><i class="fas fa-triangle-exclamation" style="color:${P.red}"></i></div>
+      <div class="pbi-kpi-val" style="color:${P.red}">${highRisk.length}</div>
+      <div class="pbi-kpi-lbl">Risiko Tinggi</div>
+      <div class="pbi-kpi-sub" style="color:${P.red}">${highRisk.length?Math.round(highRisk.length/Math.max(unique.size,1)*100):0}% responden</div>
+    </div>
+    <div class="pbi-kpi" style="cursor:pointer" onclick="aupShowRiskStudents('Perlu Perhatian')">
+      <div style="position:absolute;top:-10px;right:-10px;width:80px;height:80px;background:radial-gradient(circle,rgba(253,203,110,.12) 0%,transparent 70%);border-radius:50%"></div>
+      <div class="pbi-kpi-icon" style="background:rgba(253,203,110,.12)"><i class="fas fa-eye" style="color:${P.amber}"></i></div>
+      <div class="pbi-kpi-val" style="color:${P.amber}">${attention.length}</div>
+      <div class="pbi-kpi-lbl">Perlu Perhatian</div>
+      <div class="pbi-kpi-sub" style="color:${P.amber}">&ge;1 konstruk tinggi atau &ge;3 sederhana</div>
+    </div>
+    <div class="pbi-kpi" ${dominant.high>0?`style="cursor:pointer" onclick="aupShowConstructStudents(${dominant.index},'Tinggi')"`:''}>
+      <div style="position:absolute;top:-10px;right:-10px;width:80px;height:80px;background:radial-gradient(circle,rgba(116,185,255,.12) 0%,transparent 70%);border-radius:50%"></div>
+      <div class="pbi-kpi-icon" style="background:rgba(116,185,255,.12)"><i class="fas fa-chart-column" style="color:${P.blue}"></i></div>
+      <div class="pbi-kpi-val" style="color:${P.text};font-size:${dominant.name.length>12?"1rem":"1.5rem"};line-height:1.2">${esc(dominant.name)}</div>
+      <div class="pbi-kpi-lbl">Konstruk Dominan</div>
+      ${dominant.high?`<div class="pbi-kpi-sub" style="color:${P.red}">${dominant.high} skor tinggi &middot; ${dominant.moderate} sederhana</div>`:`<div class="pbi-kpi-sub" style="color:${P.green}">Tiada isu tinggi</div>`}
+    </div>
+    <div class="pbi-kpi">
+      <div style="position:absolute;top:-10px;right:-10px;width:80px;height:80px;background:radial-gradient(circle,rgba(162,155,254,.12) 0%,transparent 70%);border-radius:50%"></div>
+      <div class="pbi-kpi-icon" style="background:rgba(162,155,254,.12)"><i class="fas fa-building" style="color:${P.purple}"></i></div>
+      <div class="pbi-kpi-val" style="color:${P.text};font-size:${String(scopeLabel).length>15?"1rem":"1.5rem"};line-height:1.2">${esc(String(scopeLabel))}</div>
+      <div class="pbi-kpi-lbl">${isAdmin()?"Kampus Terlibat":"Skop Paparan"}</div>
+    </div>
   </div>
+  <!-- ROW 2: Construct Stacked Bar + Risk Donut -->
+  <div style="display:grid;grid-template-columns:1.4fr .6fr;gap:14px;margin-bottom:14px">
+    <div class="pbi-card">
+      <div class="pbi-card-head"><div><div class="pbi-card-title">Taburan 11 Konstruk SSP Mengikut Tahap</div><div class="pbi-card-sub">Skor 0&#8211;10 Rendah &middot; 11&#8211;20 Sederhana &middot; 21&#8211;30 Tinggi. Klik bar untuk lihat senarai pelajar.</div></div></div>
+      <div class="pbi-card-body" style="height:480px"><canvas id="aup-chart-instrument"></canvas></div>
+    </div>
+    <div class="pbi-card">
+      <div class="pbi-card-head"><div><div class="pbi-card-title">Taburan Tahap Risiko Pelajar SSP</div><div class="pbi-card-sub">Klik sektor untuk lihat senarai pelajar.</div></div></div>
+      <div class="pbi-card-body" style="height:480px;position:relative"><canvas id="aup-chart-level"></canvas><div id="aup-donut-center" style="position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none"><div style="font-family:Outfit;font-size:2rem;font-weight:800;color:${P.text}">${unique.size}</div><div style="font-size:.7rem;color:${P.textMuted};margin-top:2px">Responden</div></div></div>
+    </div>
+  </div>
+  <!-- ROW 3: Radar + Heatmap -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-    <div class="card"><div class="card-head"><div><div class="card-title">Bilangan Pelajar Skor Tinggi Mengikut Konstruk</div><div style="font-size:.7rem;color:var(--muted);margin-top:3px">Klik konstruk untuk melihat senarai pelajar</div></div></div><div class="card-body" style="height:290px"><canvas id="aup-chart-instrument"></canvas></div></div>
-    <div class="card"><div class="card-head"><div class="card-title">Respon Mengikut Zon</div></div><div class="card-body" style="height:290px"><canvas id="aup-chart-zone"></canvas></div></div>
+    <div class="pbi-card">
+      <div class="pbi-card-head"><div><div class="pbi-card-title">Purata Skor Mengikut Konstruk</div><div class="pbi-card-sub">Skala 0&#8211;30 setiap konstruk Mooney Problem Checklist</div></div></div>
+      <div class="pbi-card-body" style="height:380px"><canvas id="aup-chart-radar"></canvas></div>
+    </div>
+    <div class="pbi-card">
+      <div class="pbi-card-head"><div><div class="pbi-card-title">Grid Taburan Tahap Konstruk</div><div class="pbi-card-sub">Matriks interaktif &mdash; klik sel untuk lihat pelajar</div></div></div>
+      <div class="pbi-card-body" style="overflow:auto;max-height:380px">
+        <div class="pbi-heat">
+          <div class="pbi-heat-hdr"></div><div class="pbi-heat-hdr">Rendah</div><div class="pbi-heat-hdr">Sederhana</div><div class="pbi-heat-hdr">Tinggi</div>
+          ${AUP_CONSTRUCT_GROUPS.map((g,i)=>`
+            <div class="pbi-heat-label" title="${esc(g.name)}">${esc(g.name.length>18?g.name.substring(0,18)+"&hellip;":g.name)}</div>
+            <div class="pbi-heat-cell" style="background:rgba(0,184,148,${Math.min(g.Rendah.length*0.06+0.05,0.5)});color:${g.Rendah.length?P.green:P.textDim};cursor:${g.Rendah.length?"pointer":"default"}" ${g.Rendah.length?`onclick="aupShowConstructStudents(${i},'Rendah')"`:''}>${g.Rendah.length||"&mdash;"}</div>
+            <div class="pbi-heat-cell" style="background:rgba(253,203,110,${Math.min(g.Sederhana.length*0.06+0.05,0.5)});color:${g.Sederhana.length?P.amber:P.textDim};cursor:${g.Sederhana.length?"pointer":"default"}" ${g.Sederhana.length?`onclick="aupShowConstructStudents(${i},'Sederhana')"`:''}>${g.Sederhana.length||"&mdash;"}</div>
+            <div class="pbi-heat-cell" style="background:rgba(225,112,85,${Math.min(g.Tinggi.length*0.08+0.05,0.6)});color:${g.Tinggi.length?P.red:P.textDim};cursor:${g.Tinggi.length?"pointer":"default"}" ${g.Tinggi.length?`onclick="aupShowConstructStudents(${i},'Tinggi')"`:''}>${g.Tinggi.length||"&mdash;"}</div>
+          `).join("")}
+        </div>
+      </div>
+    </div>
   </div>
-  <div style="display:grid;grid-template-columns:1.35fr .65fr;gap:14px;margin-bottom:14px">
-    <div class="card"><div class="card-head"><div class="card-title">Bilangan Respons Mengikut Kampus</div></div><div class="card-body" style="height:390px"><canvas id="aup-chart-campus"></canvas></div></div>
-    <div class="card"><div class="card-head"><div class="card-title">Taburan Tahap / Kategori</div></div><div class="card-body" style="height:390px"><canvas id="aup-chart-level"></canvas></div></div>
+  <!-- ROW 4: Zone/Campus + Priority -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <div class="pbi-card">
+      <div class="pbi-card-head"><div><div class="pbi-card-title">${isAdmin()?"Pelajar Berisiko Mengikut Zon":"Konstruk Tinggi Kampus Sendiri"}</div><div class="pbi-card-sub">${isAdmin()?"Bilangan pelajar dengan sekurang-kurangnya 1 konstruk tinggi":"Klik bar untuk lihat senarai pelajar"}</div></div></div>
+      <div class="pbi-card-body" style="height:340px"><canvas id="aup-chart-zone"></canvas></div>
+    </div>
+    <div class="pbi-card">
+      <div class="pbi-card-head"><div><div class="pbi-card-title">${isAdmin()?"Kampus dengan Pelajar Berisiko":"Keutamaan Intervensi Pelajar"}</div></div></div>
+      <div class="pbi-card-body" style="height:340px;overflow:auto">
+        ${isAdmin()
+          ?`<canvas id="aup-chart-campus"></canvas>`
+          :`<table class="pbi-tbl"><thead><tr><th>Nama</th><th>Tinggi</th><th>Sederhana</th><th>Keutamaan</th></tr></thead><tbody>
+            ${priority.length?priority.slice(0,30).map(x=>`<tr>
+              <td><b>${esc(x.row._name)}</b><div style="font-size:.65rem;color:${P.textMuted}">${esc(x.row._program)}</div></td>
+              <td><span class="pbi-bdg pbi-bdg-red">${x.highCount}</span></td>
+              <td><span class="pbi-bdg pbi-bdg-amber">${x.moderateCount}</span></td>
+              <td>${x.risk==="Tinggi"?'<span class="pbi-bdg pbi-bdg-red">Intervensi segera</span>':'<span class="pbi-bdg pbi-bdg-amber">Semakan kaunselor</span>'}</td></tr>`).join("")
+              :`<tr><td colspan="4" class="pbi-empty">Tiada pelajar memerlukan perhatian.</td></tr>`}
+            </tbody></table>`}
+      </div>
+    </div>
   </div>
-  <div class="card" style="margin-bottom:14px">
-    <div class="card-head"><div><div class="card-title"><i class="fas fa-building-columns mr-2"></i>Ringkasan Mengikut Kampus</div><div style="font-size:.7rem;color:var(--muted);margin-top:3px">${summary.length} kampus dipaparkan</div></div></div>
-    <div style="overflow:auto;max-height:440px"><table class="tbl"><thead><tr><th>Zon</th><th>Negeri</th><th>Kod</th><th>Kampus</th><th>ISP</th><th>SSP</th><th>Jumlah</th><th>Perlu Perhatian</th><th>Purata Skor</th><th></th></tr></thead><tbody>
-      ${summary.length?summary.map(v=>`<tr><td>${esc(v.zone)}</td><td>${esc(v.state)}</td><td><b>${esc(v.code)}</b></td><td>${esc(v.campus)}</td><td>${v.isp}</td><td>${v.ssp}</td><td><span class="bdg bdg-pri">${v.total}</span></td><td><span class="bdg ${v.attention?"bdg-red":"bdg-green"}">${v.attention}</span></td><td>${v.average===null?"—":v.average.toLocaleString("ms-MY",{maximumFractionDigits:2})}</td><td><button class="btn btn-out btn-xs" onclick="aupSelectCampus('${esc(v.code)}')">Lihat</button></td></tr>`).join(""):`<tr><td colspan="10" style="text-align:center;padding:24px;color:#64748B">Tiada data kampus.</td></tr>`}
-    </tbody></table></div>
-  </div>
-  <div class="card"><div class="card-head"><div><div class="card-title"><i class="fas fa-table-list mr-2"></i>Senarai Respons ISP dan SSP</div><div style="font-size:.7rem;color:var(--muted);margin-top:3px">${rows.length} rekod ditapis</div></div></div>
-    <div style="overflow:auto;max-height:520px"><table class="tbl"><thead><tr><th>Instrumen</th><th>Tarikh</th><th>Nama</th><th>ID Pelajar</th><th>Program</th><th>Jantina</th><th>Zon</th><th>Kampus</th><th>Skor</th><th>Tahap/Kategori</th><th></th></tr></thead><tbody>
-      ${AUP_VISIBLE_ROWS.length?AUP_VISIBLE_ROWS.map((r,i)=>`<tr><td><span class="bdg ${r._instrument==="ISP"?"bdg-blue":"bdg-amber"}">${r._instrument}</span></td><td>${esc(r._date)}</td><td><b>${esc(r._name)}</b></td><td>${esc(r._id||"—")}</td><td>${esc(r._program)}</td><td>${esc(r._gender)}</td><td>${esc(r._zone)}</td><td>${esc(r._campus)}</td><td>${r._score===null?"—":r._score}</td><td><span class="bdg ${r._attention?"bdg-red":"bdg-green"}">${esc(r._level)}</span></td><td><div style="display:flex;gap:5px;white-space:nowrap"><button class="btn btn-out btn-xs" onclick="aupDetail(${i})">Lihat</button>${isAdmin()?`<button class="btn btn-danger btn-xs" onclick="aupDeleteRecord(${i})"><i class="fas fa-trash"></i> Padam</button>`:""}</div></td></tr>`).join(""):`<tr><td colspan="11" style="text-align:center;padding:24px;color:#64748B">Tiada rekod ditemui.</td></tr>`}
-    </tbody></table></div>
+  ${isAdmin()?`
+  <div class="pbi-card" style="margin-bottom:14px">
+    <div class="pbi-card-head"><div><div class="pbi-card-title"><i class="fas fa-building-columns" style="margin-right:6px;color:${P.purple}"></i>Ringkasan Risiko Mengikut Kampus</div><div class="pbi-card-sub">${summary.length} kampus dipaparkan. Klik "Lihat" untuk tapis ke kampus.</div></div></div>
+    <div class="pbi-scroll">
+      <table class="pbi-tbl"><thead><tr><th>Zon</th><th>Kod</th><th>Kampus</th><th>SSP</th><th>Tinggi</th><th>Perlu Perhatian</th><th></th></tr></thead><tbody>
+        ${summary.length?summary.map(v=>{const cr=AUP_RISK_ROWS.filter(x=>x.row._code===v.code);const h=cr.filter(x=>x.risk==="Tinggi").length;const w=cr.filter(x=>x.risk==="Perlu Perhatian").length;return`<tr>
+          <td>${esc(v.zone)}</td><td><b>${esc(v.code)}</b></td><td>${esc(v.campus)}</td>
+          <td><span class="pbi-bdg pbi-bdg-blue">${v.ssp}</span></td>
+          <td><span class="pbi-bdg ${h?"pbi-bdg-red":"pbi-bdg-green"}">${h}</span></td>
+          <td><span class="pbi-bdg ${w?"pbi-bdg-amber":"pbi-bdg-green"}">${w}</span></td>
+          <td><button class="pbi-btn" style="padding:4px 10px;font-size:.68rem" onclick="aupSelectCampus('${esc(v.code)}')"><i class="fas fa-eye"></i> Lihat</button></td></tr>`;}).join("")
+          :`<tr><td colspan="7" class="pbi-empty">Tiada data kampus.</td></tr>`}
+      </tbody></table>
+    </div>
+  </div>`:``}
+  <div class="pbi-card">
+    <div class="pbi-card-head"><div><div class="pbi-card-title"><i class="fas fa-table-list" style="margin-right:6px;color:${P.teal}"></i>Senarai Responden SSP</div><div class="pbi-card-sub">${sspRows.length} rekod berdasarkan penapis semasa</div></div></div>
+    <div class="pbi-scroll" style="max-height:540px">
+      <table class="pbi-tbl"><thead><tr><th>Tarikh</th><th>Nama</th><th>ID Pelajar</th><th>Program</th>${isAdmin()?"<th>Zon</th><th>Kampus</th>":""}<th>Jumlah Skor</th><th>Konstruk Tinggi</th><th>Risiko</th><th>Tindakan</th></tr></thead><tbody>
+        ${AUP_VISIBLE_ROWS.filter(r=>r._instrument==="SSP").length
+          ?AUP_VISIBLE_ROWS.filter(r=>r._instrument==="SSP").map(r=>{const oi=AUP_VISIBLE_ROWS.indexOf(r);return`<tr>
+            <td>${esc(r._date)}</td><td><b>${esc(r._name)}</b></td><td>${esc(r._id||"&mdash;")}</td><td>${esc(r._program)}</td>
+            ${isAdmin()?`<td>${esc(r._zone)}</td><td>${esc(r._campus)}</td>`:``}
+            <td>${r._score===null?"&mdash;":r._score+" / 330"}</td>
+            <td><span class="pbi-bdg ${r._highCount?"pbi-bdg-red":"pbi-bdg-green"}">${r._highCount||0}</span></td>
+            <td><span class="pbi-bdg ${r._level==="Tinggi"?"pbi-bdg-red":r._level==="Perlu Perhatian"?"pbi-bdg-amber":"pbi-bdg-green"}">${esc(r._level)}</span></td>
+            <td><div style="display:flex;gap:5px;white-space:nowrap">
+              <button class="pbi-btn" style="padding:4px 10px;font-size:.68rem" onclick="aupDetail(${oi})"><i class="fas fa-eye"></i></button>
+              ${isAdmin()?`<button class="pbi-btn" style="padding:4px 10px;font-size:.68rem" onclick="aupEditRecord(${oi})"><i class="fas fa-pen"></i></button><button class="pbi-btn" style="padding:4px 10px;font-size:.68rem;color:${P.red}" onclick="aupDeleteRecord(${oi})"><i class="fas fa-trash"></i></button>`:``}
+            </div></td></tr>`;}).join("")
+          :`<tr><td colspan="${isAdmin()?10:8}" class="pbi-empty">Tiada rekod SSP ditemui.</td></tr>`}
+      </tbody></table>
+    </div>
   </div>`;
-  setTimeout(()=>aupDrawCharts(rows,summary),50);
+  setTimeout(()=>aupDrawCharts(rows,summary),60);
 }
+
 function aupSelectCampus(code){const s=document.getElementById("aup-campus");if(!s)return;s.value=code;aupRefresh();window.scrollTo({top:0,behavior:"smooth"});}
 function aupSelectZone(zone){const s=document.getElementById("aup-zone");if(!s||s.disabled)return;s.value=zone;aupUpdateCampusFilter();aupRefresh();window.scrollTo({top:0,behavior:"smooth"});}
-function aupCardFilter(label){const s=document.getElementById("aup-instrument");if(label==="ISP"){s.value="ISP";aupRefresh();}else if(label==="SSP"){s.value="SSP";aupRefresh();}else if(label==="Jumlah Respons"||label==="Jumlah Responden"){s.value="";aupRefresh();}else if(label==="Perlu Perhatian")aupShowAttention(aupFiltered().filter(r=>r._attention));}
+
 function aupDrawCharts(rows,summary){
-  AUP_CHARTS.forEach(c=>{try{c.destroy()}catch(_e){}});AUP_CHARTS=[];
-  AUP_CONSTRUCT_HIGH=aupHighConstructSummary(rows);
-  const constructLabels=AUP_CONSTRUCT_HIGH.map(x=>x.name);
-  const constructData=AUP_CONSTRUCT_HIGH.map(x=>x.count);
-  const c1=document.getElementById("aup-chart-instrument");
-  if(c1)AUP_CHARTS.push(new Chart(c1,{
-    type:"bar",
-    data:{labels:constructLabels,datasets:[{label:"Bilangan Pelajar",data:constructData,backgroundColor:"#2563EB",borderRadius:5}]},
-    options:{
-      indexAxis:"y",responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{x:{beginAtZero:true,ticks:{precision:0}},y:{grid:{display:false}}},
-      onClick:(_e,els)=>{if(els.length)aupShowConstructStudents(els[0].index);}
+  AUP_CHARTS.forEach(ch=>{try{ch.destroy();}catch(_){}});AUP_CHARTS=[];
+  const sspRows=rows.filter(r=>r._instrument==="SSP");
+  AUP_CONSTRUCT_GROUPS=aupBuildConstructGroups(rows);
+  AUP_RISK_ROWS=sspRows.map(aupStudentRisk);
+  const P=AUP_PBI;
+  Chart.defaults.color=P.textMuted;
+  Chart.defaults.borderColor=P.border;
+
+  // 1. STACKED BAR: 11 Konstruk
+  const constructCanvas=document.getElementById("aup-chart-instrument");
+  if(constructCanvas){
+    AUP_CHARTS.push(new Chart(constructCanvas,{
+      type:"bar",data:{
+        labels:AUP_CONSTRUCT_GROUPS.map(g=>g.name),
+        datasets:[
+          {label:"Rendah (0\u201310)",data:AUP_CONSTRUCT_GROUPS.map(g=>g.Rendah.length),backgroundColor:"#00b894",borderRadius:{topLeft:0,topRight:0,bottomLeft:4,bottomRight:4},borderSkipped:false},
+          {label:"Sederhana (11\u201320)",data:AUP_CONSTRUCT_GROUPS.map(g=>g.Sederhana.length),backgroundColor:"#fdcb6e",borderRadius:0,borderSkipped:false},
+          {label:"Tinggi (21\u201330)",data:AUP_CONSTRUCT_GROUPS.map(g=>g.Tinggi.length),backgroundColor:"#e17055",borderRadius:{topLeft:4,topRight:4,bottomLeft:0,bottomRight:0},borderSkipped:false}
+        ]
+      },options:{
+        indexAxis:"y",responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:"bottom",labels:{color:P.textMuted,font:{size:11},padding:16,usePointStyle:true,pointStyleWidth:10}},
+          tooltip:{backgroundColor:P.bg3,titleColor:P.text,bodyColor:P.textMuted,borderColor:P.border,borderWidth:1,padding:10,cornerRadius:8,callbacks:{afterLabel:()=>"Klik untuk lihat senarai pelajar"}}},
+        scales:{x:{stacked:true,beginAtZero:true,ticks:{precision:0,color:P.textDim},grid:{color:"rgba(255,255,255,.04)"}},y:{stacked:true,grid:{display:false},ticks:{color:P.textMuted,font:{size:11}}}},
+        onClick:(_e,els)=>{if(!els.length)return;const cat=["Rendah","Sederhana","Tinggi"][els[0].datasetIndex];aupShowConstructStudents(els[0].index,cat);}
+      }
+    }));
+  }
+
+  // 2. DONUT: Tahap Risiko
+  const riskLabels=["Rendah","Perlu Perhatian","Tinggi"];
+  const riskData=riskLabels.map(l=>AUP_RISK_ROWS.filter(x=>x.risk===l).length);
+  const riskCanvas=document.getElementById("aup-chart-level");
+  if(riskCanvas){
+    AUP_CHARTS.push(new Chart(riskCanvas,{
+      type:"doughnut",data:{labels:riskLabels,datasets:[{data:riskData,backgroundColor:["#00b894","#fdcb6e","#e17055"],borderColor:P.card,borderWidth:4,hoverBorderColor:P.card}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:"62%",
+        plugins:{legend:{position:"bottom",labels:{color:P.textMuted,font:{size:11},padding:16,usePointStyle:true,pointStyleWidth:10}},
+          tooltip:{backgroundColor:P.bg3,titleColor:P.text,bodyColor:P.textMuted,borderColor:P.border,borderWidth:1,padding:10,cornerRadius:8,callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} pelajar`,afterLabel:()=>"Klik untuk lihat senarai"}}},
+        onClick:(_e,els)=>{if(els.length)aupShowRiskStudents(riskLabels[els[0].index]);}
+      }
+    }));
+  }
+
+  // 3. RADAR: Purata Skor Konstruk
+  const radarCanvas=document.getElementById("aup-chart-radar");
+  if(radarCanvas){
+    const avgs=AUP_CONSTRUCT_GROUPS.map(g=>{const scores=[];[g.Rendah,g.Sederhana,g.Tinggi].forEach(a=>a.forEach(({construct})=>{if(construct.score!==null)scores.push(construct.score);}));return scores.length?Math.round(scores.reduce((t,s)=>t+s,0)/scores.length*10)/10:0;});
+    AUP_CHARTS.push(new Chart(radarCanvas,{
+      type:"radar",data:{
+        labels:AUP_CONSTRUCT_GROUPS.map(g=>g.name.length>14?g.name.substring(0,14)+"\u2026":g.name),
+        datasets:[{label:"Purata Skor",data:avgs,backgroundColor:"rgba(116,185,255,.15)",borderColor:"#74b9ff",borderWidth:2,pointBackgroundColor:"#74b9ff",pointBorderColor:P.card,pointBorderWidth:2,pointRadius:4,pointHoverRadius:6},
+          {label:"Garisan Tinggi (21)",data:Array(11).fill(21),backgroundColor:"transparent",borderColor:"rgba(225,112,85,.4)",borderWidth:1.5,borderDash:[6,4],pointRadius:0}]
+      },options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:"bottom",labels:{color:P.textMuted,font:{size:11},padding:16,usePointStyle:true,pointStyleWidth:10}},
+          tooltip:{backgroundColor:P.bg3,titleColor:P.text,bodyColor:P.textMuted,borderColor:P.border,borderWidth:1,padding:10,cornerRadius:8}},
+        scales:{r:{beginAtZero:true,max:30,ticks:{stepSize:10,color:P.textDim,backdropColor:"transparent",font:{size:9}},grid:{color:"rgba(255,255,255,.06)"},angleLines:{color:"rgba(255,255,255,.06)"},pointLabels:{color:P.textMuted,font:{size:10}}}}
+      }
+    }));
+  }
+
+  // 4. ZONE / CAMPUS CHARTS
+  const risky=AUP_RISK_ROWS.filter(x=>x.highCount>=1);
+  if(isAdmin()){
+    const zoneMap={};risky.forEach(x=>{const z=x.row._zone||"Tidak dikenal pasti";zoneMap[z]=(zoneMap[z]||0)+1;});
+    const zoneLabels=Object.keys(zoneMap).sort((a,b)=>{const ia=AUP_ZONE_ORDER.indexOf(a),ib=AUP_ZONE_ORDER.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib);});
+    const zoneCanvas=document.getElementById("aup-chart-zone");
+    if(zoneCanvas){
+      AUP_CHARTS.push(new Chart(zoneCanvas,{
+        type:"bar",data:{labels:zoneLabels.map(z=>z.replace("Zon ","")),datasets:[{label:"Pelajar berisiko",data:zoneLabels.map(z=>zoneMap[z]),backgroundColor:zoneLabels.map((_,i)=>AUP_CONSTRUCT_COLORS[i%AUP_CONSTRUCT_COLORS.length]),borderRadius:6,borderSkipped:false}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:P.bg3,titleColor:P.text,bodyColor:P.textMuted,borderColor:P.border,borderWidth:1,padding:10,cornerRadius:8}},
+          scales:{y:{beginAtZero:true,ticks:{precision:0,color:P.textDim},grid:{color:"rgba(255,255,255,.04)"}},x:{grid:{display:false},ticks:{color:P.textMuted,font:{size:10}}}},
+          onClick:(_e,els)=>{if(els.length)aupSelectZone(zoneLabels[els[0].index]);}
+        }
+      }));
     }
-  }));
-  const zoneMap=aupCountMap(rows,"_zone"),zoneLabels=Object.keys(zoneMap).sort((a,b)=>{const ia=AUP_ZONE_ORDER.indexOf(a),ib=AUP_ZONE_ORDER.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib);});
-  const c2=document.getElementById("aup-chart-zone");if(c2)AUP_CHARTS.push(new Chart(c2,{type:"pie",data:{labels:zoneLabels,datasets:[{data:zoneLabels.map(z=>zoneMap[z]),backgroundColor:["#0E7C61","#2563EB","#F59E0B","#8B5CF6","#DC2626","#0891B2","#64748B"],borderColor:"#fff",borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right"}},onClick:(_e,els)=>{if(els.length)aupSelectZone(zoneLabels[els[0].index]);}}}));
-  const c3=document.getElementById("aup-chart-campus");if(c3)AUP_CHARTS.push(new Chart(c3,{type:"bar",data:{labels:summary.map(v=>v.code),datasets:[{data:summary.map(v=>v.total),backgroundColor:"#0E7C61",borderRadius:4}]},options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true},y:{grid:{display:false}}},onClick:(_e,els)=>{if(els.length)aupSelectCampus(summary[els[0].index].code);}}}));
-  const levelMap=aupCountMap(rows,"_level"),levelLabels=Object.keys(levelMap).sort((a,b)=>levelMap[b]-levelMap[a]).slice(0,12);
-  const c4=document.getElementById("aup-chart-level");if(c4)AUP_CHARTS.push(new Chart(c4,{type:"bar",data:{labels:levelLabels,datasets:[{data:levelLabels.map(l=>levelMap[l]),backgroundColor:"#E88D3A",borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true},x:{grid:{display:false}}}}}));
+    const campusMap=new Map();risky.forEach(x=>{const c=x.row._code||"\u2014";if(!campusMap.has(c))campusMap.set(c,{code:c,campus:x.row._campus,total:0});campusMap.get(c).total++;});
+    const campusRows=[...campusMap.values()].sort((a,b)=>b.total-a.total);
+    const campusCanvas=document.getElementById("aup-chart-campus");
+    if(campusCanvas){
+      AUP_CHARTS.push(new Chart(campusCanvas,{
+        type:"bar",data:{labels:campusRows.map(i=>i.code),datasets:[{data:campusRows.map(i=>i.total),backgroundColor:campusRows.map((_,i)=>AUP_CONSTRUCT_COLORS[i%AUP_CONSTRUCT_COLORS.length]),borderRadius:5,borderSkipped:false}]},
+        options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:P.bg3,titleColor:P.text,bodyColor:P.textMuted,borderColor:P.border,borderWidth:1,padding:10,cornerRadius:8}},
+          scales:{x:{beginAtZero:true,ticks:{precision:0,color:P.textDim},grid:{color:"rgba(255,255,255,.04)"}},y:{grid:{display:false},ticks:{color:P.textMuted,font:{size:10}}}},
+          onClick:(_e,els)=>{if(els.length)aupSelectCampus(campusRows[els[0].index].code);}
+        }
+      }));
+    }
+  }else{
+    const constructRows=AUP_CONSTRUCT_GROUPS.map((g,i)=>({index:i,name:g.name,total:g.Tinggi.length})).sort((a,b)=>b.total-a.total);
+    const campusCanvas=document.getElementById("aup-chart-zone");
+    if(campusCanvas){
+      AUP_CHARTS.push(new Chart(campusCanvas,{
+        type:"bar",data:{labels:constructRows.map(i=>i.name),datasets:[{label:"Bilangan tinggi",data:constructRows.map(i=>i.total),backgroundColor:constructRows.map((_,i)=>AUP_CONSTRUCT_COLORS[i%AUP_CONSTRUCT_COLORS.length]),borderRadius:5,borderSkipped:false}]},
+        options:{indexAxis:"y",responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:P.bg3,titleColor:P.text,bodyColor:P.textMuted,borderColor:P.border,borderWidth:1,padding:10,cornerRadius:8}},
+          scales:{x:{beginAtZero:true,ticks:{precision:0,color:P.textDim},grid:{color:"rgba(255,255,255,.04)"}},y:{grid:{display:false},ticks:{color:P.textMuted,font:{size:10}}}},
+          onClick:(_e,els)=>{if(els.length)aupShowConstructStudents(constructRows[els[0].index].index,"Tinggi");}
+        }
+      }));
+    }
+  }
 }
-function aupDetail(index){const r=AUP_VISIBLE_ROWS[index];if(!r)return;document.getElementById("modal-wrap").innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal-box" style="max-width:900px;padding:0;overflow:hidden"><div style="padding:18px 22px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between"><div><h3 style="font-size:1.1rem;font-weight:800;color:var(--navy)">${esc(r._instrument)} — ${esc(r._name)}</h3><div style="font-size:.72rem;color:var(--muted);margin-top:3px">${esc(r._campus)} · ${esc(r._date)}</div></div><button class="user-drawer-close" onclick="closeModal()">×</button></div><div style="padding:18px 22px;max-height:70vh;overflow:auto"><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px">${[["Instrumen",r._instrument],["Skor",r._score===null?"—":r._score],["Tahap/Kategori",r._level],["ID Pelajar",r._id||"—"],["Program",r._program],["Jantina",r._gender],["Zon",r._zone],["Negeri",r._state],["Kampus",r._campus]].map(([l,v])=>`<div style="border:1px solid #E2E8F0;border-radius:8px;padding:10px"><div style="font-size:.66rem;color:#64748B;text-transform:uppercase">${l}</div><div style="font-weight:750;margin-top:3px">${esc(v)}</div></div>`).join("")}</div></div></div></div>`;}
-function aupShowAttention(rows){document.getElementById("modal-wrap").innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal-box" style="max-width:950px;padding:0;overflow:hidden"><div style="padding:18px 22px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between"><div><h3 style="font-size:1.1rem;font-weight:800;color:#B91C1C">Senarai Perlu Perhatian</h3><div style="font-size:.72rem;color:#64748B;margin-top:3px">${rows.length} rekod</div></div><button class="user-drawer-close" onclick="closeModal()">×</button></div><div style="padding:18px 22px;overflow:auto;max-height:68vh"><table class="tbl"><thead><tr><th>Instrumen</th><th>Nama</th><th>Zon</th><th>Kampus</th><th>Tarikh</th><th>Tahap</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r._instrument}</td><td><b>${esc(r._name)}</b></td><td>${esc(r._zone)}</td><td>${esc(r._campus)}</td><td>${esc(r._date)}</td><td><span class="bdg bdg-red">${esc(r._level)}</span></td></tr>`).join("")}</tbody></table></div></div></div>`;}
+
+/* ── MODALS ── */
+
+function aupShowConstructStudents(constructIndex,category){
+  const group=AUP_CONSTRUCT_GROUPS[constructIndex];if(!group)return;const students=group[category]||[];const P=AUP_PBI;
+  document.getElementById("modal-wrap").innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()" style="background:rgba(0,0,0,.7)">
+    <div class="modal-box" style="max-width:1000px;padding:0;overflow:hidden;background:${P.bg2};border:1px solid ${P.border};border-radius:16px">
+      <div style="padding:18px 22px;border-bottom:1px solid ${P.border};display:flex;justify-content:space-between;align-items:center">
+        <div><h3 style="font-size:1.05rem;font-weight:800;color:${P.text};font-family:Outfit">${esc(group.name)} &mdash; ${esc(category)}</h3><div style="font-size:.7rem;color:${P.textMuted};margin-top:3px">${students.length} pelajar terlibat</div></div>
+        <button class="user-drawer-close" onclick="closeModal()" style="color:${P.textMuted}">&times;</button>
+      </div>
+      <div style="padding:18px 22px;overflow:auto;max-height:68vh">
+        <table class="pbi-tbl"><thead><tr><th>Nama</th><th>ID Pelajar</th><th>Zon</th><th>Kampus</th><th>Program</th><th>Skor Konstruk</th><th>Tahap</th><th>Tarikh</th></tr></thead><tbody>
+          ${students.length?students.map(({row,construct})=>`<tr>
+            <td><b>${esc(row._name)}</b></td><td>${esc(row._id||"&mdash;")}</td><td>${esc(row._zone)}</td><td>${esc(row._campus)}</td><td>${esc(row._program)}</td>
+            <td>${construct.score===null?"&mdash;":construct.score+" / 30"}</td>
+            <td><span class="pbi-bdg ${category==="Tinggi"?"pbi-bdg-red":category==="Sederhana"?"pbi-bdg-amber":"pbi-bdg-green"}">${esc(category)}</span></td>
+            <td>${esc(row._date)}</td></tr>`).join("")
+            :`<tr><td colspan="8" class="pbi-empty">Tiada pelajar dalam kategori ini.</td></tr>`}
+        </tbody></table>
+      </div>
+    </div>
+  </div>`;
+}
+
+function aupShowRiskStudents(risk){
+  const students=AUP_RISK_ROWS.filter(x=>x.risk===risk);const P=AUP_PBI;
+  document.getElementById("modal-wrap").innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()" style="background:rgba(0,0,0,.7)">
+    <div class="modal-box" style="max-width:1000px;padding:0;overflow:hidden;background:${P.bg2};border:1px solid ${P.border};border-radius:16px">
+      <div style="padding:18px 22px;border-bottom:1px solid ${P.border};display:flex;justify-content:space-between;align-items:center">
+        <div><h3 style="font-size:1.05rem;font-weight:800;color:${risk==="Tinggi"?P.red:P.amber};font-family:Outfit">Pelajar &mdash; ${esc(risk)}</h3><div style="font-size:.7rem;color:${P.textMuted};margin-top:3px">${students.length} pelajar</div></div>
+        <button class="user-drawer-close" onclick="closeModal()" style="color:${P.textMuted}">&times;</button>
+      </div>
+      <div style="padding:18px 22px;overflow:auto;max-height:68vh">
+        <table class="pbi-tbl"><thead><tr><th>Nama</th><th>ID</th><th>Zon</th><th>Kampus</th><th>Konstruk Tinggi</th><th>Konstruk Sederhana</th><th>Tindakan</th></tr></thead><tbody>
+          ${students.length?students.map(x=>`<tr>
+            <td><b>${esc(x.row._name)}</b></td><td>${esc(x.row._id||"&mdash;")}</td><td>${esc(x.row._zone)}</td><td>${esc(x.row._campus)}</td>
+            <td><span class="pbi-bdg pbi-bdg-red">${x.highCount}</span></td>
+            <td><span class="pbi-bdg pbi-bdg-amber">${x.moderateCount}</span></td>
+            <td>${x.risk==="Tinggi"?'<span class="pbi-bdg pbi-bdg-red">Intervensi segera</span>':'<span class="pbi-bdg pbi-bdg-amber">Semakan kaunselor</span>'}</td></tr>`).join("")
+            :`<tr><td colspan="7" class="pbi-empty">Tiada pelajar.</td></tr>`}
+        </tbody></table>
+      </div>
+    </div>
+  </div>`;
+}
+
+function aupShowAttention(rows){const P=AUP_PBI;document.getElementById("modal-wrap").innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()" style="background:rgba(0,0,0,.7)"><div class="modal-box" style="max-width:950px;padding:0;overflow:hidden;background:${P.bg2};border:1px solid ${P.border};border-radius:16px"><div style="padding:18px 22px;border-bottom:1px solid ${P.border};display:flex;justify-content:space-between;align-items:center"><div><h3 style="font-size:1.05rem;font-weight:800;color:${P.red};font-family:Outfit">Senarai Perlu Perhatian</h3><div style="font-size:.7rem;color:${P.textMuted};margin-top:3px">${rows.length} rekod</div></div><button class="user-drawer-close" onclick="closeModal()" style="color:${P.textMuted}">&times;</button></div><div style="padding:18px 22px;overflow:auto;max-height:68vh"><table class="pbi-tbl"><thead><tr><th>Instrumen</th><th>Nama</th><th>Zon</th><th>Kampus</th><th>Tarikh</th><th>Tahap</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r._instrument}</td><td><b>${esc(r._name)}</b></td><td>${esc(r._zone)}</td><td>${esc(r._campus)}</td><td>${esc(r._date)}</td><td><span class="pbi-bdg pbi-bdg-red">${esc(r._level)}</span></td></tr>`).join("")}</tbody></table></div></div></div>`;}
+
+function aupDetail(index){
+  const row=AUP_VISIBLE_ROWS[index];if(!row)return;const P=AUP_PBI;
+  const constructs=row._instrument==="SSP"?aupConstructEntries(row):[];
+  document.getElementById("modal-wrap").innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()" style="background:rgba(0,0,0,.7)">
+    <div class="modal-box" style="max-width:1000px;padding:0;overflow:hidden;background:${P.bg2};border:1px solid ${P.border};border-radius:16px">
+      <div style="padding:18px 22px;border-bottom:1px solid ${P.border};display:flex;justify-content:space-between;align-items:center">
+        <div><h3 style="font-size:1.05rem;font-weight:800;color:${P.text};font-family:Outfit">${esc(row._instrument)} &mdash; ${esc(row._name)}</h3><div style="font-size:.7rem;color:${P.textMuted};margin-top:3px">${esc(row._campus)} &middot; ${esc(row._date)}</div></div>
+        <button class="user-drawer-close" onclick="closeModal()" style="color:${P.textMuted}">&times;</button>
+      </div>
+      <div style="padding:18px 22px;max-height:72vh;overflow:auto">
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px">
+          ${[["Jumlah Skor",row._score===null?"\u2014":row._score+" / 330"],["Tahap Risiko",row._level],["Konstruk Tinggi",row._highCount??0],["ID Pelajar",row._id||"\u2014"],["Program",row._program],["Jantina",row._gender],["Zon",row._zone],["Negeri",row._state],["Kampus",row._campus]].map(([label,value])=>`
+            <div style="background:${P.bg3};border:1px solid ${P.border};border-radius:10px;padding:12px">
+              <div style="font-size:.65rem;color:${P.textMuted};text-transform:uppercase;letter-spacing:.3px">${label}</div>
+              <div style="font-weight:700;margin-top:4px;color:${P.text}">${esc(String(value))}</div>
+            </div>`).join("")}
+        </div>
+        ${constructs.length?`<div style="background:${P.bg3};border:1px solid ${P.border};border-radius:12px;overflow:hidden">
+          <div style="padding:12px 18px;border-bottom:1px solid ${P.border}"><div style="font-family:Outfit;font-size:.9rem;font-weight:700;color:${P.text}">Skor Mengikut 11 Konstruk SSP</div></div>
+          <div style="overflow:auto"><table class="pbi-tbl"><thead><tr><th>Konstruk</th><th>Skor</th><th>Tahap</th></tr></thead><tbody>
+            ${constructs.map(item=>`<tr><td><b>${esc(item.name)}</b></td><td>${item.score===null?"\u2014":item.score+" / 30"}</td>
+              <td><span class="pbi-bdg ${item.category==="Tinggi"?"pbi-bdg-red":item.category==="Sederhana"?"pbi-bdg-amber":"pbi-bdg-green"}">${esc(item.category)}</span></td></tr>`).join("")}
+          </tbody></table></div>`:""}
+      </div>
+    </div>
+  </div>`;
+}
+
+function aupEditRecord(index){
+  if(!isAdmin()){toast("Hanya Admin Utama boleh mengemas kini rekod.","err");return;}
+  const r=AUP_VISIBLE_ROWS[index];if(!r||!r._docId){toast("Rekod tidak ditemui.","err");return;}
+  const P=AUP_PBI;
+  const campusOptions=Object.values(MASTER_KAMPUS_BY_ID).sort((a,b)=>a.zon.localeCompare(b.zon,"ms")||a.negeri.localeCompare(b.negeri,"ms")||a.nama.localeCompare(b.nama,"ms")).map(k=>`<option value="${esc(k.id)}" ${k.id===r._code?"selected":""}>${esc(k.zon)} &middot; ${esc(k.negeri)} &middot; ${esc(k.nama)} (${esc(k.id)})</option>`).join("");
+  document.getElementById("modal-wrap").innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()" style="background:rgba(0,0,0,.7)">
+    <div class="modal-box" style="max-width:820px;padding:0;overflow:hidden;background:${P.bg2};border:1px solid ${P.border};border-radius:16px">
+      <div style="padding:18px 22px;border-bottom:1px solid ${P.border};display:flex;justify-content:space-between;align-items:center">
+        <div><h3 style="font-size:1.05rem;font-weight:800;color:${P.text};font-family:Outfit">Kemas Kini Maklumat Klien</h3><div style="font-size:.7rem;color:${P.textMuted};margin-top:3px">${esc(r._instrument)} &middot; Jawapan item dan skor tidak boleh diubah</div></div>
+        <button class="user-drawer-close" onclick="closeModal()" style="color:${P.textMuted}">&times;</button>
+      </div>
+      <div style="padding:18px 22px;max-height:70vh;overflow:auto">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <label style="grid-column:1/-1"><span class="fl" style="color:${P.textMuted}">IPG Kampus</span><select id="aup-edit-campus" class="pbi-slicer" style="margin-top:4px">${campusOptions}</select></label>
+          <label><span class="fl" style="color:${P.textMuted}">Nama Penuh</span><input id="aup-edit-name" class="pbi-slicer" style="margin-top:4px" value="${esc(r._name)}"></label>
+          <label><span class="fl" style="color:${P.textMuted}">No. Kad Pengenalan / ID</span><input id="aup-edit-id" class="pbi-slicer" style="margin-top:4px" value="${esc(r._id||"")}"></label>
+          <label><span class="fl" style="color:${P.textMuted}">Program / Bidang</span><input id="aup-edit-program" class="pbi-slicer" style="margin-top:4px" value="${esc(r._program==="\u2014"?"":r._program)}"></label>
+          <label><span class="fl" style="color:${P.textMuted}">Jantina</span><select id="aup-edit-gender" class="pbi-slicer" style="margin-top:4px"><option value="">\u2014 Pilih \u2014</option><option value="LELAKI" ${r._gender.toUpperCase()==="LELAKI"?"selected":""}>LELAKI</option><option value="PEREMPUAN" ${r._gender.toUpperCase()==="PEREMPUAN"?"selected":""}>PEREMPUAN</option></select></label>
+          <label><span class="fl" style="color:${P.textMuted}">Semester</span><input id="aup-edit-semester" class="pbi-slicer" style="margin-top:4px" value="${esc(aupText(aupPick(r,["semester","sem"])))||""}"></label>
+          <label><span class="fl" style="color:${P.textMuted}">Tahun Pengajian</span><input id="aup-edit-studyyear" class="pbi-slicer" style="margin-top:4px" value="${esc(aupText(aupPick(r,["tahunPengajian","tahun_pengajian"])))||""}"></label>
+          <label style="grid-column:1/-1"><span class="fl" style="color:${P.textMuted}">Pensyarah Mentor</span><input id="aup-edit-mentor" class="pbi-slicer" style="margin-top:4px" value="${esc(aupText(aupPick(r,["pensyarahMentor","mentor","namaMentor"])))||""}"></label>
+          <label style="grid-column:1/-1"><span class="fl" style="color:${P.textMuted}">Catatan Pembetulan</span><textarea id="aup-edit-note" class="pbi-slicer" style="margin-top:4px" rows="3" placeholder="Contoh: Pelajar tersilap memilih kampus"></textarea></label>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px"><button class="pbi-btn" onclick="closeModal()">Batal</button><button class="pbi-btn" style="background:rgba(116,185,255,.15);border-color:${P.blue};color:${P.blue}" onclick="aupSaveEdit(${index})"><i class="fas fa-save"></i> Simpan Perubahan</button></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function aupSaveEdit(index){
+  if(!isAdmin()){toast("Hanya Admin Utama boleh mengemas kini rekod.","err");return;}
+  const r=AUP_VISIBLE_ROWS[index];if(!r||!r._docId)return;
+  const code=document.getElementById("aup-edit-campus")?.value||"";const info=MASTER_KAMPUS_BY_ID[code];
+  if(!info){toast("Sila pilih kampus yang sah.","err");return;}
+  const collectionName=r._instrument==="ISP"?"kesihatan_mental_klien":"ssp_responses";
+  const updated={nama:aupText(document.getElementById("aup-edit-name")?.value),kodKampus:code,kampus_id:code,namaKampus:info.nama,ipgmKampus:info.nama,organisasi:info.nama,zon:info.zon,negeri:info.negeri,program:aupText(document.getElementById("aup-edit-program")?.value),jantina:aupText(document.getElementById("aup-edit-gender")?.value),semester:aupText(document.getElementById("aup-edit-semester")?.value),tahunPengajian:aupText(document.getElementById("aup-edit-studyyear")?.value),pensyarahMentor:aupText(document.getElementById("aup-edit-mentor")?.value),dikemasKiniPada:new Date().toISOString(),dikemasKiniOleh:SES.uid||""};
+  const idValue=aupText(document.getElementById("aup-edit-id")?.value);
+  if(r._instrument==="SSP")updated.kad_pengenalan=idValue;else{updated.noKadPengenalan=idValue;updated.mykid=idValue;}
+  const note=aupText(document.getElementById("aup-edit-note")?.value);
+  const before={nama:r._name,id:r._id,kodKampus:r._code,kampus:r._campus,program:r._program,jantina:r._gender,semester:aupPick(r,["semester","sem"]),tahunPengajian:aupPick(r,["tahunPengajian","tahun_pengajian"]),pensyarahMentor:aupPick(r,["pensyarahMentor","mentor","namaMentor"])};
+  try{showCoreLoading("Mengemas kini maklumat klien...",`${r._instrument} \u00b7 ${r._name}`);const{db,doc,updateDoc,collection,setDoc}=window.__FS;await updateDoc(doc(db,collectionName,r._docId),updated);const auditRef=doc(collection(db,"audit_kemaskini_ujian"));await setDoc(auditRef,{instrumen:r._instrument,koleksi:collectionName,docId:r._docId,nilaiAsal:before,nilaiBaharu:updated,catatan:note,uidAdmin:SES.uid||"",idAdmin:SES.id||"",namaAdmin:SES.nama||"",masa:new Date().toISOString()});hideCoreLoading();closeModal();toast("Maklumat klien berjaya dikemas kini.","ok");await aupLoad(document.getElementById("pg-body"));}catch(error){hideCoreLoading();console.error(error);toast("Kemas kini gagal: "+(error.message||error),"err");}
+}
+
 function aupDeleteRecord(index){
   if(!isAdmin()){toast("Hanya Admin Utama boleh memadam rekod.","err");return;}
-  const row=AUP_VISIBLE_ROWS[index];
-  if(!row||!row._docId){toast("ID dokumen tidak ditemui.","err");return;}
+  const row=AUP_VISIBLE_ROWS[index];if(!row||!row._docId){toast("ID dokumen tidak ditemui.","err");return;}
   const collectionName=row._instrument==="ISP"?"kesihatan_mental_klien":"ssp_responses";
   const ok=confirm(`PADAM REKOD ${row._instrument}?\n\nNama: ${row._name}\nKampus: ${row._campus}\nTarikh: ${row._date}\nTahap/Kategori: ${row._level}\n\nTindakan ini tidak boleh dibatalkan.`);
-  if(!ok)return;
-  const typed=prompt(`Taip PADAM untuk mengesahkan pemadaman rekod ${row._instrument} bagi ${row._name}:`);
+  if(!ok)return;const typed=prompt(`Taip PADAM untuk mengesahkan pemadaman rekod ${row._instrument} bagi ${row._name}:`);
   if(typed!=="PADAM"){toast("Pemadaman dibatalkan.","inf");return;}
-  (async()=>{
-    try{
-      showCoreLoading("Memadam rekod ujian psikologi...",`${row._instrument} · ${row._name}`);
-      await (window.MYFB_READY||Promise.resolve(true));
-      const {db,doc,collection,setDoc,deleteDoc}=window.__FS;
-      if(!deleteDoc)throw new Error("Fungsi deleteDoc belum tersedia.");
-      const auditRef=doc(collection(db,"audit_pemadaman_instrumen"));
-      await setDoc(auditRef,{instrumen:row._instrument,koleksiAsal:collectionName,docIdAsal:row._docId,nama:row._name,idPelajar:row._id||"",kodKampus:row._code||"",kampus:row._campus||"",tahap:row._level||"",tarikhRespon:row._date||"",dipadamOleh:SES.uid||"",idPengguna:SES.id||"",namaPengguna:SES.nama||"",masaDipadam:new Date().toISOString()});
-      await deleteDoc(doc(db,collectionName,row._docId));
-      hideCoreLoading();toast("Rekod berjaya dipadam.","ok");
-      await aupLoad(document.getElementById("pg-body"));
-    }catch(error){hideCoreLoading();console.error("[PADAM REKOD INSTRUMEN]",error);toast("Pemadaman gagal: "+(error.message||error),"err");}
-  })();
+  (async()=>{try{showCoreLoading("Memadam rekod ujian psikologi...",`${row._instrument} \u00b7 ${row._name}`);await(window.MYFB_READY||Promise.resolve(true));const{db,doc,collection,setDoc,deleteDoc}=window.__FS;if(!deleteDoc)throw new Error("Fungsi deleteDoc belum tersedia.");const auditRef=doc(collection(db,"audit_pemadaman_instrumen"));await setDoc(auditRef,{instrumen:row._instrument,koleksiAsal:collectionName,docIdAsal:row._docId,nama:row._name,idPelajar:row._id||"",kodKampus:row._code||"",kampus:row._campus||"",tahap:row._level||"",tarikhRespon:row._date||"",dipadamOleh:SES.uid||"",idPengguna:SES.id||"",namaPengguna:SES.nama||"",masaDipadam:new Date().toISOString()});await deleteDoc(doc(db,collectionName,row._docId));hideCoreLoading();toast("Rekod berjaya dipadam.","ok");await aupLoad(document.getElementById("pg-body"));}catch(error){hideCoreLoading();console.error("[PADAM REKOD INSTRUMEN]",error);toast("Pemadaman gagal: "+(error.message||error),"err");}})();
 }
+
+function aupExportPDF(){
+  const rows=aupFiltered();if(!rows.length){toast("Tiada data untuk PDF berdasarkan penapis semasa.","err");return;}
+  const filters={Instrumen:document.getElementById("aup-instrument")?.value||"Semua",Tahun:document.getElementById("aup-year")?.value||"Semua",Zon:document.getElementById("aup-zone")?.value||"Semua",Kampus:document.getElementById("aup-campus")?.selectedOptions?.[0]?.text||"Semua",Kategori:document.getElementById("aup-level")?.value||"Semua"};
+  const unique=new Set(rows.map(r=>r._id||`${r._name}|${r._code}`)).size;const attention=rows.filter(r=>r._attention).length;const campusSummary=aupCampusSummary(rows);const levelMap=aupCountMap(rows,"_level");
+  const rowsHtml=rows.slice(0,500).map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r._instrument)}</td><td>${esc(r._name)}</td><td>${esc(r._id||"\u2014")}</td><td>${esc(r._campus)}</td><td>${esc(r._program)}</td><td>${r._score??"\u2014"}</td><td>${esc(r._level)}</td></tr>`).join("");
+  const w=window.open("","_blank");if(!w){toast("Benarkan pop-up untuk menjana PDF.","err");return;}
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Laporan Analisis Ujian Psikologi</title><style>body{font-family:Arial,sans-serif;color:#172033;margin:28px}h1{font-size:20px;margin:0}h2{font-size:15px;margin-top:24px}.muted{color:#64748b;font-size:12px}.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.box{border:1px solid #dbe3ea;border-radius:8px;padding:12px}.val{font-size:22px;font-weight:700}.lbl{font-size:11px;color:#64748b}table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #dbe3ea;padding:6px;text-align:left}th{background:#eef4f7}@media print{button{display:none}body{margin:12mm}}</style></head><body><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><h1>LAPORAN ANALISIS UJIAN PSIKOLOGI</h1><div class="muted">ISP dan SSP \u00b7 Dijana ${new Date().toLocaleString("ms-MY")}</div></div><button onclick="window.print()">Cetak / Simpan PDF</button></div><div class="box" style="margin-top:15px"><b>Penapis:</b> ${Object.entries(filters).map(([k,v])=>`${k}: ${esc(v)}`).join(" \u00b7 ")}</div><div class="kpi"><div class="box"><div class="val">${rows.length}</div><div class="lbl">Jumlah Respons</div></div><div class="box"><div class="val">${unique}</div><div class="lbl">Jumlah Responden</div></div><div class="box"><div class="val">${attention}</div><div class="lbl">Perlu Perhatian</div></div><div class="box"><div class="val">${campusSummary.length}</div><div class="lbl">Kampus Terlibat</div></div></div><h2>Ringkasan Kampus</h2><table><thead><tr><th>Kampus</th><th>ISP</th><th>SSP</th><th>Jumlah</th><th>Perlu Perhatian</th></tr></thead><tbody>${campusSummary.map(v=>`<tr><td>${esc(v.campus)}</td><td>${v.isp}</td><td>${v.ssp}</td><td>${v.total}</td><td>${v.attention}</td></tr>`).join("")}</tbody></table><h2>Taburan Tahap/Kategori</h2><table><thead><tr><th>Tahap/Kategori</th><th>Bilangan</th></tr></thead><tbody>${Object.entries(levelMap).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("")}</tbody></table><h2>Senarai Respons Ditapis</h2><table><thead><tr><th>Bil.</th><th>Instrumen</th><th>Nama</th><th>ID</th><th>Kampus</th><th>Program</th><th>Skor</th><th>Tahap</th></tr></thead><tbody>${rowsHtml}</tbody></table>${rows.length>500?`<p class="muted">PDF memaparkan 500 rekod pertama daripada ${rows.length} rekod. Gunakan Excel untuk data penuh.</p>`:""}</body></html>`);
+  w.document.close();setTimeout(()=>{w.focus();w.print();},500);
+}
+
 function aupExportExcel(){const rows=aupFiltered();if(!rows.length){toast("Tiada data untuk dieksport.","err");return;}const data=rows.map((r,i)=>({"Bil.":i+1,"Instrumen":r._instrument,"Tarikh":r._date,"Nama":r._name,"ID Pelajar":r._id,"Program":r._program,"Jantina":r._gender,"Kod Kampus":r._code,"Kampus":r._campus,"Zon":r._zone,"Negeri":r._state,"Skor":r._score??"","Tahap/Kategori":r._level,"Perlu Perhatian":r._attention?"Ya":"Tidak"}));const wb=XLSX.utils.book_new(),ws=XLSX.utils.json_to_sheet(data);ws["!autofilter"]={ref:ws["!ref"]};XLSX.utils.book_append_sheet(wb,ws,"ISP dan SSP");XLSX.writeFile(wb,"Analisis_Ujian_Psikologi_ISP_SSP_Zon_Kampus.xlsx");}
+
 function pgAKUjianPsikologi(c){aupLoad(c);}
 function pgAUUjianPsikologi(c){aupLoad(c);}
 </script>
-
 
 </body>
 </html>
