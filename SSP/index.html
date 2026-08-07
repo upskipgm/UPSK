@@ -1378,7 +1378,7 @@ const app = {
             const originalCanvas = element.querySelector('#mooneyBarChart');
             let chartImageSrc = null;
             if (originalCanvas) {
-                try { chartImageSrc = originalCanvas.toDataURL('image/png'); } catch(e) { console.warn('Chart toDataURL failed:', e); }
+                try { chartImageSrc = originalCanvas.toDataURL('image/jpeg', 0.5); } catch(e) { console.warn('Chart toDataURL failed:', e); }
             }
 
             // Clone the slip so we can apply PDF-only styles without touching
@@ -1496,9 +1496,9 @@ const app = {
                     margin: [8, 8, 10, 8],
                     filename: `SLIP_Senarai_Semak_${name}.pdf`,
                     // FIX: Tukar dari jpeg ke png — PNG tidak kehilangan warna
-                    image: { type: 'png', quality: 1 },
+                    image: { type: 'jpeg', quality: 0.6 },
                     html2canvas: {
-                        scale: 2,
+                        scale: 1,
                         useCORS: true,
                         backgroundColor: '#ffffff',
                         scrollX: 0,
