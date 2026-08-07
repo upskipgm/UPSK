@@ -13360,19 +13360,19 @@ async function kmGetCollection(name,kampusFilter){
   const {getDocs,collection,query,where,db}=window.__FS;
   const kod=canonicalKodKampusGlobal(kampusFilter||"");
 
-  if(kod && !isAdmin()){
-    const exact=await getDocs(query(collection(db,name),where("kodKampus","==",kod)));
-    if(!exact.empty){
-      return exact.docs.map(d=>({_docId:d.id,...d.data()}));
-    }
+ if(kod && !isAdmin()){
+  const exact = await getDocs(
+    query(
+      collection(db, name),
+      where("kodKampus", "==", kod)
+    )
+  );
 
-    // Fallback untuk data lama yang kodKampusnya salah tetapi nama kampus betul.
-    const all=await getDocs(collection(db,name));
-    return all.docs
-      .map(d=>({_docId:d.id,...d.data()}))
-      .filter(record=>resolveMasterKampusCode(record)===kod);
-  }
-
+  return exact.docs.map(d => ({
+    _docId: d.id,
+    ...d.data()
+  }));
+}
   const snap=await getDocs(collection(db,name));
   return snap.docs.map(d=>({_docId:d.id,...d.data()}));
 }
@@ -13392,10 +13392,28 @@ async function kmLoadPage(container){
 
   try{
     const campus=isKampus()?kmOwnCampus():null;
-    const [summaries,clients]=await Promise.all([
-      kmGetCollection("kesihatan_mental_ringkasan",campus),
-      kmGetCollection("kesihatan_mental_klien",campus)
-    ]);
+    let summaries = [];
+let clients = [];
+
+try{
+    summaries = await kmGetCollection(
+        "kesihatan_mental_ringkasan",
+        campus
+    );
+    console.log("✔ ringkasan OK", summaries.length);
+}catch(e){
+    console.error("❌ ringkasan", e);
+}
+
+try{
+    clients = await kmGetCollection(
+        "kesihatan_mental_klien",
+        campus
+    );
+    console.log("✔ ISP OK", clients.length);
+}catch(e){
+    console.error("❌ ISP", e);
+}
 
     const normalized=summaries.map(kmMasterRecord)
       .filter(r=>isAdmin()||r.kodKampus===campus)
