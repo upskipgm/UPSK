@@ -410,6 +410,40 @@
     </div>
 </div>
 
+<!-- Modal: Muat Turun Keputusan SSP (Carian IC) -->
+<div id="modal-retrieve" class="modal-overlay" onclick="if(event.target===this)app.closeModal('modal-retrieve')">
+    <div class="modal-box" style="max-width: 460px;">
+        <div class="modal-header">
+            <div class="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800">Muat Turun Keputusan SSP</h3>
+            <p class="text-sm text-slate-500 mt-1">Masukkan No. Kad Pengenalan untuk mengesahkan dan memuat turun keputusan anda.</p>
+        </div>
+        <div class="modal-body">
+            <div id="retrieve-loading" class="hidden">
+                <div class="flex items-center justify-center py-8">
+                    <svg class="animate-spin h-8 w-8 text-teal-600 mr-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                    <span class="text-sm text-slate-600 font-medium">Mencari keputusan SSP anda...</span>
+                </div>
+            </div>
+            <div id="retrieve-form">
+                <label class="block text-sm font-semibold text-slate-700 mb-2">No. Kad Pengenalan</label>
+                <input type="text" id="retrieve-ic-input" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-sm" placeholder="Contoh: 010203040506" inputmode="numeric" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                <p class="text-xs text-slate-400 mt-2">Masukkan nombor Kad Pengenalan yang digunakan semasa mendaftarkan SSP.</p>
+                <div id="retrieve-error" class="hidden mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700"></div>
+            </div>
+        </div>
+        <div class="modal-footer flex gap-3 justify-center">
+            <button id="btn-retrieve-search" onclick="app.retrieveResultsByIC()" class="px-6 py-2.5 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition flex items-center gap-2 text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                Cari & Muat Turun
+            </button>
+            <button onclick="app.closeModal('modal-retrieve')" class="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition text-sm">Batal</button>
+        </div>
+    </div>
+</div>
+
 <script>
 const MOONEY_ITEMS = ["Saya mudah mengalami masalah kesihatan.", "Saya sering berasa cepat penat.", "Saya tidak mendapat rehat atau tidur yang mencukupi.", "Saya kurang melakukan aktiviti fizikal atau bersenam.", "Saya kurang berpuas hati terhadap keadaan fizikal atau penampilan diri.", "Saya mempunyai tabiat yang menjejaskan kesihatan diri.", "Saya mengalami masalah kesihatan yang mengganggu pembelajaran.", "Saya sukar mengekalkan gaya hidup yang sihat.", "Saya menghadapi kesukaran mendapatkan kemudahan penjagaan kesihatan apabila diperlukan.", "Keadaan kesihatan saya menjejaskan keyakinan diri.", "Saya menghadapi masalah kewangan.", "Perbelanjaan harian saya tidak mencukupi.", "Saya bergantung kepada keluarga untuk menampung perbelanjaan pengajian.", "Saya memerlukan bantuan kewangan bagi meneruskan pengajian.", "Keadaan kewangan keluarga membimbangkan saya.", "Saya perlu bekerja sambilan bagi menampung perbelanjaan.", "Saya sukar menguruskan kewangan dengan baik.", "Kos sara hidup memberi tekanan kepada saya.", "Saya bimbang tentang komitmen kewangan pada masa hadapan.", "Masalah kewangan mengganggu tumpuan saya terhadap pembelajaran.", "Saya sukar berkenalan dengan rakan baharu.", "Saya berasa kekok apabila bergaul dengan orang lain.", "Saya sukar meneruskan perbualan dengan orang lain.", "Saya kurang melibatkan diri dalam aktiviti pelajar di IPG.", "Saya kurang mempunyai masa untuk aktiviti riadah atau rekreasi.", "Saya tidak menggunakan masa lapang dengan baik.", "Saya kurang mempunyai aktiviti atau hobi yang memberi kepuasan kepada diri.", "Saya kurang peluang menyertai aktiviti sukan atau kokurikulum.", "Saya berasa kehidupan harian saya terlalu padat sehingga tiada masa untuk diri sendiri.", "Saya sukar menyesuaikan diri dengan kehidupan kampus.", "Saya sukar menjalinkan hubungan percintaan yang sihat.", "Saya berasa malu untuk meluahkan perasaan kepada seseorang yang saya minati.", "Saya menghadapi masalah dalam hubungan percintaan.", "Saya kecewa dalam hubungan percintaan.", "Saya bimbang kehilangan orang yang saya sayangi.", "Saya keliru tentang hubungan percintaan yang sedang saya jalinkan.", "Saya menghadapi konflik dengan pasangan atau orang yang saya minati.", "Saya kurang pengetahuan tentang batasan dalam hubungan percintaan.", "Saya berasa keliru berkaitan isu seksual dalam hubungan percintaan", "Hubungan percintaan mengganggu emosi dan kehidupan saya.", "Saya mudah berasa malu apabila berhadapan dengan orang lain.", "Saya berasa rendah diri.", "Saya bimbang terhadap pandangan orang lain terhadap diri saya.", "Saya sering menjadi sasaran kritikan atau ejekan.", "Saya sering terlibat dalam konflik dengan orang lain.", "Saya merasakan diri tidak diterima oleh orang lain.", "Saya sering berasa kesunyian.", "Saya merasakan tiada siapa yang memahami saya.", "Saya tiada tempat untuk berkongsi masalah.", "Saya sukar membina hubungan yang baik dengan orang lain.", "Saya sukar mengawal kemarahan.", "Saya mudah berasa cemas.", "Saya sering berasa bimbang.", "Saya sering berasa sedih.", "Saya kurang yakin terhadap diri sendiri.", "Saya takut melakukan kesilapan.", "Saya mudah berputus asa apabila menghadapi cabaran.", "Saya sukar berhenti memikirkan masalah yang saya hadapi.", "Saya sukar melupakan pengalaman yang menyakitkan.", "Saya berasa hilang semangat untuk meneruskan aktiviti harian", "Saya kurang menghayati amalan agama.", "Saya mempunyai keraguan berkaitan pegangan agama atau nilai hidup.", "Saya keliru menentukan perkara yang betul dan salah.", "Saya berasa hubungan saya dengan Tuhan tidak seperti yang saya harapkan", "Saya sering berasa bersalah atas kesilapan yang pernah dilakukan.", "Saya sukar mengawal tingkah laku yang tidak baik.", "Saya kurang jujur terhadap diri sendiri.", "Saya mudah terpengaruh dengan perkara yang negatif.", "Saya bimbang terhadap akibat daripada kesalahan yang pernah dilakukan.", "Nilai hidup saya sering bercanggah dengan tindakan saya.", "Ibu bapa atau penjaga kurang memahami saya.", "Saya sering berselisih faham dengan ahli keluarga.", "Saya kurang gembira apabila bersama keluarga.", "Saya merasakan keluarga terlalu mengongkong kehidupan saya.", "Keluarga mengharapkan terlalu banyak daripada saya.", "Saya kurang mendapat kepercayaan daripada keluarga.", "Saya bimbang terhadap keadaan ahli keluarga saya.", "Saya memerlukan lebih kasih sayang daripada keluarga.", "Saya sukar berbincang tentang masalah dengan keluarga.", "Masalah keluarga mengganggu pembelajaran saya.", "Saya ragu-ragu terhadap bidang pengajian yang saya pilih.", "Saya tidak pasti tentang kerjaya saya sebagai guru pada masa hadapan.", "Saya kurang mengenali kebolehan dan potensi diri.", "Saya berasa kurang mendapat bimbingan berkaitan kerjaya", "Saya bimbang tidak mendapat penempatan atau pekerjaan selepas tamat pengajian.", "Saya kurang yakin dapat melaksanakan tugas sebagai seorang guru.", "Saya kurang jelas tentang hala tuju kerjaya saya.", "Saya menghadapi kesukaran merancang kerjaya masa depan", "Saya bimbang tentang masa depan kerjaya saya.", "Perkara berkaitan kerjaya sering mengganggu fikiran saya.", "Saya sukar memahami kandungan pembelajaran.", "Saya kurang berminat untuk belajar.", "Saya tidak menguasai teknik belajar yang berkesan.", "Saya sukar menyiapkan tugasan mengikut tempoh yang ditetapkan.", "Saya sukar menumpukan perhatian semasa belajar.", "Saya sukar mengambil nota pembelajaran.", "Saya sukar menyediakan laporan atau tugasan akademik.", "Saya bimbang menghadapi peperiksaan atau pentaksiran.", "Saya kurang berpuas hati dengan pencapaian akademik saya.", "Saya bimbang gagal menamatkan pengajian dengan cemerlang.", "Kaedah pengajaran pensyarah sukar saya fahami.", "Bahan pembelajaran yang disediakan kurang membantu pembelajaran saya", "Kursus yang dipelajari kurang berkaitan dengan amalan profesion keguruan.", "Saya kurang berminat terhadap beberapa kursus yang diikuti.", "Beban tugasan kursus terlalu banyak.", "Perbincangan dalam kelas tidak mencukupi.", "Saya kurang selesa berinteraksi dengan pensyarah.", "Saya menghadapi kesukaran mendapatkan bimbingan akademik daripada pensyarah apabila diperlukan.", "Kaedah pentaksiran kursus kurang membantu saya menunjukkan kemampuan sebenar.", "Sistem pengajaran dan pembelajaran di IPG kurang memenuhi keperluan pembelajaran saya."];
 const MOONEY_DOMAINS = [
@@ -551,9 +585,16 @@ const app = {
                         <p><strong>Penting:</strong> Setiap item <strong>mesti</strong> dijawab sebelum anda boleh ke halaman seterusnya.</p>
                     </div>
                 </div>
-                <button onclick="app.startRegister()" class="px-8 py-3 bg-teal-600 text-white rounded-xl font-semibold text-base hover:bg-teal-700 transition">
-                    Mula Pendaftaran
-                </button>
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button onclick="app.startRegister()" class="px-8 py-3 bg-teal-600 text-white rounded-xl font-semibold text-base hover:bg-teal-700 transition">
+                        Mula Pendaftaran
+                    </button>
+                    <button onclick="app.openRetrieveModal()" class="px-8 py-3 bg-white border-2 border-teal-600 text-teal-700 rounded-xl font-semibold text-base hover:bg-teal-50 transition flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        Muat Turun Keputusan
+                    </button>
+                </div>
+                <p class="text-xs text-slate-400 mt-3">Sudah menjawab SSP? Klik "Muat Turun Keputusan" untuk mendapatkan slip keputusan anda.</p>
             </div>`;
     },
 
@@ -1229,6 +1270,143 @@ const app = {
             console.error('IC check error:', err);
             return false;
         }
+    },
+
+    // ─── RETRIEVE RESULTS BY IC (Muat Turun Keputusan) ─────────────
+
+    openRetrieveModal() {
+        document.getElementById('retrieve-ic-input').value = '';
+        document.getElementById('retrieve-error').classList.add('hidden');
+        document.getElementById('retrieve-loading').classList.add('hidden');
+        document.getElementById('retrieve-form').classList.remove('hidden');
+        const btn = document.getElementById('btn-retrieve-search');
+        btn.disabled = false;
+        btn.classList.remove('opacity-75', 'cursor-not-allowed');
+        btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> Cari & Muat Turun';
+        this.openModal('modal-retrieve');
+        setTimeout(() => document.getElementById('retrieve-ic-input').focus(), 350);
+    },
+
+    async retrieveResultsByIC() {
+        const input = document.getElementById('retrieve-ic-input');
+        const ic = (input ? input.value : '').trim();
+        const errorBox = document.getElementById('retrieve-error');
+
+        // Validate IC input
+        if (!ic) {
+            errorBox.textContent = 'Sila masukkan No. Kad Pengenalan anda.';
+            errorBox.classList.remove('hidden');
+            input.focus();
+            return;
+        }
+        if (!/^[0-9]+$/.test(ic)) {
+            errorBox.textContent = 'No. Kad Pengenalan mesti mengandungi nombor sahaja.';
+            errorBox.classList.remove('hidden');
+            input.focus();
+            return;
+        }
+        if (ic.length < 12 || ic.length > 14) {
+            errorBox.textContent = 'No. Kad Pengenalan mesti mempunyai 12 hingga 14 digit.';
+            errorBox.classList.remove('hidden');
+            input.focus();
+            return;
+        }
+
+        // Hide error, show loading
+        errorBox.classList.add('hidden');
+        document.getElementById('retrieve-form').classList.add('hidden');
+        document.getElementById('retrieve-loading').classList.remove('hidden');
+
+        const btn = document.getElementById('btn-retrieve-search');
+        btn.disabled = true;
+        btn.classList.add('opacity-75', 'cursor-not-allowed');
+
+        if (!db) {
+            document.getElementById('retrieve-form').classList.remove('hidden');
+            document.getElementById('retrieve-loading').classList.add('hidden');
+            errorBox.textContent = 'Firebase belum bersedia. Sila semak konfigurasi dan cuba lagi.';
+            errorBox.classList.remove('hidden');
+            btn.disabled = false;
+            btn.classList.remove('opacity-75', 'cursor-not-allowed');
+            return;
+        }
+
+        try {
+            // First check if IC exists in registry
+            const registryDoc = await db.collection('ssp_ic_registry').doc(ic).get();
+            if (!registryDoc.exists) {
+                document.getElementById('retrieve-form').classList.remove('hidden');
+                document.getElementById('retrieve-loading').classList.add('hidden');
+                errorBox.innerHTML = '<strong>Tiada rekod dijumpai.</strong><br>Tiada rekod SSP yang didaftarkan dengan No. Kad Pengenalan ini. Sila pastikan nombor yang dimasukkan adalah betul atau hubungi pentadbir jika anda memerlukan bantuan.';
+                errorBox.classList.remove('hidden');
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                return;
+            }
+
+            // Query ssp_responses for matching IC
+            const snapshot = await db.collection('ssp_responses').where('kad_pengenalan', '==', ic).limit(1).get();
+            if (snapshot.empty) {
+                document.getElementById('retrieve-form').classList.remove('hidden');
+                document.getElementById('retrieve-loading').classList.add('hidden');
+                errorBox.innerHTML = '<strong>Rekod SSP tidak dijumpai.</strong><br>No. Kad Pengenalan ini didaftarkan tetapi data jawapan SSP tidak ditemui. Sila hubungi pentadbir untuk bantuan lanjut.';
+                errorBox.classList.remove('hidden');
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                return;
+            }
+
+            // Load the first matching document
+            const doc = snapshot.docs[0];
+            const data = doc.data();
+
+            // Close modal and load results
+            this.closeModal('modal-retrieve');
+            this.loadRetrievedResults(data);
+
+        } catch (err) {
+            console.error('Retrieve results error:', err);
+            document.getElementById('retrieve-form').classList.remove('hidden');
+            document.getElementById('retrieve-loading').classList.add('hidden');
+            let msg = 'Sila semak sambungan internet dan cuba lagi.';
+            if (err.code === 'permission-denied') {
+                msg = 'Akses ditolak oleh Security Rules. Sila hubungi pentadbir sistem.';
+            } else if (err.code === 'unavailable') {
+                msg = 'Perkhidmatan pangkalan data tidak tersedia. Sila cuba sebentar lagi.';
+            }
+            errorBox.innerHTML = '<strong>Gagal mencari keputusan.</strong><br>' + msg;
+            errorBox.classList.remove('hidden');
+            btn.disabled = false;
+            btn.classList.remove('opacity-75', 'cursor-not-allowed');
+        }
+    },
+
+    loadRetrievedResults(data) {
+        // Populate answers.A from retrieved data
+        this.answers.A = {
+            nama: data.nama || '',
+            kad_pengenalan: data.kad_pengenalan || '',
+            no_matrik: data.no_matrik || '',
+            emel: data.emel || '',
+            jantina: data.jantina || '',
+            bangsa: data.bangsa || '',
+            agama: data.agama || '',
+            telefon: data.telefon || '',
+            ipg: data.ipg || '',
+            program: data.program || '',
+            bidang: data.bidang || ''
+        };
+
+        // Populate answers.items from retrieved data
+        const items = data.items || [];
+        for (let i = 0; i < 110; i++) {
+            this.answers.items[i] = (items[i] !== undefined && items[i] !== null) ? items[i] : 0;
+        }
+
+        // Set phase to results and render
+        this.phase = 'results';
+        this.renderResults();
+        this.notify('success', 'Keputusan Dijumpai', 'Keputusan SSP anda telah berjaya dimuatkan. Anda kini boleh muat turun atau cetak slip keputusan.');
     },
 
     setForwardLoading(loading) {
