@@ -1332,9 +1332,11 @@ const app = {
         }
 
         try {
-            // First check if IC exists in registry
+            console.log('[Retrieve] Mencari registry untuk IC:', ic);
+            // Step 1: Get the IC registry document
             const registryDoc = await db.collection('ssp_ic_registry').doc(ic).get();
             if (!registryDoc.exists) {
+                console.log('[Retrieve] IC tidak dijumpai dalam registry:', ic);
                 document.getElementById('retrieve-form').classList.remove('hidden');
                 document.getElementById('retrieve-loading').classList.add('hidden');
                 errorBox.innerHTML = '<strong>Tiada rekod dijumpai.</strong><br>Tiada rekod SSP yang didaftarkan dengan No. Kad Pengenalan ini. Sila pastikan nombor yang dimasukkan adalah betul atau hubungi pentadbir jika anda memerlukan bantuan.';
@@ -1344,35 +1346,54 @@ const app = {
                 return;
             }
 
-            // Query ssp_responses for matching IC
-            const snapshot = await db.collection('ssp_responses').where('kad_pengenalan', '==', ic).limit(1).get();
-            if (snapshot.empty) {
+            const registryData = registryDoc.data();
+            console.log('[Retrieve] Registry dijumpai:', registryData);
+            const responseDocId = registryData.responseDocId;
+
+            // Step 2: Get the actual response document using the stored doc ID
+            if (!responseDocId) {
+                // Rekod lama (sebelum kod dikemaskini) tiada responseDocId.
+                // Pelajar perlu hubungi pentadbir untuk mengemas kini rekod.
+                console.log('[Retrieve] Tiada responseDocId dalam registry — rekod lama');
                 document.getElementById('retrieve-form').classList.remove('hidden');
                 document.getElementById('retrieve-loading').classList.add('hidden');
-                errorBox.innerHTML = '<strong>Rekod SSP tidak dijumpai.</strong><br>No. Kad Pengenalan ini didaftarkan tetapi data jawapan SSP tidak ditemui. Sila hubungi pentadbir untuk bantuan lanjut.';
+                errorBox.innerHTML = '<strong>Rekod SSP perlu dikemas kini.</strong><br>No. Kad Pengenalan ini telah didaftarkan, tetapi rekod adalah dari versi sistem lama. Sila hubungi <strong>Kaunselor Pendidikan IPG</strong> atau pentadbir supaya mereka boleh mengemas kini rekod anda untuk membolehkan muat turun keputusan secara dalam talian.';
                 errorBox.classList.remove('hidden');
                 btn.disabled = false;
                 btn.classList.remove('opacity-75', 'cursor-not-allowed');
                 return;
             }
 
-            // Load the first matching document
-            const doc = snapshot.docs[0];
-            const data = doc.data();
+            // Get the response document directly by ID
+            console.log('[Retrieve] Mencari response doc ID:', responseDocId);
+            const responseDoc = await db.collection('ssp_responses').doc(responseDocId).get();
+            if (!responseDoc.exists) {
+                console.log('[Retrieve] Response doc tidak wujud:', responseDocId);
+                document.getElementById('retrieve-form').classList.remove('hidden');
+                document.getElementById('retrieve-loading').classList.add('hidden');
+                errorBox.innerHTML = '<strong>Rekod jawapan SSP tidak dijumpai.</strong><br>Data jawapan mungkin telah dipadam atau belum selesai. Sila hubungi pentadbir untuk bantuan lanjut.';
+                errorBox.classList.remove('hidden');
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                return;
+            }
 
-            // Close modal and load results
+            const data = responseDoc.data();
+            console.log('[Retrieve] Berjaya memuatkan data untuk:', data.nama || 'tidak bernama');
             this.closeModal('modal-retrieve');
             this.loadRetrievedResults(data);
 
         } catch (err) {
-            console.error('Retrieve results error:', err);
+            console.error('[Retrieve] Ralat lengkap:', err.code, err.message, err);
             document.getElementById('retrieve-form').classList.remove('hidden');
             document.getElementById('retrieve-loading').classList.add('hidden');
             let msg = 'Sila semak sambungan internet dan cuba lagi.';
             if (err.code === 'permission-denied') {
-                msg = 'Akses ditolak oleh Security Rules. Sila hubungi pentadbir sistem.';
+                msg = 'Akses ditolak oleh Security Rules Firestore. Sila pastikan kedua-dua koleksi <strong>ssp_ic_registry</strong> dan <strong>ssp_responses</strong> membenarkan <strong>read</strong> (bacaan). Hubungi pentadbir sistem untuk mengemas kini Firestore Rules.';
             } else if (err.code === 'unavailable') {
                 msg = 'Perkhidmatan pangkalan data tidak tersedia. Sila cuba sebentar lagi.';
+            } else {
+                msg += ' (Kod ralat: ' + (err.code || err.message) + ')';
             }
             errorBox.innerHTML = '<strong>Gagal mencari keputusan.</strong><br>' + msg;
             errorBox.classList.remove('hidden');
@@ -1460,13 +1481,14 @@ const app = {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
         try {
-            await db.collection('ssp_responses').add(studentData);
-            console.log('ssp_responses berjaya ditulis');
+            const responseRef = await db.collection('ssp_responses').add(studentData);
+            console.log('ssp_responses berjaya ditulis — Doc ID:', responseRef.id);
             await db.collection('ssp_ic_registry').doc(ic).set({
                 kad_pengenalan: ic,
                 nama: this.answers.A.nama || '',
                 ipg: this.answers.A.ipg || '',
                 kodKampus: kodKampus,
+                responseDocId: responseRef.id,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             console.log('ssp_ic_registry berjaya ditulis');
