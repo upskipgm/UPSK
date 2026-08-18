@@ -1350,18 +1350,52 @@ const app = {
             console.log('[Retrieve] Registry dijumpai:', registryData);
             const responseDocId = registryData.responseDocId;
 
-            // Step 2: Get the actual response document using the stored doc ID
+            // Step 2: Get the actual response document
             if (!responseDocId) {
                 // Rekod lama (sebelum kod dikemaskini) tiada responseDocId.
-                // Pelajar perlu hubungi pentadbir untuk mengemas kini rekod.
-                console.log('[Retrieve] Tiada responseDocId dalam registry — rekod lama');
-                document.getElementById('retrieve-form').classList.remove('hidden');
-                document.getElementById('retrieve-loading').classList.add('hidden');
-                errorBox.innerHTML = '<strong>Rekod SSP perlu dikemas kini.</strong><br>No. Kad Pengenalan ini telah didaftarkan, tetapi rekod adalah dari versi sistem lama. Sila hubungi <strong>Kaunselor Pendidikan IPG</strong> atau pentadbir supaya mereka boleh mengemas kini rekod anda untuk membolehkan muat turun keputusan secara dalam talian.';
-                errorBox.classList.remove('hidden');
-                btn.disabled = false;
-                btn.classList.remove('opacity-75', 'cursor-not-allowed');
-                return;
+                // Guna kaedah fallback: query berdasarkan kad_pengenalan.
+                console.log('[Retrieve] Tiada responseDocId dalam registry — guna query fallback');
+                try {
+                    const snapshot = await db.collection('ssp_responses').where('kad_pengenalan', '==', ic).limit(1).get();
+                    if (snapshot.empty) {
+                        document.getElementById('retrieve-form').classList.remove('hidden');
+                        document.getElementById('retrieve-loading').classList.add('hidden');
+                        errorBox.innerHTML = '<strong>Rekod jawapan SSP tidak dijumpai.</strong><br>No. Kad Pengenalan ini didaftarkan tetapi data jawapan SSP tidak ditemui. Sila hubungi <strong>Kaunselor Pendidikan IPG</strong> atau pentadbir untuk bantuan lanjut.';
+                        errorBox.classList.remove('hidden');
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                        return;
+                    }
+                    const doc = snapshot.docs[0];
+                    const data = doc.data();
+                    console.log('[Retrieve] Data dijumpai via query fallback — kini mengemas kini registry');
+                    // Kemas kini registry dengan responseDocId untuk kegunaan akan datang
+                    db.collection('ssp_ic_registry').doc(ic).update({
+                        responseDocId: doc.id
+                    }).then(() => {
+                        console.log('[Retrieve] Registry berjaya dikemas kini dengan responseDocId:', doc.id);
+                    }).catch(e => {
+                        console.warn('[Retrieve] Gagal kemas kini registry (bukan kritikal):', e);
+                    });
+                    this.closeModal('modal-retrieve');
+                    this.loadRetrievedResults(data);
+                    return;
+                } catch (fallbackErr) {
+                    console.error('[Retrieve] Ralat query fallback:', fallbackErr);
+                    document.getElementById('retrieve-form').classList.remove('hidden');
+                    document.getElementById('retrieve-loading').classList.add('hidden');
+                    let fallbackMsg = 'Gagal mencari rekod jawapan. ';
+                    if (fallbackErr.code === 'permission-denied') {
+                        fallbackMsg += 'Akses query ditolak. Sila pastikan Firestore Rules membenarkan <strong>allow list: if signedIn()</strong> untuk koleksi <strong>ssp_responses</strong>.';
+                    } else {
+                        fallbackMsg += 'Sila cuba lagi atau hubungi pentadbir.';
+                    }
+                    errorBox.innerHTML = '<strong>Gagal mencari keputusan.</strong><br>' + fallbackMsg;
+                    errorBox.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                    return;
+                }
             }
 
             // Get the response document directly by ID
