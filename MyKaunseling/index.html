@@ -17499,7 +17499,7 @@ function aupRoleCampus(){return canonicalKodKampusGlobal(SES.kodKampus||SES.kamp
 function aupRoleZone(){return MASTER_KAMPUS_BY_ID[aupRoleCampus()]?.zon||"";}
 function aupCampusOptions(zone=""){let rows=aupAllRows();if(zone)rows=rows.filter(r=>r._zone===zone);const map=new Map();rows.forEach(r=>{if(r._code&&!map.has(r._code))map.set(r._code,r._campus);});return[...map.entries()].sort((a,b)=>a[1].localeCompare(b[1],"ms"));}
 function aupUpdateCampusFilter(){const zone=document.getElementById("aup-zone")?.value||"";const select=document.getElementById("aup-campus");if(!select)return;const current=select.value,own=aupRoleCampus(),options=aupCampusOptions(zone);select.innerHTML=`<option value="">Semua Kampus</option>`+options.map(([c,n])=>`<option value="${esc(c)}">${esc(c)} · ${esc(n)}</option>`).join("");if(!isAdmin()&&own){select.value=own;select.disabled=true;}else{select.disabled=false;select.value=options.some(([c])=>c===current)?current:"";}}
-function aupFiltered(){const instrument=document.getElementById("aup-instrument")?.value||"";const year=document.getElementById("aup-year")?.value||"";const zone=document.getElementById("aup-zone")?.value||"";const campus=document.getElementById("aup-campus")?.value||"";const program=document.getElementById("aup-program")?.value||"";const level=document.getElementById("aup-level")?.value||"";const search=aupText(document.getElementById("aup-search")?.value).toLowerCase();return aupAllRows().filter(r=>(!instrument||r._instrument===instrument)&&(!year||String(r._year)===year)&&(!zone||r._zone===zone)&&(!campus||r._code===campus)&&(!program||r._program===program)&&(!level||r._level===level)&&(!search||[r._name,r._id,r._program,r._campus,r._zone,r._state,r._level,r._instrument].join(" ").toLowerCase().includes(search)));}
+function aupFiltered(){const instrument=document.getElementById("aup-instrument")?.value||"";const year=document.getElementById("aup-year")?.value||"";const zone=document.getElementById("aup-zone")?.value||"";const campus=document.getElementById("aup-campus")?.value||"";const level=document.getElementById("aup-level")?.value||"";const search=aupText(document.getElementById("aup-search")?.value).toLowerCase();return aupAllRows().filter(r=>(!instrument||r._instrument===instrument)&&(!year||String(r._year)===year)&&(!zone||r._zone===zone)&&(!campus||r._code===campus)&&(!level||r._level===level)&&(!search||[r._name,r._id,r._program,r._campus,r._zone,r._state,r._level,r._instrument].join(" ").toLowerCase().includes(search)));}
 function aupCountMap(rows,key){const map={};rows.forEach(r=>{const v=r[key]||"Tidak dikenal pasti";map[v]=(map[v]||0)+1;});return map;}
 function aupCampusSummary(rows){const map=new Map();rows.forEach(r=>{const key=r._code||r._campus;if(!map.has(key))map.set(key,{code:r._code||"—",campus:r._campus,zone:r._zone,state:r._state,total:0,isp:0,ssp:0,attention:0,scoreTotal:0,scoreCount:0});const x=map.get(key);x.total++;x[r._instrument.toLowerCase()]++;if(r._attention)x.attention++;if(r._score!==null){x.scoreTotal+=r._score;x.scoreCount++;}});return[...map.values()].map(v=>({...v,average:v.scoreCount?v.scoreTotal/v.scoreCount:null})).sort((a,b)=>b.total-a.total||a.campus.localeCompare(b.campus,"ms"));}
 
@@ -17515,7 +17515,6 @@ function aupRender(c){
   const years=[...new Set(all.map(r=>r._year).filter(Boolean))].sort((a,b)=>b-a);
   const levels=[...new Set(all.map(r=>r._level).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ms"));
   const zones=[...new Set(all.map(r=>r._zone).filter(Boolean))].sort((a,b)=>{const ia=AUP_ZONE_ORDER.indexOf(a),ib=AUP_ZONE_ORDER.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,"ms");});
-  const programs=[...new Set(all.map(r=>r._program).filter(p=>p&&p!=="—")).sort((a,b)=>a.localeCompare(b,"ms"));
   const P=AUP_PBI;
   c.innerHTML=`
   <style>
@@ -17578,12 +17577,11 @@ function aupRender(c){
         <button class="pbi-btn" onclick="aupLoad(document.getElementById('pg-body'))"><i class="fas fa-rotate-right"></i> Muat Semula</button>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-bottom:16px">
+    <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:16px">
       <div><div class="pbi-filter-label">Instrumen</div><select class="pbi-slicer" id="aup-instrument" onchange="aupRefresh()"><option value="">Semua Instrumen</option><option>ISP</option><option selected>SSP</option></select></div>
       <div><div class="pbi-filter-label">Tahun</div><select class="pbi-slicer" id="aup-year" onchange="aupRefresh()"><option value="">Semua Tahun</option>${years.map(y=>`<option>${y}</option>`).join("")}</select></div>
       <div><div class="pbi-filter-label">Zon</div><select class="pbi-slicer" id="aup-zone" onchange="aupUpdateCampusFilter();aupRefresh()" ${!isAdmin()?"disabled":""}><option value="">Semua Zon</option>${zones.map(z=>`<option value="${esc(z)}">${esc(z)}</option>`).join("")}</select></div>
       <div><div class="pbi-filter-label">Kampus</div><select class="pbi-slicer" id="aup-campus" onchange="aupRefresh()"><option value="">Semua Kampus</option></select></div>
-      <div><div class="pbi-filter-label">Program Pengajian</div><select class="pbi-slicer" id="aup-program" onchange="aupRefresh()"><option value="">Semua Program</option>${programs.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join("")}</select></div>
       <div><div class="pbi-filter-label">Tahap Risiko</div><select class="pbi-slicer" id="aup-level" onchange="aupRefresh()"><option value="">Semua Tahap</option>${levels.map(v=>`<option>${esc(v)}</option>`).join("")}</select></div>
       <div><div class="pbi-filter-label">Carian</div><div style="position:relative"><i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:${P.textDim};font-size:.75rem"></i><input class="pbi-search" id="aup-search" oninput="aupRefresh()" placeholder="Nama, ID, program..."></div></div>
     </div>
