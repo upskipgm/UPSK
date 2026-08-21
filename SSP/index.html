@@ -444,6 +444,32 @@
     </div>
 </div>
 
+<!-- Modal: Pengesahan Overwrite (No. KP telah wujud) -->
+<div id="modal-retake-confirm" class="modal-overlay" onclick="if(event.target===this)app.cancelRetake()">
+    <div class="modal-box" style="max-width: 480px;">
+        <div class="modal-header">
+            <div class="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg class="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+            </div>
+            <h3 class="text-lg font-bold text-slate-800">No. Kad Pengenalan Telah Wujud</h3>
+            <p class="text-sm text-slate-500 mt-2">No. Kad Pengenalan ini telah digunakan untuk menjawab SSP sebelum ini. Jika anda meneruskan, <strong class="text-amber-700">keputusan lama akan ditulis ganti</strong> dengan jawapan baharu anda.</p>
+        </div>
+        <div class="modal-body">
+            <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                <p class="font-bold mb-1">Peringatan:</p>
+                <p>Keputusan SSP yang lama akan digantikan sepenuhnya. Pastikan anda menjawab dengan teliti sebelum menghantar.</p>
+            </div>
+        </div>
+        <div class="modal-footer flex gap-3 justify-center">
+            <button onclick="app.confirmRetake()" class="px-6 py-2.5 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition flex items-center gap-2 text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                Teruskan (Tulis Ganti)
+            </button>
+            <button onclick="app.cancelRetake()" class="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition text-sm">Batal</button>
+        </div>
+    </div>
+</div>
+
 <script>
 const MOONEY_ITEMS = ["Saya mudah mengalami masalah kesihatan.", "Saya sering berasa cepat penat.", "Saya tidak mendapat rehat atau tidur yang mencukupi.", "Saya kurang melakukan aktiviti fizikal atau bersenam.", "Saya kurang berpuas hati terhadap keadaan fizikal atau penampilan diri.", "Saya mempunyai tabiat yang menjejaskan kesihatan diri.", "Saya mengalami masalah kesihatan yang mengganggu pembelajaran.", "Saya sukar mengekalkan gaya hidup yang sihat.", "Saya menghadapi kesukaran mendapatkan kemudahan penjagaan kesihatan apabila diperlukan.", "Keadaan kesihatan saya menjejaskan keyakinan diri.", "Saya menghadapi masalah kewangan.", "Perbelanjaan harian saya tidak mencukupi.", "Saya bergantung kepada keluarga untuk menampung perbelanjaan pengajian.", "Saya memerlukan bantuan kewangan bagi meneruskan pengajian.", "Keadaan kewangan keluarga membimbangkan saya.", "Saya perlu bekerja sambilan bagi menampung perbelanjaan.", "Saya sukar menguruskan kewangan dengan baik.", "Kos sara hidup memberi tekanan kepada saya.", "Saya bimbang tentang komitmen kewangan pada masa hadapan.", "Masalah kewangan mengganggu tumpuan saya terhadap pembelajaran.", "Saya sukar berkenalan dengan rakan baharu.", "Saya berasa kekok apabila bergaul dengan orang lain.", "Saya sukar meneruskan perbualan dengan orang lain.", "Saya kurang melibatkan diri dalam aktiviti pelajar di IPG.", "Saya kurang mempunyai masa untuk aktiviti riadah atau rekreasi.", "Saya tidak menggunakan masa lapang dengan baik.", "Saya kurang mempunyai aktiviti atau hobi yang memberi kepuasan kepada diri.", "Saya kurang peluang menyertai aktiviti sukan atau kokurikulum.", "Saya berasa kehidupan harian saya terlalu padat sehingga tiada masa untuk diri sendiri.", "Saya sukar menyesuaikan diri dengan kehidupan kampus.", "Saya sukar menjalinkan hubungan percintaan yang sihat.", "Saya berasa malu untuk meluahkan perasaan kepada seseorang yang saya minati.", "Saya menghadapi masalah dalam hubungan percintaan.", "Saya kecewa dalam hubungan percintaan.", "Saya bimbang kehilangan orang yang saya sayangi.", "Saya keliru tentang hubungan percintaan yang sedang saya jalinkan.", "Saya menghadapi konflik dengan pasangan atau orang yang saya minati.", "Saya kurang pengetahuan tentang batasan dalam hubungan percintaan.", "Saya berasa keliru berkaitan isu seksual dalam hubungan percintaan", "Hubungan percintaan mengganggu emosi dan kehidupan saya.", "Saya mudah berasa malu apabila berhadapan dengan orang lain.", "Saya berasa rendah diri.", "Saya bimbang terhadap pandangan orang lain terhadap diri saya.", "Saya sering menjadi sasaran kritikan atau ejekan.", "Saya sering terlibat dalam konflik dengan orang lain.", "Saya merasakan diri tidak diterima oleh orang lain.", "Saya sering berasa kesunyian.", "Saya merasakan tiada siapa yang memahami saya.", "Saya tiada tempat untuk berkongsi masalah.", "Saya sukar membina hubungan yang baik dengan orang lain.", "Saya sukar mengawal kemarahan.", "Saya mudah berasa cemas.", "Saya sering berasa bimbang.", "Saya sering berasa sedih.", "Saya kurang yakin terhadap diri sendiri.", "Saya takut melakukan kesilapan.", "Saya mudah berputus asa apabila menghadapi cabaran.", "Saya sukar berhenti memikirkan masalah yang saya hadapi.", "Saya sukar melupakan pengalaman yang menyakitkan.", "Saya berasa hilang semangat untuk meneruskan aktiviti harian", "Saya kurang menghayati amalan agama.", "Saya mempunyai keraguan berkaitan pegangan agama atau nilai hidup.", "Saya keliru menentukan perkara yang betul dan salah.", "Saya berasa hubungan saya dengan Tuhan tidak seperti yang saya harapkan", "Saya sering berasa bersalah atas kesilapan yang pernah dilakukan.", "Saya sukar mengawal tingkah laku yang tidak baik.", "Saya kurang jujur terhadap diri sendiri.", "Saya mudah terpengaruh dengan perkara yang negatif.", "Saya bimbang terhadap akibat daripada kesalahan yang pernah dilakukan.", "Nilai hidup saya sering bercanggah dengan tindakan saya.", "Ibu bapa atau penjaga kurang memahami saya.", "Saya sering berselisih faham dengan ahli keluarga.", "Saya kurang gembira apabila bersama keluarga.", "Saya merasakan keluarga terlalu mengongkong kehidupan saya.", "Keluarga mengharapkan terlalu banyak daripada saya.", "Saya kurang mendapat kepercayaan daripada keluarga.", "Saya bimbang terhadap keadaan ahli keluarga saya.", "Saya memerlukan lebih kasih sayang daripada keluarga.", "Saya sukar berbincang tentang masalah dengan keluarga.", "Masalah keluarga mengganggu pembelajaran saya.", "Saya ragu-ragu terhadap bidang pengajian yang saya pilih.", "Saya tidak pasti tentang kerjaya saya sebagai guru pada masa hadapan.", "Saya kurang mengenali kebolehan dan potensi diri.", "Saya berasa kurang mendapat bimbingan berkaitan kerjaya", "Saya bimbang tidak mendapat penempatan atau pekerjaan selepas tamat pengajian.", "Saya kurang yakin dapat melaksanakan tugas sebagai seorang guru.", "Saya kurang jelas tentang hala tuju kerjaya saya.", "Saya menghadapi kesukaran merancang kerjaya masa depan", "Saya bimbang tentang masa depan kerjaya saya.", "Perkara berkaitan kerjaya sering mengganggu fikiran saya.", "Saya sukar memahami kandungan pembelajaran.", "Saya kurang berminat untuk belajar.", "Saya tidak menguasai teknik belajar yang berkesan.", "Saya sukar menyiapkan tugasan mengikut tempoh yang ditetapkan.", "Saya sukar menumpukan perhatian semasa belajar.", "Saya sukar mengambil nota pembelajaran.", "Saya sukar menyediakan laporan atau tugasan akademik.", "Saya bimbang menghadapi peperiksaan atau pentaksiran.", "Saya kurang berpuas hati dengan pencapaian akademik saya.", "Saya bimbang gagal menamatkan pengajian dengan cemerlang.", "Kaedah pengajaran pensyarah sukar saya fahami.", "Bahan pembelajaran yang disediakan kurang membantu pembelajaran saya", "Kursus yang dipelajari kurang berkaitan dengan amalan profesion keguruan.", "Saya kurang berminat terhadap beberapa kursus yang diikuti.", "Beban tugasan kursus terlalu banyak.", "Perbincangan dalam kelas tidak mencukupi.", "Saya kurang selesa berinteraksi dengan pensyarah.", "Saya menghadapi kesukaran mendapatkan bimbingan akademik daripada pensyarah apabila diperlukan.", "Kaedah pentaksiran kursus kurang membantu saya menunjukkan kemampuan sebenar.", "Sistem pengajaran dan pembelajaran di IPG kurang memenuhi keperluan pembelajaran saya."];
 const MOONEY_DOMAINS = [
@@ -469,7 +495,7 @@ const DEMO_QUESTIONS = [
     {"id": "agama", "label": "AGAMA", "type": "radio", "options": ["ISLAM", "BUDDHA", "HINDU", "KRISTIAN", "LAIN-LAIN"], "required": true},
     {"id": "telefon", "label": "NO TELEFON (BIMBIT)", "type": "tel", "required": true, "placeholder": "Contoh: 0123456789"},
     {"id": "ipg", "label": "PILIH INSTITUT PENDIDIKAN GURU KAMPUS", "type": "select", "options": ["IPGK TEMENGGONG IBRAHIM", "IPGK TUN HUSSEIN ONN", "IPGK PEREMPUAN MELAYU", "IPGK RAJA MELEWAR", "IPGK PENDIDIKAN TEKNIK", "IPGK PENDIDIKAN ISLAM", "IPGK ILMU KHAS", "IPGK BAHASA MELAYU", "IPGK BAHASA ANTARABANGSA", "IPGK IPOH", "IPGMK DARULAMAN", "IPGK PERLIS", "IPGK PULAU PINANG", "IPGK TUANKU BAINUN", "IPGK TENGKU AMPUAN AFZAN", "IPGK DATO' RAZALI ISMAIL", "IPGK SULTAN MIZAN", "IPGK KOTA BHARU", "IPGK RAJANG", "IPGK KENT", "IPGK BATU LINTANG", "IPGK TAWAU", "IPGK KENINGAU", "IPGK TUN ABDUL RAZAK", "IPGK SULTAN ABDUL HALIM", "IPGK GAYA", "IPGK SARAWAK"], "required": true},
-    {"id": "program", "label": "PROGRAM PENGAJIAN", "type": "radio", "options": ["PROGRAM PERSEDIAAN IJAZAH SARJANA MUDA PERGURUAN", "PROGRAM IJAZAH SARJANA MUDA PERGURUAN", "PROGRAM IJAZAH SARJANA PERGURUAN (PISP)", "PROGRAM DIPLOMA PASCASISWAZAH PENDIDIKAN (PDPP)"], "required": true},
+    {"id": "program", "label": "PROGRAM PENGAJIAN", "type": "radio", "options": ["PROGRAM PERSEDIAAN IJAZAH SARJANA MUDA PERGURUAN", "PROGRAM IJAZAH SARJANA MUDA PERGURUAN", "PROGRAM IJAZAH SARJANA PERGURUAN (PISP)", "PROGRAM DIPLOMA PASCA SISWAZAH"], "required": true},
     {"id": "bidang", "label": "BIDANG PENGAJIAN", "type": "select", "options": ["BAHASA MELAYU", "BAHASA INGGERIS (TESL)", "SAINS", "MATEMATIK", "SEJARAH", "PENDIDIKAN ISLAM", "BAHASA CINA", "BAHASA TAMIL", "BIMBINGAN DAN KAUNSELING", "REKA BENTUK DAN TEKNOLOGI (RBT)", "PENDIDIKAN AWAL KANAK-KANAK", "PENDIDIKAN KHAS", "PENDIDIKAN MUZIK", "PENDIDIKAN JASMANI", "PENDIDIKAN SENI VISUAL", "PEDAGOGI", "LAIN-LAIN"], "required": true},
 ];
 const ITEMS_PER_PAGE = 10;
@@ -534,6 +560,7 @@ const app = {
     phase: 'welcome',
     section: 0,
     answers: { A: {}, items: {} },
+    isRetake: false,
 
     async init() {
         document.getElementById('main-content').innerHTML = '<div class="flex items-center justify-center min-h-[60vh]"><div class="text-center"><svg class="animate-spin h-10 w-10 text-teal-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg><p class="text-slate-500 text-sm">Menyambung ke pelayan...</p></div></div>';
@@ -1180,7 +1207,9 @@ const app = {
                     const isDuplicate = await this.checkDuplicateIC(ic.trim());
                     this.setForwardLoading(false);
                     if (isDuplicate) {
-                        this.notify('error', 'No. Kad Pengenalan Telah Wujud', 'Rekod dengan No. Kad Pengenalan ini sudah berada dalam sistem. Setiap pelajar hanya dibenarkan menjawab sekali sahaja. Sila hubungi pentadbir jika anda memerlukan bantuan.');
+                        // Tanya pelajar sama ada mahu menulis ganti keputusan lama
+                        this.isRetake = false;
+                        this.openModal('modal-retake-confirm');
                         return;
                     }
                 } catch (err) {
@@ -1464,6 +1493,23 @@ const app = {
         this.notify('success', 'Keputusan Dijumpai', 'Keputusan SSP anda telah berjaya dimuatkan. Anda kini boleh muat turun atau cetak slip keputusan.');
     },
 
+    // ─── RETAKE (OVERWRITE) ─────────────────────────────────────
+
+    confirmRetake() {
+        this.isRetake = true;
+        this.closeModal('modal-retake-confirm');
+        this.phase = 'inventory';
+        this.section = 0;
+        this.renderInventoryPage();
+        this.updateProgress();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+
+    cancelRetake() {
+        this.isRetake = false;
+        this.closeModal('modal-retake-confirm');
+    },
+
     setForwardLoading(loading) {
         const btn = document.getElementById('btn-forward');
         if (!btn) return;
@@ -1515,18 +1561,45 @@ const app = {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         };
         try {
-            const responseRef = await db.collection('ssp_responses').add(studentData);
-            console.log('ssp_responses berjaya ditulis — Doc ID:', responseRef.id);
+            let responseDocId;
+
+            if (this.isRetake) {
+                // Retake: overwrite dokumen sedia ada
+                console.log('[Submit] Retake — mencari dokumen sedia ada untuk IC:', ic);
+                const registryDoc = await db.collection('ssp_ic_registry').doc(ic).get();
+                const existingDocId = registryDoc.exists ? (registryDoc.data().responseDocId || null) : null;
+
+                if (existingDocId) {
+                    // Tulis ganti dokumen sedia ada
+                    await db.collection('ssp_responses').doc(existingDocId).set(studentData);
+                    responseDocId = existingDocId;
+                    console.log('[Submit] Rekod sedia ada ditulis ganti — Doc ID:', existingDocId);
+                } else {
+                    // Tiada responseDocId (data lama), buat dokumen baharu
+                    const responseRef = await db.collection('ssp_responses').add(studentData);
+                    responseDocId = responseRef.id;
+                    console.log('[Submit] Rekod baharu dicipta (retake, tiada doc lama) — Doc ID:', responseDocId);
+                }
+            } else {
+                // Jawapan pertama kali
+                const responseRef = await db.collection('ssp_responses').add(studentData);
+                responseDocId = responseRef.id;
+                console.log('[Submit] Rekod baharu dicipta — Doc ID:', responseDocId);
+            }
+
+            // Sentiasa kemas kini registry dengan responseDocId terkini
             await db.collection('ssp_ic_registry').doc(ic).set({
                 kad_pengenalan: ic,
                 nama: this.answers.A.nama || '',
                 ipg: this.answers.A.ipg || '',
                 kodKampus: kodKampus,
-                responseDocId: responseRef.id,
+                responseDocId: responseDocId,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
-            console.log('ssp_ic_registry berjaya ditulis');
-            this.notify('success', 'Berjaya Dihantar', 'Maklumat senarai semak telah berjaya disimpan di database.');
+            console.log('[Submit] ssp_ic_registry dikemas kini — responseDocId:', responseDocId);
+            this.notify('success', 'Berjaya Dihantar', this.isRetake
+                ? 'Keputusan SSP lama telah ditulis ganti dengan jawapan baharu.'
+                : 'Maklumat senarai semak telah berjaya disimpan di database.');
         } catch (err) {
             console.error('Submit error:', err.code, err.message);
             let msg = 'Sila semak sambungan internet dan cuba lagi.';
@@ -1546,6 +1619,7 @@ const app = {
         this.phase = 'welcome';
         this.section = 0;
         this.answers = { A: {}, items: {} };
+        this.isRetake = false;
         this.renderWelcome();
     },
 
