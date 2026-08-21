@@ -192,11 +192,6 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
   }
 </style>
 
-<!-- DEBUG: Papar ralat JS di skrin (buang selepas selesai debugging) -->
-<script>
-window.onerror=function(msg,src,ln,col,err){var d=document.createElement('div');d.style.cssText='position:fixed;bottom:60px;right:20px;z-index:999999;background:#1a1a2e;color:#e94560;padding:14px 18px;border-radius:10px;font-size:13px;max-width:420px;word-break:break-all;border:2px solid #e94560;box-shadow:0 8px 32px rgba(0,0,0,.5);font-family:monospace';d.innerHTML='<b>JS ERROR</b><br>Line '+ln+': '+msg+'<br><span style=color:#8395a7;font-size:11px>'+src+'</span>';document.body.appendChild(d);};
-window.addEventListener('unhandledrejection',function(e){var d=document.createElement('div');d.style.cssText='position:fixed;bottom:60px;right:20px;z-index:999999;background:#1a1a2e;color:#fdcb6e;padding:14px 18px;border-radius:10px;font-size:13px;max-width:420px;word-break:break-all;border:2px solid #fdcb6e;box-shadow:0 8px 32px rgba(0,0,0,.5);font-family:monospace';d.innerHTML='<b>PROMISE ERROR</b><br>'+e.reason+'<br><span style=color:#8395a7;font-size:11px>'+((e.reason&&e.reason.stack)||'')+'</span>';document.body.appendChild(d);});
-</script>
 
 
 <!-- Firebase Fasa 2: satu fail HTML, SDK modular melalui CDN rasmi -->
@@ -526,6 +521,46 @@ window.addEventListener('unhandledrejection',function(e){var d=document.createEl
         toDelete.forEach(d => { batch.delete(d.ref); count++; });
         await batch.commit();
         return count;
+      },
+      // ── Kaunselor Reset Tool — single-record operations ──
+      // Delete a single PKPP/PKPW record by Firestore docId
+      deletePKPPDoc: async (tab, docId) => {
+        const colName = tab === "pkpw" ? "pkpw" : "pkpp";
+        if(!docId) throw new Error("ID dokumen hilang");
+        await deleteDoc(doc(db, colName, docId));
+        return true;
+      },
+      // List ALL records across a given collection, optionally filtered by kampus_id
+      // Used by the kaunselor reset tool to surface student records for search.
+      listPKPPForReset: async (tab, kampusFilter) => {
+        const colName = tab === "pkpw" ? "pkpw" : "pkpp";
+        // Page through entire collection (Firestore default limit 500 per query)
+        const PAGE_SIZE = 400;
+        let allDocs = [];
+        let lastDoc = null;
+        let page = 0;
+        while (true) {
+          page++;
+          const q = lastDoc
+            ? query(collection(db, colName), startAfter(lastDoc), limit(PAGE_SIZE))
+            : query(collection(db, colName), limit(PAGE_SIZE));
+          const snap = await getDocs(q);
+          if (snap.empty) break;
+          allDocs = allDocs.concat(snap.docs.map(d => ({ _docId: d.id, _collection: colName, ...d.data() })));
+          lastDoc = snap.docs[snap.docs.length - 1];
+          if (snap.docs.length < PAGE_SIZE) break;
+        }
+        // Apply kampusFilter if provided
+        if (kampusFilter) {
+          const kod = canonicalKodKampus(kampusFilter);
+          if (kod && kod !== "IPGM") {
+            allDocs = allDocs.filter(d =>
+              canonicalKodKampus(d.kodKampus || d.kampus_id || d.kampus || d.ipgk || d.organisasi) === kod
+            );
+          }
+        }
+        console.log(`[Reset Tool] ${tab}: ${allDocs.length} rekod (${page} halaman)${kampusFilter ? " — filter: " + kampusFilter : ""}`);
+        return allDocs;
       },
       // ── Kaunselor Firestore CRUD ──
       listKaunselor: async (kampusFilter) => {
@@ -2344,6 +2379,7 @@ function initSys(){
       <div class="sb-link" onclick="navTo('au-sesi')"><i class="fas fa-calendar-check"></i><span>Analisis Sesi</span></div>
       <div class="sb-link" onclick="navTo('au-program')"><i class="fas fa-chalkboard-teacher"></i><span>Analisis Program</span></div>
       <div class="sb-link" onclick="navTo('au-ujian-psikologi')"><i class="fas fa-chart-pie"></i><span>Analisis Ujian Psikologi</span></div>
+      <div class="sb-link" onclick="navTo('au-reset-ujian')"><i class="fas fa-arrow-rotate-left"></i><span>Reset Jawapan Ujian</span> <span class="sb-badge">Kaunselor</span></div>
       <div class="sb-link" onclick="navTo('au-kesihatan-mental')"><i class="fas fa-notes-medical"></i><span>Data Kesihatan Mental</span></div>
       <div class="sb-link" onclick="navTo('au-kes-kewangan')"><i class="fas fa-hand-holding-dollar"></i><span>Data Kes Kewangan</span></div>
       <div class="sb-link" onclick="navTo('au-bajet-kampus')"><i class="fas fa-wallet"></i><span>Peruntukan Kewangan</span></div>
@@ -2377,6 +2413,7 @@ function initSys(){
       <div class="sb-link" onclick="navTo('ak-sesi')"><i class="fas fa-calendar-check"></i><span>Analisis Sesi</span></div>
       <div class="sb-link" onclick="navTo('ak-program')"><i class="fas fa-chalkboard-teacher"></i><span>Analisis Program</span></div>
       <div class="sb-link" onclick="navTo('ak-ujian-psikologi')"><i class="fas fa-chart-pie"></i><span>Analisis Ujian Psikologi</span></div>
+      <div class="sb-link" onclick="navTo('ak-reset-ujian')"><i class="fas fa-arrow-rotate-left"></i><span>Reset Jawapan Ujian</span> <span class="sb-badge">Kaunselor</span></div>
       <div class="sb-link" onclick="navTo('ak-kesihatan-mental')"><i class="fas fa-notes-medical"></i><span>Data Kesihatan Mental</span></div>
       <div class="sb-link" onclick="navTo('ak-kes-kewangan')"><i class="fas fa-hand-holding-dollar"></i><span>Data Kes Kewangan</span></div>
       <div class="sb-link" onclick="navTo('ak-bajet-kampus')"><i class="fas fa-wallet"></i><span>Peruntukan Kewangan</span></div>
@@ -2398,7 +2435,7 @@ function navTo(pg){
     "au-dashboard":"Dashboard Kebangsaan","au-kampus":"Semua Kampus","au-pelajar":"Data Pelajar","au-staf":"Data Pensyarah & Pegawai","au-laporan":"Laporan Kebangsaan",
     "ak-enrolmen":"Enrolmen","ak-enrolmen-staf":"Enrolmen","ak-enrolmen-kaunselor":"Enrolmen","ak-enrolmen-akrab":"Enrolmen","ak-enrolmen-prsd":"Enrolmen",
     "ak-kaunselor":"Enrolmen — Kaunselor",
-    "ak-kerjaya":"Kerjaya","ak-sesi":"Analisis Sesi 2022–2026","ak-program":"Analisis Program","ak-ujian-psikologi":"Analisis Ujian Psikologi","au-sesi":"Analisis Sesi 2022–2026 — Kebangsaan","au-program":"Analisis Program — Kebangsaan","au-ujian-psikologi":"Analisis Ujian Psikologi — Kebangsaan",
+    "ak-kerjaya":"Kerjaya","ak-sesi":"Analisis Sesi 2022–2026","ak-program":"Analisis Program","ak-ujian-psikologi":"Analisis Ujian Psikologi","ak-reset-ujian":"Reset Jawapan Ujian Psikologi","au-sesi":"Analisis Sesi 2022–2026 — Kebangsaan","au-program":"Analisis Program — Kebangsaan","au-ujian-psikologi":"Analisis Ujian Psikologi — Kebangsaan","au-reset-ujian":"Reset Jawapan Ujian Psikologi — Kebangsaan",
     "ak-dokumen":"Dokumen Kaunseling",
     "ak-kesihatan-mental":"Data Kesihatan Mental","ak-kes-kewangan":"Data Kes Kewangan","ak-bajet-kampus":"Peruntukan Kewangan",
     "au-kaunselor":"Enrolmen — Kaunselor",
@@ -2419,7 +2456,7 @@ function navTo(pg){
     "au-dashboard":"Admin Utama / Dashboard Kebangsaan","au-kampus":"Admin Utama / Semua Kampus","au-pelajar":"Admin Utama / Data Pelajar","au-staf":"Admin Utama / Enrolmen / Pensyarah & Pegawai","au-laporan":"Admin Utama / Laporan",
     "ak-enrolmen":"Enrolmen / Pelajar","ak-enrolmen-staf":"Enrolmen / Pensyarah, Pegawai dan Staf","ak-enrolmen-kaunselor":"Enrolmen / Kaunselor IPG","ak-enrolmen-akrab":"Enrolmen / AKRAB","ak-enrolmen-prsd":"Enrolmen / PRSD",
     "ak-kaunselor":"Admin Kampus / Enrolmen / Kaunselor",
-    "ak-kerjaya":"Admin Kampus / Dashboard Psikologi / Kerjaya","ak-sesi":"Admin Kampus / Pengurusan Kaunseling / Sesi","ak-program":"Admin Kampus / Pengurusan Kaunseling / Program","ak-ujian-psikologi":"Admin Kampus / Pengurusan Kaunseling / Analisis Ujian Psikologi","au-sesi":"Admin Utama / Pengurusan Kaunseling / Sesi","au-program":"Admin Utama / Pengurusan Kaunseling / Program","au-ujian-psikologi":"Admin Utama / Pengurusan Kaunseling / Analisis Ujian Psikologi",
+    "ak-kerjaya":"Admin Kampus / Dashboard Psikologi / Kerjaya","ak-sesi":"Admin Kampus / Pengurusan Kaunseling / Sesi","ak-program":"Admin Kampus / Pengurusan Kaunseling / Program","ak-ujian-psikologi":"Admin Kampus / Pengurusan Kaunseling / Analisis Ujian Psikologi","ak-reset-ujian":"Admin Kampus / Pengurusan Kaunseling / Reset Jawapan Ujian","au-sesi":"Admin Utama / Pengurusan Kaunseling / Sesi","au-program":"Admin Utama / Pengurusan Kaunseling / Program","au-ujian-psikologi":"Admin Utama / Pengurusan Kaunseling / Analisis Ujian Psikologi","au-reset-ujian":"Admin Utama / Pengurusan Kaunseling / Reset Jawapan Ujian",
     "ak-dokumen":"Admin Kampus / Dokumen Kaunseling",
     "ak-kesihatan-mental":"Admin Kampus / Pengurusan Kaunseling / Data Kesihatan Mental","ak-kes-kewangan":"Admin Kampus / Pengurusan Kaunseling / Data Kes Kewangan","ak-bajet-kampus":"Admin Kampus / Pengurusan Kaunseling / Peruntukan Kewangan",
     "au-kaunselor":"Admin Utama / Enrolmen / Kaunselor",
@@ -2445,7 +2482,7 @@ function navTo(pg){
     "ak-kerjaya":pgKerjaya,
     "ak-dokumen":pgDokumen,
     "au-kaunselor":pgAUKaunselor,
-    "au-kerjaya":pgKerjaya,"ak-sesi":pgAKAnalisisSesi,"ak-program":pgAKProgram,"ak-ujian-psikologi":pgAKUjianPsikologi,"au-sesi":pgAUAnalisisSesi,"au-program":pgAUProgram,"au-ujian-psikologi":pgAUUjianPsikologi,
+    "au-kerjaya":pgKerjaya,"ak-sesi":pgAKAnalisisSesi,"ak-program":pgAKProgram,"ak-ujian-psikologi":pgAKUjianPsikologi,"ak-reset-ujian":pgAKResetUjian,"au-sesi":pgAUAnalisisSesi,"au-program":pgAUProgram,"au-ujian-psikologi":pgAUUjianPsikologi,"au-reset-ujian":pgAUResetUjian,
     "au-dokumen":pgDokumen,
     "ak-kesihatan-mental":pgAKTesihatanMental,"ak-kes-kewangan":pgAKTesKewangan,"ak-bajet-kampus":pgAKBajetKampus,
     "au-kesihatan-mental":pgAUKesihatanMental,"au-kes-kewangan":pgAUKesKewangan,"au-bajet-kampus":pgAUBajetKampus,
@@ -4209,7 +4246,7 @@ function importCSVEnrolmen(input, kampusFilter){
           nama: g(row,"NAMA"),
           jantina: g(row,"JANTINA"),
           ipgk, zon: g(row,"ZON"),
-          kampus_id: normalizeCampusId(ipgk || g("KOD_IPG")),
+          kampus_id: normalizeCampusId(ipgk || g(row,"KOD_IPG")),
           kampus_nama: kobj.nama || ipgk,
           aliran_sekolah: g(row,"ALIRAN SEKOLAH") || g(row,"ALIRAN_SEKOLAH"),
           opsyen_1: g(row,"KOD_OPSYEN_1"),
@@ -4321,12 +4358,12 @@ function renderEnrolmenPage(c,rawData,tajuk,isUtama){
   <!-- PI -->
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
     ${[
-      {l:"Jumlah Enrolmen",v:st.total,i:"fa-users",c:"sc-pri",bg:"bg-pri-50",fg:"text-pri-600",sub:"Keseluruhan pelajar"},
-      {l:"Pelajar Aktif",v:st.aktif,i:"fa-circle-check",c:"sc-pri",bg:"bg-green-50",fg:"text-green-600",sub:((st.aktif/st.total)*100).toFixed(1)+"% daripada jumlah"},
-      {l:"Berhenti / Tangguh",v:st.berhenti+st.tangguh,i:"fa-circle-pause",c:"sc-amber",bg:"bg-amb-50",fg:"text-amb-600",sub:st.berhenti+" berhenti · "+st.tangguh+" tangguh"},
-      {l:"Nisbah L : P",v:st.L+" : "+st.P,i:"fa-venus-mars",c:"sc-navy",bg:"bg-navy-50",fg:"text-navy-600",sub:((st.L/st.total)*100).toFixed(0)+"% L · "+((st.P/st.total)*100).toFixed(0)+"% P"}
+      {l:"Jumlah Enrolmen",v:st.total,i:"fa-users",c:"sc-pri",bg:"bg-pri-50",fg:"text-pri-600",sub:"Klik untuk pecahan kampus",k:"total"},
+      {l:"Pelajar Aktif",v:st.aktif,i:"fa-circle-check",c:"sc-pri",bg:"bg-green-50",fg:"text-green-600",sub:((st.aktif/st.total)*100).toFixed(1)+"% · klik untuk kampus",k:"aktif"},
+      {l:"Berhenti / Tangguh",v:st.berhenti+st.tangguh,i:"fa-circle-pause",c:"sc-amber",bg:"bg-amb-50",fg:"text-amb-600",sub:st.berhenti+" berhenti · "+st.tangguh+" tangguh",k:"berhenti_tangguh"},
+      {l:"Nisbah L : P",v:st.L+" : "+st.P,i:"fa-venus-mars",c:"sc-navy",bg:"bg-navy-50",fg:"text-navy-600",sub:((st.L/st.total)*100).toFixed(0)+"% L · klik untuk kampus",k:"nisbah"}
     ].map((s,i)=>`
-    <div class="stat-card ${s.c} afu d${i+1}">
+    <div class="stat-card ${s.c} afu d${i+1}" style="cursor:pointer;" onclick="openEnrolmenCardDetail('${s.k}')" title="Klik untuk pecahan mengikut kampus">
       <div class="stat-icon ${s.bg}"><i class="fas ${s.i} ${s.fg}"></i></div>
       <div style="font-family:'Outfit',sans-serif;font-size:1.45rem;font-weight:800;color:var(--navy);line-height:1.1;">${s.v}</div>
       <div class="stat-lbl">${s.l}</div>
@@ -4425,6 +4462,51 @@ function renderEnrolmenPage(c,rawData,tajuk,isUtama){
       </div>
     </div>
     <div class="card-body" style="padding-bottom:8px;">
+      ${isUtama ? `
+      <div id="en-batch-bar" style="background:#F8FAFC;border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <span style="font-family:'Outfit',sans-serif;font-weight:700;color:var(--navy);font-size:.82rem;"><i class="fas fa-layer-group text-pri-500 mr-1"></i>Kemas Kini / Padam Berkumpulan</span>
+          <span class="bdg bdg-gray" style="font-size:.65rem;">Pilih kumpulan &rarr; tindakan</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+          <select class="fi" id="en-b-program" style="width:auto;font-size:.8rem;" onchange="enBatchPreview()">
+            <option value="">Semua Program</option><option>PPISMP</option><option>PISMP</option><option>DPLI</option>
+          </select>
+          <select class="fi" id="en-b-sesi" style="width:auto;font-size:.8rem;" onchange="enBatchPreview()">
+            <option value="">Semua Sesi Ambilan</option>
+            <option>OGOS 2023</option><option>JAN 2024</option><option>OGOS 2024</option><option>JAN 2025</option><option>OGOS 2025</option>
+          </select>
+          <select class="fi" id="en-b-status" style="width:auto;font-size:.8rem;" onchange="enBatchPreview()">
+            <option value="">Semua Status</option><option>ATIF</option><option>BERHENTI</option><option>TANGGUH</option><option>TAMAT</option>
+          </select>
+          <select class="fi" id="en-b-jantina" style="width:auto;font-size:.8rem;" onchange="enBatchPreview()">
+            <option value="">Semua Jantina</option><option value="L">Lelaki</option><option value="P">Perempuan</option>
+          </select>
+          <select class="fi" id="en-b-aliran" style="width:auto;font-size:.8rem;" onchange="enBatchPreview()">
+            <option value="">Semua Aliran</option><option>SK</option><option>SJKC</option><option>SJKT</option>
+          </select>
+          ${isUtama?`<select class="fi" id="en-b-kampus" style="width:auto;font-size:.8rem;" onchange="enBatchPreview()">
+            <option value="">Semua Kampus</option>${kampusOptgroup()}
+          </select>`:""}
+          <button class="btn btn-ghost btn-sm" onclick="enBatchPreview()" title="Kira bilangan kumpulan"><i class="fas fa-calculator"></i> Kira</button>
+          <span id="en-b-count" style="font-size:.78rem;color:var(--muted);">0 rekod dipilih</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);">
+          <label style="font-size:.75rem;font-weight:600;color:var(--text);">Kemaskini Medan:</label>
+          <select class="fi" id="en-b-field" style="width:auto;font-size:.8rem;">
+            <option value="">— Pilih medan —</option>
+            <option value="sesi_tamat">Sesi Tamat</option>
+            <option value="status_pengajian">Status Pengajian</option>
+            <option value="program">Program</option>
+            <option value="aliran_sekolah">Aliran</option>
+          </select>
+          <input type="text" class="fi" id="en-b-newval" style="max-width:160px;font-size:.8rem;" placeholder="Nilai baharu">
+          <button class="btn btn-pri btn-sm" onclick="enBatchUpdate()" style="background:var(--pri);"><i class="fas fa-pen"></i> Kemaskini Kumpulan</button>
+          <button class="btn btn-danger btn-sm" onclick="enBatchDelete()" style="background:var(--danger);"><i class="fas fa-trash"></i> Padam Kumpulan</button>
+        </div>
+        <div style="font-size:.7rem;color:#92400e;margin-top:8px;"><i class="fas fa-circle-info"></i> Tindakan ini hanya mengubah data CSV yang dimuat naik tempatan, bukan sumber asal Google Sheets. Untuk data kekal, kemaskini melalui Sheets.</div>
+      </div>
+      ` : ""}
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
         <input type="text" class="fi" style="max-width:190px;font-size:.8rem;" placeholder="Cari nama / matrik..." id="en-cari" oninput="filterEnrolmen()">
         <select class="fi" style="width:auto;font-size:.8rem;" id="en-status" onchange="filterEnrolmen()">
@@ -4474,15 +4556,533 @@ function renderEnrolmenPage(c,rawData,tajuk,isUtama){
   },80);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// ENROLMEN — DETAIL DRAWER + BATCH OPERATIONS + STAT-CARD DETAIL
+// ════════════════════════════════════════════════════════════════════════════
+
+// Build a set of labelled info rows for a student record
+function _enRow(label, value, isLink){
+  if(!value && value !== 0) return "";
+  const v = (typeof value === "string" && value.length && value !== "0" && value !== "—" ) ? value : (value || "—");
+  if(isLink && v !== "—"){
+    const safe = String(v).replace(/[^0-9+]/g, "");
+    return `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #f1f5f9;">
+      <span style="font-size:.75rem;color:var(--muted);width:140px;flex-shrink:0;">${label}</span>
+      <span style="font-size:.85rem;font-weight:600;color:var(--navy);flex:1;">${v}</span>
+      <a href="tel:${safe}" class="btn btn-ghost btn-xs" style="font-size:.7rem;"><i class="fas fa-phone"></i> Panggil</a>
+    </div>`;
+  }
+  return `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #f1f5f9;">
+    <span style="font-size:.75rem;color:var(--muted);width:140px;flex-shrink:0;">${label}</span>
+    <span style="font-size:.85rem;font-weight:600;color:var(--navy);flex:1;">${v}</span>
+  </div>`;
+}
+
+function _enRowMail(label, value){
+  if(!value) return _enRow(label, "—");
+  return `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #f1f5f9;">
+    <span style="font-size:.75rem;color:var(--muted);width:140px;flex-shrink:0;">${label}</span>
+    <span style="font-size:.85rem;font-weight:600;color:var(--navy);flex:1;word-break:break-all;">${value}</span>
+    <a href="mailto:${value}" class="btn btn-ghost btn-xs" style="font-size:.7rem;"><i class="fas fa-envelope"></i> Emel</a>
+  </div>`;
+}
+
+// Open a per-student detail drawer (click on a table row)
+function openEnrolmenDetail(i){
+  const d = (window._enShown && window._enShown[i]) || null;
+  if(!d){ toast("Rekod tidak dijumpai","err"); return; }
+  const tel = (d.tel || d.telefon || "").toString().trim();
+  const emel = (d.emel || "").toString().trim();
+  const html = `
+    <div class="user-drawer-layer" onclick="if(event.target===this)closeEnrolmenDetail()">
+      <div class="user-drawer" role="dialog" aria-label="Maklumat Pelajar">
+        <div class="user-drawer-head">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="ava" style="width:46px;height:46px;font-size:1.1rem;background:${d.jantina==="L"?"#C5CDE0":"#FAE0BF"};color:${d.jantina==="L"?"#1F2C50":"#9A5A1E"};">${d.jantina || "?"}</div>
+            <div>
+              <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1.05rem;color:var(--navy);line-height:1.2;">${d.nama || "—"}</div>
+              <div style="font-size:.78rem;color:var(--muted);">${d.no_matrik || "—"} · ${d.kampus_nama || "—"}</div>
+            </div>
+          </div>
+          <button class="user-drawer-close" onclick="closeEnrolmenDetail()" title="Tutup">&times;</button>
+        </div>
+        <div class="user-drawer-body">
+          <!-- Quick action buttons -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+            ${tel && tel !== "0" ? `<a class="btn btn-pri btn-sm" href="tel:${tel.replace(/[^0-9+]/g,'')}"><i class="fas fa-phone"></i> Panggil ${tel}</a>` : ""}
+            ${emel ? `<a class="btn btn-out btn-sm" href="mailto:${emel}"><i class="fas fa-envelope"></i> Hantar Emel</a>` : ""}
+            ${tel && tel !== "0" ? `<a class="btn btn-out btn-sm" href="https://wa.me/${tel.replace(/[^0-9]/g,'').replace(/^0/, '60')}" target="_blank"><i class="fab fa-whatsapp"></i> WhatsApp</a>` : ""}
+          </div>
+
+          <!-- IDENTITI -->
+          <div style="font-family:'Outfit',sans-serif;font-weight:700;color:var(--navy);font-size:.85rem;margin-bottom:4px;"><i class="fas fa-id-card text-pri-500 mr-1"></i>Identiti</div>
+          ${_enRow("No. Matrik", d.no_matrik)}
+          ${_enRow("Jantina", d.jantina === "L" ? "Lelaki" : (d.jantina === "P" ? "Perempuan" : (d.jantina || "—")))}
+          ${_enRow("Agama", d.agama_txt || d.agama)}
+          ${_enRow("Negeri Asal", d.negeri)}
+          ${_enRow("Daerah", d.daerah)}
+
+          <!-- HUBUNGAN (PHONE + EMAIL) -->
+          <div style="font-family:'Outfit',sans-serif;font-weight:700;color:var(--navy);font-size:.85rem;margin:14px 0 4px;"><i class="fas fa-address-book text-amb-500 mr-1"></i>Hubungan</div>
+          ${_enRow("No. Telefon", tel && tel !== "0" ? tel : "—", true)}
+          ${_enRowMail("Emel", emel || "—")}
+
+          <!-- AKADEMIK -->
+          <div style="font-family:'Outfit',sans-serif;font-weight:700;color:var(--navy);font-size:.85rem;margin:14px 0 4px;"><i class="fas fa-graduation-cap text-navy-500 mr-1"></i>Akademik</div>
+          ${_enRow("Program", d.program)}
+          ${_enRow("Tahun", d.tahun)}
+          ${_enRow("Kod Program", d.kod_program)}
+          ${_enRow("Mod Pengajian", d.mod_pengajian)}
+          ${_enRow("Opsyen 1", d.opsyen_1)}
+          ${_enRow("Opsyen 2", d.opsyen_2 && d.opsyen_2 !== "0" ? d.opsyen_2 : "—")}
+          ${_enRow("Opsyen 3", d.opsyen_3 && d.opsyen_3 !== "0" ? d.opsyen_3 : "—")}
+          ${_enRow("Aliran Sekolah", d.aliran_sekolah)}
+          ${_enRow("Sesi Ambilan", d.sesi_ambilan)}
+          ${_enRow("Sesi Tamat", d.sesi_tamat)}
+          ${_enRow("Status Pengajian", d.status_pengajian)}
+
+          <!-- KAMPUS -->
+          <div style="font-family:'Outfit',sans-serif;font-weight:700;color:var(--navy);font-size:.85rem;margin:14px 0 4px;"><i class="fas fa-school text-pri-500 mr-1"></i>Kampus</div>
+          ${_enRow("Institut", d.kampus_nama)}
+          ${_enRow("Kod IPG", d.ipgk || d.kod_ipg)}
+          ${_enRow("Zon", d.zon)}
+          ${_enRow("Latitud", d.lat || "—")}
+          ${_enRow("Longitud", d.lng || "—")}
+
+          <!-- TINDAKAN -->
+          ${(isAdmin() || (SES.kampus && d.kampus_id === SES.kampus)) ? `
+          <div style="margin-top:18px;padding-top:14px;border-top:2px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-out btn-sm" onclick="enSingleEdit('${(d.no_matrik||"").replace(/'/g,"\'")}')"><i class="fas fa-pen"></i> Kemaskini Rekod</button>
+            <button class="btn btn-danger btn-sm" onclick="enSingleDelete('${(d.no_matrik||"").replace(/'/g,"\'")}')"><i class="fas fa-trash"></i> Padam Rekod</button>
+          </div>` : ""}
+        </div>
+      </div>
+    </div>`;
+  let host = document.getElementById("enrolmen-detail-wrap");
+  if(!host){
+    host = document.createElement("div");
+    host.id = "enrolmen-detail-wrap";
+    document.body.appendChild(host);
+  }
+  host.innerHTML = html;
+  document.body.style.overflow = "hidden";
+}
+
+function closeEnrolmenDetail(){
+  const host = document.getElementById("enrolmen-detail-wrap");
+  if(host) host.innerHTML = "";
+  document.body.style.overflow = "";
+}
+
+// Single-record edit (for the drawer's "Kemaskini" button)
+function enSingleEdit(matrik){
+  const list = (window.ENROLMEN_LIVE || window.ENROLMEN_CSV || ENROLMEN_DATA);
+  const idx = list.findIndex(x => x.no_matrik === matrik);
+  if(idx === -1){ toast("Rekod tidak dijumpai dalam data tempatan","err"); return; }
+  const d = list[idx];
+  const val = prompt("Sesi Tamat baharu (cth: JULAI 2026):", d.sesi_tamat || "");
+  if(val === null) return;
+  list[idx].sesi_tamat = val.trim();
+  toast("Rekod dikemaskini di data tempatan","ok");
+  _enPersistAndReload();
+}
+
+function enSingleDelete(matrik){
+  if(!confirm("Padam rekod "+matrik+" dari data tempatan? Tindakan ini tidak boleh diundur.")) return;
+  const lists = [window.ENROLMEN_LIVE, window.ENROLMEN_CSV, ENROLMEN_DATA];
+  lists.forEach(L => { if(L && L.length){ const i = L.findIndex(x => x.no_matrik === matrik); if(i !== -1) L.splice(i, 1); } });
+  toast("Rekod dipadam dari data tempatan","ok");
+  _enPersistAndReload();
+}
+
+// ── BATCH OPERATIONS ──
+function _enBatchFilter(){
+  const src = (window.ENROLMEN_LIVE || window.ENROLMEN_CSV || ENROLMEN_DATA) || [];
+  const v = id => (document.getElementById(id) || {}).value || "";
+  const prog   = v("en-b-program");
+  const sesi   = v("en-b-sesi");
+  const stat   = v("en-b-status");
+  const jan    = v("en-b-jantina");
+  const ali    = v("en-b-aliran");
+  const kid    = v("en-b-kampus");
+  return src.filter(d => {
+    if(prog && d.program !== prog) return false;
+    if(sesi && d.sesi_ambilan !== sesi) return false;
+    if(stat && d.status_pengajian !== stat) return false;
+    if(jan  && d.jantina !== jan) return false;
+    if(ali  && d.aliran_sekolah !== ali) return false;
+    if(kid  && d.kampus_id !== kid) return false;
+    return true;
+  });
+}
+
+function enBatchPreview(){
+  const rows = _enBatchFilter();
+  const el = document.getElementById("en-b-count");
+  if(el) el.textContent = rows.length.toLocaleString("ms-MY") + " rekod dipilih untuk tindakan";
+  return rows;
+}
+
+function enBatchUpdate(){
+  if(!isAdmin()){ toast("Hanya Admin Utama boleh kemaskini secara kumpulan","err"); return; }
+  const rows = enBatchPreview();
+  if(!rows.length){ toast("Tiada rekod yang sepadan dengan penapis","err"); return; }
+  const field = (document.getElementById("en-b-field") || {}).value || "";
+  const newVal = ((document.getElementById("en-b-newval") || {}).value || "").trim();
+  if(!field){ toast("Sila pilih medan untuk dikemaskini","err"); return; }
+  if(!newVal){ toast("Sila masukkan nilai baharu","err"); return; }
+  if(!confirm("Kemaskini "+rows.length.toLocaleString("ms-MY")+" rekod untuk medan \""+field+"\" kepada \""+newVal+"\"?\n\nIni mengubah data tempatan (CSV/IDB) sahaja.")) return;
+  const src = window.ENROLMEN_LIVE || window.ENROLMEN_CSV || ENROLMEN_DATA;
+  const keys = field; // sesi_tamat | status_pengajian | program | aliran_sekolah
+  let updated = 0;
+  src.forEach(d => {
+    const match = rows.some(r => r === d || (r.no_matrik && r.no_matrik === d.no_matrik));
+    if(match){ d[keys] = newVal; updated++; }
+  });
+  toast(updated.toLocaleString("ms-MY")+" rekod dikemaskini","ok");
+  _enPersistAndReload();
+}
+
+function enBatchDelete(){
+  if(!isAdmin()){ toast("Hanya Admin Utama boleh padam secara kumpulan","err"); return; }
+  const rows = enBatchPreview();
+  if(!rows.length){ toast("Tiada rekod yang sepadan dengan penapis","err"); return; }
+  if(!confirm("PADAM "+rows.length.toLocaleString("ms-MY")+" rekod secara kekal dari data tempatan?\n\nTindakan ini tidak boleh diundur.")) return;
+  if(!confirm("Sahkan sekali lagi: PADAM "+rows.length.toLocaleString("ms-MY")+" rekod?")) return;
+  const matrics = new Set(rows.map(r => r.no_matrik).filter(Boolean));
+  ["ENROLMEN_LIVE","ENROLMEN_CSV"].forEach(k => {
+    if(window[k] && Array.isArray(window[k])){
+      window[k] = window[k].filter(d => !matrics.has(d.no_matrik));
+    }
+  });
+  // ENROLMEN_DATA is a const, but we can mutate in place
+  const ed = ENROLMEN_DATA;
+  for(let i = ed.length - 1; i >= 0; i--){
+    if(matrics.has(ed[i].no_matrik)) ed.splice(i, 1);
+  }
+  toast(rows.length.toLocaleString("ms-MY")+" rekod dipadam","ok");
+  _enPersistAndReload();
+}
+
+function _enPersistAndReload(){
+  try {
+    if(typeof idbSave === "function"){
+      idbSave("csv_enrolmen", window.ENROLMEN_LIVE || window.ENROLMEN_CSV || ENROLMEN_DATA);
+    }
+  } catch(e){ console.warn("Persist IDB:", e); }
+  try {
+    localStorage.setItem("csv_enrolmen_date", new Date().toLocaleString("ms-MY"));
+  } catch(e){}
+  closeEnrolmenDetail();
+  if(typeof navTo === "function") navTo(SES.pg);
+}
+
+// ── STAT-CARD DETAIL MODAL ──
+function openEnrolmenCardDetail(key){
+  // ── LEVEL 1: per-kampus breakdown ──
+  const rows = _enCardFiltered(key);
+  if(!rows.length){ toast("Tiada rekod untuk kategori ini","inf"); return; }
+
+  // Build per-kampus aggregation
+  const kampusCounts = {};
+  rows.forEach(d => {
+    const kid = d.kampus_id || d.ipgk || "—";
+    const knama = d.kampus_nama || kid;
+    if(!kampusCounts[kid]) kampusCounts[kid] = { kid, knama, total: 0, L: 0, P: 0, zon: "" };
+    kampusCounts[kid].total++;
+    if(d.jantina === "L") kampusCounts[kid].L++;
+    else if(d.jantina === "P") kampusCounts[kid].P++;
+  });
+  // Pull zone from KAMPUS master and sort by total descending
+  const sorted = [...KAMPUS].sort(compareMasterKampus)
+    .map(k => { const c = kampusCounts[k.id]; return c ? Object.assign(c, { zon: k.zona }) : null; })
+    .filter(Boolean)
+    .sort((a, b) => b.total - a.total);
+
+  const isNisbah = (key === "nisbah");
+  const title = _enCardTitle(key);
+  const totalL = rows.filter(d => d.jantina === "L").length;
+  const totalP = rows.filter(d => d.jantina === "P").length;
+  const totalRatio = totalP ? (totalL / totalP).toFixed(2) : "—";
+
+  const html = `
+  <div class="modal-bg" onclick="if(event.target===this)closeEnrolmenCardDetail()">
+    <div class="modal-box" style="max-width:820px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
+        <div>
+          <div style="font-size:.7rem;color:var(--muted);margin-bottom:4px;">
+            <i class="fas fa-chart-column text-pri-500"></i>
+            <b style="color:var(--navy);">${title}</b>
+            <span style="color:#94A3B8;"> &rarr; Pecahan mengikut kampus</span>
+          </div>
+          <h3 style="font-family:'Outfit',sans-serif;font-weight:800;color:var(--navy);font-size:1.05rem;">${title}</h3>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:2px;">${_enCardDesc(key)} &middot; ${rows.length.toLocaleString("ms-MY")} rekod keseluruhan</div>
+        </div>
+        <button onclick="closeEnrolmenCardDetail()" class="user-drawer-close" title="Tutup">&times;</button>
+      </div>
+      <div style="font-size:.72rem;color:#0E7C61;background:rgba(14,124,97,0.08);border:1px solid rgba(14,124,97,0.2);border-radius:6px;padding:6px 10px;margin-bottom:10px;">
+        <i class="fas fa-circle-info"></i> Klik baris kampus untuk lihat pecahan <b>mengikut program</b>
+      </div>
+      <div style="max-height:55vh;overflow:auto;border:1px solid var(--border);border-radius:8px;">
+        <table class="tbl">
+          <thead><tr>
+            <th style="width:32px;">#</th>
+            <th>Kampus</th>
+            <th>Zon</th>
+            ${isNisbah
+              ? '<th style="text-align:center;">Lelaki</th><th style="text-align:center;">Perempuan</th><th style="text-align:center;">Nisbah L:P</th>'
+              : '<th style="text-align:right;">Bilangan</th><th style="text-align:right;">%</th>'}
+          </tr></thead>
+          <tbody>${sorted.map((k, i) => {
+            const pct = rows.length ? ((k.total / rows.length) * 100).toFixed(1) : "0.0";
+            const ratio = k.P ? (k.L / k.P).toFixed(2) : "—";
+            return `<tr style="cursor:pointer;" onclick="openEnrolmenCampusPrograms('${key}','${k.kid.replace(/'/g, "\\'")}')" title="Klik untuk pecahan program">
+              <td style="font-size:.72rem;color:var(--muted);">${i + 1}</td>
+              <td><span style="font-weight:600;font-size:.82rem;">${k.knama.replace("IPG Kampus ", "")}</span></td>
+              <td><span class="bdg bdg-navy" style="font-size:.65rem;">${k.zon || "—"}</span></td>
+              ${isNisbah
+                ? `<td style="text-align:center;font-weight:700;color:#3B82F6;">${k.L}</td>
+                   <td style="text-align:center;font-weight:700;color:#E88D3A;">${k.P}</td>
+                   <td style="text-align:center;font-family:'Outfit',sans-serif;font-weight:800;color:var(--navy);">${ratio}</td>`
+                : `<td style="text-align:right;font-family:'Outfit',sans-serif;font-weight:800;color:var(--pri);font-size:.92rem;">${k.total.toLocaleString("ms-MY")}</td>
+                   <td style="text-align:right;font-size:.75rem;color:var(--muted);">${pct}%</td>`}
+            </tr>`;
+          }).join("")}</tbody>
+          <tfoot><tr style="background:#F8FAFC;font-weight:700;border-top:2px solid var(--border);">
+            <td colspan="${isNisbah ? 3 : 3}" style="font-size:.78rem;color:var(--navy);">Jumlah</td>
+            ${isNisbah
+              ? `<td style="text-align:center;color:#3B82F6;">${totalL.toLocaleString("ms-MY")}</td>
+                 <td style="text-align:center;color:#E88D3A;">${totalP.toLocaleString("ms-MY")}</td>
+                 <td style="text-align:center;color:var(--navy);">${totalRatio}</td>`
+              : `<td style="text-align:right;color:var(--pri);">${rows.length.toLocaleString("ms-MY")}</td>
+                 <td style="text-align:right;color:var(--muted);">100.0%</td>`}
+          </tr></tfoot>
+        </table>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+        <button class="btn btn-ghost btn-sm" onclick="closeEnrolmenCardDetail()">Tutup</button>
+      </div>
+    </div>
+  </div>`;
+  let host = document.getElementById("enrolmen-card-detail-wrap");
+  if(!host){
+    host = document.createElement("div");
+    host.id = "enrolmen-card-detail-wrap";
+    document.body.appendChild(host);
+  }
+  host.innerHTML = html;
+  document.body.style.overflow = "hidden";
+  // Scroll modal to top after drill-down transitions
+  setTimeout(function(){ var mb = document.querySelector("#enrolmen-card-detail-wrap .modal-box"); if(mb) mb.scrollTop = 0; }, 10);
+}
+
+// ── LEVEL 2: per-program breakdown within a campus ──
+function openEnrolmenCampusPrograms(key, kampusId){
+  const rows = _enCardFiltered(key).filter(d => (d.kampus_id || d.ipgk) === kampusId);
+  if(!rows.length){ toast("Tiada rekod untuk kampus ini","inf"); return; }
+
+  // Aggregate per-program
+  const progCounts = {};
+  rows.forEach(d => {
+    const p = d.program || "—";
+    if(!progCounts[p]) progCounts[p] = { program: p, total: 0, L: 0, P: 0 };
+    progCounts[p].total++;
+    if(d.jantina === "L") progCounts[p].L++;
+    else if(d.jantina === "P") progCounts[p].P++;
+  });
+  const sorted = Object.values(progCounts).sort((a, b) => b.total - a.total);
+
+  const kampusObj = KAMPUS.find(k => k.id === kampusId) || {};
+  const kampusNama = (kampusObj.nama || kampusId).replace("IPG Kampus ", "");
+  const kampusZon = kampusObj.zona || "—";
+  const isNisbah = (key === "nisbah");
+  const title = _enCardTitle(key);
+  const totalL = rows.filter(d => d.jantina === "L").length;
+  const totalP = rows.filter(d => d.jantina === "P").length;
+  const totalRatio = totalP ? (totalL / totalP).toFixed(2) : "—";
+
+  const html = `
+  <div class="modal-bg" onclick="if(event.target===this)closeEnrolmenCardDetail()">
+    <div class="modal-box" style="max-width:820px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
+        <div>
+          <div style="font-size:.7rem;color:var(--muted);margin-bottom:4px;">
+            <a onclick="openEnrolmenCardDetail('${key}')" style="color:#0E7C61;cursor:pointer;text-decoration:underline;">${title}</a>
+            <span style="color:#94A3B8;"> &rarr; ${kampusNama} &rarr; Pecahan mengikut program</span>
+          </div>
+          <h3 style="font-family:'Outfit',sans-serif;font-weight:800;color:var(--navy);font-size:1.05rem;">${kampusNama}</h3>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:2px;">Zon ${kampusZon} &middot; ${_enCardDesc(key)} &middot; ${rows.length.toLocaleString("ms-MY")} rekod</div>
+        </div>
+        <button onclick="closeEnrolmenCardDetail()" class="user-drawer-close" title="Tutup">&times;</button>
+      </div>
+      <div style="font-size:.72rem;color:#0E7C61;background:rgba(14,124,97,0.08);border:1px solid rgba(14,124,97,0.2);border-radius:6px;padding:6px 10px;margin-bottom:10px;">
+        <i class="fas fa-circle-info"></i> Klik baris program untuk lihat <b>senarai pelajar</b>
+      </div>
+      <div style="max-height:55vh;overflow:auto;border:1px solid var(--border);border-radius:8px;">
+        <table class="tbl">
+          <thead><tr>
+            <th style="width:32px;">#</th>
+            <th>Program</th>
+            ${isNisbah
+              ? '<th style="text-align:center;">Lelaki</th><th style="text-align:center;">Perempuan</th><th style="text-align:center;">Nisbah L:P</th>'
+              : '<th style="text-align:right;">Bilangan</th><th style="text-align:right;">%</th>'}
+          </tr></thead>
+          <tbody>${sorted.map((p, i) => {
+            const pct = rows.length ? ((p.total / rows.length) * 100).toFixed(1) : "0.0";
+            const ratio = p.P ? (p.L / p.P).toFixed(2) : "—";
+            const progLabel = ({PPISMP:"PPISMP — Program Persediaan Ijazah", PISMP:"PISMP — Ijazah Sarjana Muda Perguruan", DPLI:"DPLI — Diploma Pendidikan Lepasan Ijazah"})[p.program] || p.program;
+            return `<tr style="cursor:pointer;" onclick="openEnrolmenProgramStudents('${key}','${kampusId.replace(/'/g, "\\'")}','${(p.program || "").replace(/'/g, "\\'")}')" title="Klik untuk senarai pelajar">
+              <td style="font-size:.72rem;color:var(--muted);">${i + 1}</td>
+              <td><span class="bdg bdg-pri" style="font-size:.72rem;">${p.program || "—"}</span>
+                  <span style="font-size:.7rem;color:var(--muted);margin-left:6px;">${progLabel.split(" — ")[1] || ""}</span></td>
+              ${isNisbah
+                ? `<td style="text-align:center;font-weight:700;color:#3B82F6;">${p.L}</td>
+                   <td style="text-align:center;font-weight:700;color:#E88D3A;">${p.P}</td>
+                   <td style="text-align:center;font-family:'Outfit',sans-serif;font-weight:800;color:var(--navy);">${ratio}</td>`
+                : `<td style="text-align:right;font-family:'Outfit',sans-serif;font-weight:800;color:var(--pri);font-size:.92rem;">${p.total.toLocaleString("ms-MY")}</td>
+                   <td style="text-align:right;font-size:.75rem;color:var(--muted);">${pct}%</td>`}
+            </tr>`;
+          }).join("")}</tbody>
+          <tfoot><tr style="background:#F8FAFC;font-weight:700;border-top:2px solid var(--border);">
+            <td colspan="2" style="font-size:.78rem;color:var(--navy);">Jumlah</td>
+            ${isNisbah
+              ? `<td style="text-align:center;color:#3B82F6;">${totalL}</td>
+                 <td style="text-align:center;color:#E88D3A;">${totalP}</td>
+                 <td style="text-align:center;color:var(--navy);">${totalRatio}</td>`
+              : `<td style="text-align:right;color:var(--pri);">${rows.length.toLocaleString("ms-MY")}</td>
+                 <td style="text-align:right;color:var(--muted);">100.0%</td>`}
+          </tr></tfoot>
+        </table>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;">
+        <button class="btn btn-ghost btn-sm" onclick="openEnrolmenCardDetail('${key}')" title="Kembali ke pecahan kampus"><i class="fas fa-arrow-left"></i> Kembali ke Kampus</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeEnrolmenCardDetail()">Tutup</button>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById("enrolmen-card-detail-wrap").innerHTML = html;
+  setTimeout(function(){ var mb = document.querySelector("#enrolmen-card-detail-wrap .modal-box"); if(mb) mb.scrollTop = 0; }, 10);
+}
+
+// ── LEVEL 3: student list for the selected campus + program ──
+function openEnrolmenProgramStudents(key, kampusId, program){
+  const rows = _enCardFiltered(key).filter(d =>
+    (d.kampus_id || d.ipgk) === kampusId && (d.program || "—") === program
+  );
+  if(!rows.length){ toast("Tiada rekod pelajar untuk kampus & program ini","inf"); return; }
+
+  const kampusObj = KAMPUS.find(k => k.id === kampusId) || {};
+  const kampusNama = (kampusObj.nama || kampusId).replace("IPG Kampus ", "");
+  const kampusZon = kampusObj.zona || "—";
+  const title = _enCardTitle(key);
+  const sample = rows.slice(0, 200);
+  // Expose so row onclick (openEnrolmenDetail) can resolve the student
+  window._enShown = sample;
+
+  const html = `
+  <div class="modal-bg" onclick="if(event.target===this)closeEnrolmenCardDetail()">
+    <div class="modal-box" style="max-width:960px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
+        <div>
+          <div style="font-size:.7rem;color:var(--muted);margin-bottom:4px;">
+            <a onclick="openEnrolmenCardDetail('${key}')" style="color:#0E7C61;cursor:pointer;text-decoration:underline;">${title}</a>
+            <span style="color:#94A3B8;"> &rarr; </span>
+            <a onclick="openEnrolmenCampusPrograms('${key}','${kampusId.replace(/'/g, "\\'")}')" style="color:#0E7C61;cursor:pointer;text-decoration:underline;">${kampusNama}</a>
+            <span style="color:#94A3B8;"> &rarr; Program ${program} &rarr; Senarai pelajar</span>
+          </div>
+          <h3 style="font-family:'Outfit',sans-serif;font-weight:800;color:var(--navy);font-size:1.05rem;">${kampusNama} &mdash; Program ${program}</h3>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:2px;">Zon ${kampusZon} &middot; ${rows.length.toLocaleString("ms-MY")} rekod pelajar &middot; menunjukkan ${sample.length}</div>
+        </div>
+        <button onclick="closeEnrolmenCardDetail()" class="user-drawer-close" title="Tutup">&times;</button>
+      </div>
+      <div style="font-size:.72rem;color:#0E7C61;background:rgba(14,124,97,0.08);border:1px solid rgba(14,124,97,0.2);border-radius:6px;padding:6px 10px;margin-bottom:10px;">
+        <i class="fas fa-circle-info"></i> Klik baris untuk lihat <b>butiran lengkap pelajar</b> (telefon, emel, dll.)
+      </div>
+      <div style="max-height:55vh;overflow:auto;border:1px solid var(--border);border-radius:8px;">
+        <table class="tbl">
+          <thead><tr>
+            <th>No. Matrik</th><th>Nama</th><th>Jantina</th>
+            <th>Opsyen</th><th>Aliran</th>
+            <th>Sesi Ambilan</th><th>Sesi Tamat</th><th>Status</th>
+            <th>Telefon</th><th>Emel</th>
+          </tr></thead>
+          <tbody>${sample.map((d, i) => `<tr style="cursor:pointer;" onclick="openEnrolmenDetail(${i})" title="Klik untuk maklumat pelajar">
+            <td class="font-mono text-xs">${d.no_matrik || "—"}</td>
+            <td><span style="font-weight:500;font-size:.79rem;">${d.nama || "—"}</span></td>
+            <td><span class="bdg ${d.jantina==="L"?"bdg-blue":"bdg-amber"}" style="font-size:.65rem;">${d.jantina === "L" ? "Lelaki" : "Perempuan"}</span></td>
+            <td style="font-size:.75rem;font-weight:600;">${d.opsyen_1 || "—"}${d.opsyen_2 && d.opsyen_2 !== "0" ? " / " + d.opsyen_2 : ""}</td>
+            <td><span class="bdg ${d.aliran_sekolah==="SK"?"bdg-green":d.aliran_sekolah==="SJKC"?"bdg-amber":"bdg-red"}" style="font-size:.65rem;">${d.aliran_sekolah || "—"}</span></td>
+            <td style="font-size:.75rem;">${d.sesi_ambilan || "—"}</td>
+            <td style="font-size:.75rem;color:var(--muted);">${d.sesi_tamat || "—"}</td>
+            <td><span class="bdg ${d.status_pengajian==="ATIF"?"bdg-green":d.status_pengajian==="BERHENTI"?"bdg-red":"bdg-amber"}" style="font-size:.65rem;">${d.status_pengajian || "—"}</span></td>
+            <td style="font-size:.72rem;font-family:monospace;">${(d.tel && d.tel !== "0") ? d.tel : (d.telefon && d.telefon !== "0") ? d.telefon : "—"}</td>
+            <td style="font-size:.72rem;font-family:monospace;">${d.emel || "—"}</td>
+          </tr>`).join("")}</tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;">
+        <button class="btn btn-ghost btn-sm" onclick="openEnrolmenCampusPrograms('${key}','${kampusId.replace(/'/g, "\\'")}')" title="Kembali ke pecahan program"><i class="fas fa-arrow-left"></i> Kembali ke Program</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeEnrolmenCardDetail()">Tutup</button>
+      </div>
+    </div>
+  </div>`;
+  document.getElementById("enrolmen-card-detail-wrap").innerHTML = html;
+  setTimeout(function(){ var mb = document.querySelector("#enrolmen-card-detail-wrap .modal-box"); if(mb) mb.scrollTop = 0; }, 10);
+}
+
+// Helper: returns the student set filtered by a stat-card category (Level 1..3 share this)
+function _enCardFiltered(key){
+  const src = (window.ENROLMEN_LIVE || window.ENROLMEN_CSV || ENROLMEN_DATA) || [];
+  if(key === "total")            return src.slice();
+  if(key === "aktif")            return src.filter(d => d.status_pengajian === "ATIF");
+  if(key === "berhenti_tangguh") return src.filter(d => d.status_pengajian === "BERHENTI" || d.status_pengajian === "TANGGUH");
+  if(key === "nisbah")           return src.slice();
+  return src;
+}
+function _enCardTitle(key){
+  return ({
+    total:            "Jumlah Enrolmen Pelajar",
+    aktif:            "Pelajar Aktif",
+    berhenti_tangguh: "Pelajar Berhenti / Tangguh",
+    nisbah:           "Nisbah Lelaki : Perempuan"
+  })[key] || "Enrolmen";
+}
+function _enCardDesc(key){
+  return ({
+    total:            "Pecahan mengikut kampus",
+    aktif:            "Status AKTIF — pecahan mengikut kampus",
+    berhenti_tangguh: "Status BERHENTI/TANGGUH — pecahan mengikut kampus",
+    nisbah:           "Nisbah Lelaki : Perempuan mengikut kampus"
+  })[key] || "";
+}
+
+function closeEnrolmenCardDetail(){
+  const host = document.getElementById("enrolmen-card-detail-wrap");
+  if(host) host.innerHTML = "";
+  document.body.style.overflow = "";
+}
+
+// Close drawers when pressing ESC
+document.addEventListener("keydown", function(e){
+  if(e.key === "Escape"){
+    closeEnrolmenDetail();
+    closeEnrolmenCardDetail();
+  }
+});
+
 function renderEnrolmenTable(data,isUtama){
   if(!data.length)return`<p class="text-sm text-gray-400 p-4 text-center">Tiada rekod ditemui.</p>`;
+  // Expose current slice so row onclick handlers can resolve the student record.
+  // (Set here in JS — must NOT use an inline <script> tag inside the template
+  //  string, because the HTML parser would terminate the outer script element.)
+  try { window._enShown = data; } catch(e){}
   return`<table class="tbl" id="en-table-inner"><thead><tr>
     <th>No. Matrik</th><th>Nama</th><th>Jantina</th>
     ${isUtama?"<th>Kampus</th>":""}
     <th>Program</th><th>Opsyen</th><th>Aliran</th>
     <th>Sesi Ambilan</th><th>Sesi Tamat</th><th>Status</th>
   </tr></thead>
-  <tbody>${data.map((d,i)=>`<tr>
+  <tbody>${data.map((d,i)=>`<tr style="cursor:pointer;" onclick="openEnrolmenDetail(${i})" title="Klik untuk maklumat pelajar">
     <td class="font-mono text-xs">${d.no_matrik}</td>
     <td><div style="display:flex;align-items:center;gap:6px;">
       <div class="ava" style="background:${d.jantina==="L"?"#C5CDE0":"#FAE0BF"};color:${d.jantina==="L"?"#1F2C50":"#9A5A1E"};font-size:.6rem;">${d.jantina}</div>
@@ -18003,6 +18603,479 @@ function aupExportExcel(){const rows=aupFiltered();if(!rows.length){toast("Tiada
 
 function pgAKUjianPsikologi(c){aupLoad(c);}
 function pgAUUjianPsikologi(c){aupLoad(c);}
+
+// ════════════════════════════════════════════════════════════════════════════
+// RESET JAWAPAN UJIAN PSIKOLOGI — Kaunselor & Admin
+// Membolehkan kaunselor memadam rekod pelajar yang tersilap jawab ujian
+// supaya pelajar boleh menjawab semula (sebelum ini terhad oleh No. KP).
+// Koleksi yang diliputi:
+//   • pkpp                       (Profil Kesejahteraan & Personaliti Pelajar)
+//   • pkpw                       (Profil Kesejahteraan & Personaliti Warga)
+//   • ssp_responses              (SSP — Suara Suara Pelajar)
+//   • kesihatan_mental_klien     (ISP — Inventori Saringan Psikologi)
+// ════════════════════════════════════════════════════════════════════════════
+
+// Page entry — wrapper for the role (ak vs au) so both can navigate here
+function pgAKResetUjian(c){ _resetUjianLoad(c, SES.kampus, false); }
+function pgAUResetUjian(c){ _resetUjianLoad(c, null, true); }
+
+// Collection metadata used by the reset tool
+const RUJ_COLLECTIONS = [
+  { key: "pkpp",                     label: "PKPP",            shortLabel: "PKPP",  fullName: "Profil Kesejahteraan & Personaliti Pelajar", faIcon: "fa-heart-pulse",     color: "#0E7C61" },
+  { key: "pkpw",                     label: "PKPW",            shortLabel: "PKPW",  fullName: "Profil Kesejahteraan & Personaliti Warga",   faIcon: "fa-user-shield",     color: "#3D5490" },
+  { key: "ssp_responses",            label: "SSP",             shortLabel: "SSP",   fullName: "SSP — Suara Suara Pelajar",                  faIcon: "fa-comments",        color: "#E88D3A" },
+  { key: "kesihatan_mental_klien",   label: "ISP",             shortLabel: "ISP",   fullName: "ISP — Inventori Saringan Psikologi",         faIcon: "fa-notes-medical",   color: "#8B5CF6" }
+];
+
+let _rujCache = { pkpp: [], pkpw: [], ssp_responses: [], kesihatan_mental_klien: [] };
+let _rujLoaded = false;
+let _rujLoading = false;
+let _rujError = null;
+
+// Resolve No. KP / Nama from any record shape (each collection has different field names)
+function _rujId(r){
+  return String(r?.kad_pengenalan || r?.mykid || r?.noKadPengenalan || r?.noKP || r?.nokp || r?.ic || r?.idPelajar || r?.matrik || r?.noMatrik || r?.studentId || r?.emel || r?.email || "").trim();
+}
+function _rujName(r){
+  return String(r?.nama || r?.namaPelajar || r?.namaPenuh || r?.namaKlien || r?.studentName || r?.responden || r?.namaResponden || "").trim();
+}
+function _rujCampus(r){
+  // Try to resolve kampus — return either master nama or raw fallback
+  const code = (function(){
+    if(typeof resolveMasterKampusCode === "function"){
+      const c = resolveMasterKampusCode(r);
+      if(c) return c;
+    }
+    if(typeof canonicalKodKampusGlobal === "function"){
+      const c = canonicalKodKampusGlobal(r?.kodKampus || r?.kampus_id || r?.kampus || r?.ipgmKampus || r?.namaKampus || r?.organisasi);
+      if(c) return c;
+    }
+    return r?.kodKampus || r?.kampus_id || r?.kampus || r?.ipgk || r?.organisasi || "";
+  })();
+  if(typeof MASTER_KAMPUS_BY_ID === "object" && MASTER_KAMPUS_BY_ID[code]) return MASTER_KAMPUS_BY_ID[code].nama;
+  return code || r?.kampus || r?.organisasi || "—";
+}
+function _rujDate(r){
+  const raw = r?.tarikh || r?.tarikhJawab || r?.tarikhMenjawab || r?.submittedAt || r?.createdAt || r?.diciptaPada || r?.timestamp || r?.masa || r?.date;
+  if(!raw) return null;
+  if(typeof raw === "object"){
+    if(typeof raw.toDate === "function") return raw.toDate();
+    if(raw.seconds) return new Date(raw.seconds * 1000);
+  }
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? null : d;
+}
+function _rujDateLabel(r){
+  const d = _rujDate(r);
+  return d ? d.toLocaleString("ms-MY") : "—";
+}
+
+// Fetch all 4 collections in parallel; cache them in _rujCache
+async function _rujLoadCollections(kampusFilter){
+  if(_rujLoading) return;
+  _rujLoading = true;
+  _rujError = null;
+
+  // Check Firebase availability
+  const hasFirebase = !DEMO_MODE && window.MYFB && window.MYFB_CONFIGURED;
+  if(!hasFirebase){
+    _rujError = "Firebase tidak dikonfigurasi. Alat ini memerlukan sambungan Firestore untuk berfungsi.";
+    _rujLoading = false;
+    return;
+  }
+
+  try {
+    // Helper for the two non-PKPP collections (SSP, ISP)
+    const fetchGeneric = async (colName) => {
+      const { db, collection, query, limit, startAfter, getDocs } = window.__FS;
+      const PAGE_SIZE = 400;
+      let allDocs = [];
+      let lastDoc = null;
+      let page = 0;
+      while (true) {
+        page++;
+        const q = lastDoc
+          ? query(collection(db, colName), startAfter(lastDoc), limit(PAGE_SIZE))
+          : query(collection(db, colName), limit(PAGE_SIZE));
+        const snap = await getDocs(q);
+        if (snap.empty) break;
+        allDocs = allDocs.concat(snap.docs.map(d => ({ _docId: d.id, _collection: colName, ...d.data() })));
+        lastDoc = snap.docs[snap.docs.length - 1];
+        if (snap.docs.length < PAGE_SIZE) break;
+      }
+      return allDocs;
+    };
+
+    // Run all 4 in parallel
+    const [pkpp, pkpw, ssp, isp] = await Promise.all([
+      window.MYFB.listPKPPForReset("pkpp", kampusFilter).catch(e => { console.warn("PKPP list failed:", e); return []; }),
+      window.MYFB.listPKPPForReset("pkpw", kampusFilter).catch(e => { console.warn("PKPW list failed:", e); return []; }),
+      fetchGeneric("ssp_responses").catch(e => { console.warn("SSP list failed:", e); return []; }),
+      fetchGeneric("kesihatan_mental_klien").catch(e => { console.warn("ISP list failed:", e); return []; })
+    ]);
+
+    // For SSP/ISP — filter by kampus manually (since we didn't pass it through)
+    if(kampusFilter){
+      const kod = canonicalKodKampus(kampusFilter);
+      if(kod && kod !== "IPGM"){
+        const filteredSSP = ssp.filter(d => canonicalKodKampus(d.kodKampus || d.kampus_id || d.kampus || d.ipgk || d.organisasi) === kod);
+        const filteredISP = isp.filter(d => canonicalKodKampus(d.kodKampus || d.kampus_id || d.kampus || d.ipgk || d.organisasi) === kod);
+        _rujCache.ssp_responses = filteredSSP;
+        _rujCache.kesihatan_mental_klien = filteredISP;
+      } else {
+        _rujCache.ssp_responses = ssp;
+        _rujCache.kesihatan_mental_klien = isp;
+      }
+    } else {
+      _rujCache.ssp_responses = ssp;
+      _rujCache.kesihatan_mental_klien = isp;
+    }
+    _rujCache.pkpp = pkpp;
+    _rujCache.pkpw = pkpw;
+
+    _rujLoaded = true;
+    console.log("[Reset Tool] Loaded:",
+      "PKPP=" + pkpp.length,
+      "PKPW=" + pkpw.length,
+      "SSP=" + _rujCache.ssp_responses.length,
+      "ISP=" + _rujCache.kesihatan_mental_klien.length
+    );
+  } catch(err){
+    console.error("[Reset Tool] load error:", err);
+    _rujError = err.message || "Gagal memuatkan data ujian";
+  } finally {
+    _rujLoading = false;
+  }
+}
+
+// Build the page header
+function _rujRenderHeader(isUtama, kampusFilter){
+  const kampusNama = isUtama ? "Semua Kampus" : kNama(kampusFilter);
+  return `<div class="afu bg-gradient-to-br from-navy-800 to-pri-700 rounded-xl p-5 mb-5 text-white relative overflow-hidden">
+    <div class="absolute right-0 top-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/3 translate-x-1/4"></div>
+    <div class="relative z-10">
+      <div class="text-white/50 text-xs mb-1"><i class="fas fa-arrow-rotate-left"></i> Pengurusan Kaunseling</div>
+      <div class="font-display font-800 text-xl">Reset / Padam Jawapan Ujian Psikologi</div>
+      <div class="text-white/55 text-sm mt-1">Cari &amp; padam rekod pelajar yang tersilap jawab &middot; ${kampusNama}</div>
+    </div>
+  </div>`;
+}
+
+// Main page entry — loads collections, renders UI
+function _resetUjianLoad(c, kampusFilter, isUtama){
+  // Guard: only kaunselor+ allowed
+  if(!isKampus() && !isAdmin()){
+    c.innerHTML = `<div style="text-align:center;padding:60px;color:var(--muted);"><i class="fas fa-lock" style="font-size:42px;display:block;margin-bottom:14px;opacity:.3;"></i><div style="font-weight:600;color:var(--navy);">Akses Dihadkan</div><div style="font-size:.82rem;margin-top:4px;">Hanya kaunselor dan pentadbir yang dibenarkan.</div></div>`;
+    return;
+  }
+
+  c.innerHTML = _rujRenderHeader(isUtama, kampusFilter) + `
+    <div class="card afu">
+      <div class="card-head">
+        <span class="card-title"><i class="fas fa-shield-halved text-pri-500 mr-1"></i>Penjagaan Rekod</span>
+        <button class="btn btn-out btn-sm" onclick="navTo(SES.pg)" id="ruj-refresh-btn"><i class="fas fa-rotate-right"></i> Muat Semula</button>
+      </div>
+      <div class="card-body" style="font-size:.82rem;color:var(--text);line-height:1.6;">
+        <p style="margin-bottom:8px;"><b>Tujuan alat ini:</b> Memadam rekod jawapan ujian psikologi (PKPP, PKPW, SSP, ISP) bagi pelajar yang <b>tersilap menjawab</b>, supaya pelajar tersebut boleh <b>menjawab semula</b> ujian.</p>
+        <p style="margin-bottom:0;color:#92400e;"><i class="fas fa-triangle-exclamation"></i> Sebelum ini, pelajar terhad kepada satu jawapan mengikut <b>No. Kad Pengenalan</b>. Setelah rekod dipadam, pelajar tersebut boleh log masuk dan menjawab ujian semula dari mula.</p>
+      </div>
+    </div>
+
+    <div id="ruj-loading" style="text-align:center;padding:60px 20px;">
+      <i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--pri);display:block;margin-bottom:14px;"></i>
+      <div style="font-size:14px;font-weight:600;color:var(--navy);">Memuatkan rekod ujian...</div>
+      <div id="ruj-loading-detail" style="font-size:12px;color:var(--muted);margin-top:6px;">Sila tunggu — ini mungkin mengambil masa sehingga 1 minit untuk 27 kampus.</div>
+    </div>
+
+    <div id="ruj-content" class="hidden"></div>
+  `;
+
+  // Trigger async load
+  (async function(){
+    try {
+      await _rujLoadCollections(kampusFilter);
+    } catch(e){
+      _rujError = e.message;
+    }
+    _rujRenderContent(c, kampusFilter, isUtama);
+  })();
+}
+
+// Render the search + results UI
+function _rujRenderContent(c, kampusFilter, isUtama){
+  const loadingEl = document.getElementById("ruj-loading");
+  const contentEl = document.getElementById("ruj-content");
+  if(!loadingEl || !contentEl) return;
+  if(_rujError){
+    loadingEl.innerHTML = `<div style="text-align:center;padding:30px;">
+      <i class="fas fa-triangle-exclamation" style="font-size:38px;color:#DC2626;display:block;margin-bottom:12px;"></i>
+      <div style="font-size:14px;font-weight:700;color:#DC2626;">Gagal memuatkan data</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;">${_rujError}</div>
+      <button class="btn btn-out btn-sm" style="margin-top:14px;" onclick="navTo(SES.pg)"><i class="fas fa-rotate-right"></i> Cuba Semula</button>
+    </div>`;
+    return;
+  }
+
+  const totalPKPP = _rujCache.pkpp.length;
+  const totalPKPW = _rujCache.pkpw.length;
+  const totalSSP  = _rujCache.ssp_responses.length;
+  const totalISP  = _rujCache.kesihatan_mental_klien.length;
+  const total = totalPKPP + totalPKPW + totalSSP + totalISP;
+
+  loadingEl.classList.add("hidden");
+  contentEl.classList.remove("hidden");
+
+  contentEl.innerHTML = `
+    <!-- Stat row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+      ${RUJ_COLLECTIONS.map((col, i) => {
+        const n = _rujCache[col.key].length;
+        return `<div class="stat-card afu d${i+1}" style="padding:14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <div style="width:32px;height:32px;border-radius:7px;background:${col.color}15;color:${col.color};display:flex;align-items:center;justify-content:center;font-size:.85rem;"><i class="fas ${col.faIcon}"></i></div>
+            <div>
+              <div style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:var(--navy);line-height:1;">${n.toLocaleString("ms-MY")}</div>
+              <div style="font-size:.7rem;color:var(--muted);">${col.shortLabel} rekod</div>
+            </div>
+          </div>
+          <div style="font-size:.7rem;color:var(--muted);">${col.fullName}</div>
+        </div>`;
+      }).join("")}
+    </div>
+
+    <!-- Search bar -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title"><i class="fas fa-magnifying-glass text-pri-500 mr-1"></i>Cari Pelajar</span>
+        <span style="font-size:.72rem;color:var(--muted);">${total.toLocaleString("ms-MY")} rekod keseluruhan</span>
+      </div>
+      <div class="card-body">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+          <input type="text" class="fi" id="ruj-search" placeholder="No. Kad Pengenalan / Nama pelajar..." style="max-width:340px;" oninput="_rujFilter()" autocomplete="off">
+          <select class="fi" id="ruj-instrument" style="width:auto;" onchange="_rujFilter()">
+            <option value="">Semua Instrumen</option>
+            ${RUJ_COLLECTIONS.map(c => `<option value="${c.key}">${c.label}</option>`).join("")}
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ruj-search').value='';document.getElementById('ruj-instrument').value='';_rujFilter();"><i class="fas fa-rotate-left"></i> Set Semula</button>
+        </div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:8px;">
+          <i class="fas fa-circle-info"></i> Cari mengikut No. Kad Pengenalan atau nama (separa). Hasil dihadkan kepada 50 rekod pertama yang paling relevan.
+        </div>
+        <div id="ruj-results" style="margin-top:8px;">${_rujFilter(true)}</div>
+      </div>
+    </div>
+
+    <!-- Audit log notice -->
+    <div class="card afu" style="margin-top:14px;">
+      <div class="card-body" style="font-size:.78rem;color:var(--muted);">
+        <b style="color:var(--navy);"><i class="fas fa-clipboard-list text-pri-500 mr-1"></i>Audit Trail</b><br>
+        Setiap tindakan <b>Reset</b> atau <b>Padam</b> direkodkan dalam koleksi Firestore <code>audit_pemadaman_instrumen</code> dengan butiran lengkap (kaunselor, masa, instrumen, ID pelajar, dan kampus). Ini membolehkan pengurusan menyemak sejarah pemadaman jika perlu.
+      </div>
+    </div>
+  `;
+}
+
+// Filter function — returns rendered HTML for the results list
+function _rujFilter(skipRender){
+  const q = (document.getElementById("ruj-search")?.value || "").toLowerCase().trim();
+  const instr = document.getElementById("ruj-instrument")?.value || "";
+  if(skipRender !== true){
+    const el = document.getElementById("ruj-results");
+    if(el) el.innerHTML = _rujFilter(true);
+    return "";
+  }
+
+  // Gather matching records from cache
+  const matches = [];
+  const cols = instr ? [instr] : RUJ_COLLECTIONS.map(c => c.key);
+  cols.forEach(k => {
+    _rujCache[k].forEach(r => {
+      const id = _rujId(r);
+      const name = _rujName(r);
+      if(!q){
+        matches.push({ col: k, r, id, name });
+      } else if(
+        id.toLowerCase().includes(q) ||
+        name.toLowerCase().includes(q)
+      ){
+        matches.push({ col: k, r, id, name });
+      }
+    });
+  });
+
+  if(!matches.length){
+    return `<div style="text-align:center;padding:30px;color:var(--muted);">
+      <i class="fas fa-magnifying-glass" style="font-size:32px;opacity:.2;display:block;margin-bottom:10px;"></i>
+      <div style="font-size:13px;font-weight:600;">Tiada rekod dijumpai</div>
+      <div style="font-size:11px;margin-top:4px;">${q ? "Cuba kata kunci lain." : "Taip No. KP atau nama untuk carian."}</div>
+    </div>`;
+  }
+
+  // Limit to 50 matches; sort by date desc if available
+  matches.sort((a, b) => {
+    const da = _rujDate(a.r), db = _rujDate(b.r);
+    if(da && db) return db.getTime() - da.getTime();
+    if(da) return -1;
+    if(db) return 1;
+    return 0;
+  });
+  const shown = matches.slice(0, 50);
+
+  return `
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;">Menunjukkan ${shown.length} daripada ${matches.length} rekod yang sepadan</div>
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;">
+      <table class="tbl">
+        <thead><tr>
+          <th style="width:32px;">#</th>
+          <th>Instrumen</th>
+          <th>Nama</th>
+          <th>No. Kad Pengenalan</th>
+          <th>Kampus</th>
+          <th>Tarikh Jawab</th>
+          <th style="text-align:right;">Tindakan</th>
+        </tr></thead>
+        <tbody>
+          ${shown.map((m, i) => {
+            const colMeta = RUJ_COLLECTIONS.find(c => c.key === m.col);
+            // Use data-* attributes to safely pass parameters (avoid quote-escaping headaches)
+            const safeName = (m.name || m.id || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+            return `<tr>
+              <td style="font-size:.72rem;color:var(--muted);">${i + 1}</td>
+              <td><span class="bdg" style="font-size:.65rem;background:${colMeta.color}15;color:${colMeta.color};"><i class="fas ${colMeta.faIcon}"></i> ${colMeta.label}</span></td>
+              <td><span style="font-weight:500;font-size:.82rem;">${m.name || "—"}</span></td>
+              <td class="font-mono text-xs">${m.id || "—"}</td>
+              <td style="font-size:.78rem;">${_rujCampus(m.r)}</td>
+              <td style="font-size:.78rem;color:var(--muted);">${_rujDateLabel(m.r)}</td>
+              <td style="text-align:right;white-space:nowrap;">
+                <button class="btn btn-out btn-xs" style="margin-right:4px;font-size:.7rem;color:#0E7C61;border-color:#0E7C61;"
+                  data-ruj-action="reset" data-ruj-col="${m.col}" data-ruj-docid="${m.r._docId || ""}" data-ruj-label="${safeName}"
+                  onclick="_rujReset(this.getAttribute('data-ruj-col'),this.getAttribute('data-ruj-docid'),this.getAttribute('data-ruj-label'))"
+                  title="Padam rekod jawapan — pelajar boleh menjawab semula">
+                  <i class="fas fa-arrow-rotate-left"></i> Reset
+                </button>
+                <button class="btn btn-danger btn-xs" style="font-size:.7rem;"
+                  data-ruj-action="delete" data-ruj-col="${m.col}" data-ruj-docid="${m.r._docId || ""}" data-ruj-label="${safeName}"
+                  onclick="_rujDelete(this.getAttribute('data-ruj-col'),this.getAttribute('data-ruj-docid'),this.getAttribute('data-ruj-label'))"
+                  title="Padam rekod tanpa membenarkan jawab semula">
+                  <i class="fas fa-trash"></i> Padam
+                </button>
+              </td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// Reset = delete the answer record so the student can re-take the test
+// (uses audit logging to track who reset what, when, and why)
+async function _rujDeleteRecord(collectionName, docId, studentLabel, reason){
+  if(!collectionName || !docId) return;
+  try {
+    showCoreLoading("Memadam rekod jawapan...", studentLabel);
+    await (window.MYFB_READY || Promise.resolve(true));
+    const { db, doc, collection, setDoc, deleteDoc } = window.__FS;
+    if(!deleteDoc) throw new Error("Fungsi deleteDoc belum tersedia.");
+
+    // Find the original record so we can capture details for audit
+    let originalRecord = null;
+    const cacheArr = _rujCache[collectionName] || [];
+    originalRecord = cacheArr.find(r => r._docId === docId) || null;
+
+    // Write audit entry ( Firestore rules must allow kaunselor to create audit_pemadaman_instrumen )
+    const auditRef = doc(collection(db, "audit_pemadaman_instrumen"));
+    await setDoc(auditRef, {
+      instrumen:        _rujLabelFor(collectionName),
+      koleksiAsal:      collectionName,
+      docIdAsal:        docId,
+      nama:             originalRecord ? _rujName(originalRecord) : studentLabel,
+      idPelajar:        originalRecord ? _rujId(originalRecord) : "",
+      kodKampus:        originalRecord ? (originalRecord.kodKampus || originalRecord.kampus_id || "") : "",
+      kampus:           originalRecord ? _rujCampus(originalRecord) : "",
+      tahap:            originalRecord?.tahap || originalRecord?.kategori || "",
+      tarikhRespon:     originalRecord ? _rujDateLabel(originalRecord) : "",
+      sebab:            reason,
+      dipadamOleh:      SES.uid || "",
+      idPengguna:       SES.id || "",
+      namaPengguna:     SES.nama || "",
+      perananPengguna:  normalizedRole(),
+      masaDipadam:      new Date().toISOString()
+    });
+
+    // Delete the actual response record
+    await deleteDoc(doc(db, collectionName, docId));
+
+    // ── For SSP: also delete the IC registry entry, otherwise the student
+    //    will still be blocked from re-taking the test (the IC registry is
+    //    the dedup key — see Firestore rules ssp_ic_registry). ──
+    if(collectionName === "ssp_responses" && originalRecord){
+      const ic = _rujId(originalRecord);
+      if(ic && ic.length >= 12){
+        try {
+          await deleteDoc(doc(db, "ssp_ic_registry", ic));
+          console.log("[RUJ] Deleted ssp_ic_registry entry for IC:", ic);
+        } catch(icErr){
+          // Not fatal — log and continue. The response is already deleted;
+          // we'll surface a warning to the kaunselor.
+          console.warn("[RUJ] Failed to delete ssp_ic_registry:", icErr.message);
+          toast("Amaran: Rekod jawapan dipadam, tetapi rekod IC tidak dapat dipadam. Pelajar mungkin masih tidak boleh menjawab semula. Sila hubungi Admin Utama untuk memadam rekod IC ini secara manual: " + ic, "err");
+        }
+      }
+    }
+
+    // Remove from local cache so the UI updates immediately
+    _rujCache[collectionName] = _rujCache[collectionName].filter(r => r._docId !== docId);
+
+    hideCoreLoading();
+    toast("Rekod berjaya dipadam. Pelajar kini boleh menjawab semula.", "ok");
+
+    // Re-render the search results + stat cards
+    _rujRenderContent(document.getElementById("pg-body"), SES.kampus, isAdmin());
+  } catch(error){
+    hideCoreLoading();
+    console.error("[RUJ] Delete failed:", error);
+    toast("Pemadaman gagal: " + (error.message || error), "err");
+  }
+}
+
+function _rujLabelFor(collectionName){
+  const m = RUJ_COLLECTIONS.find(c => c.key === collectionName);
+  return m ? m.label : collectionName;
+}
+
+// Reset = delete + reason="RESET_JAWAPAN" (so student can re-answer)
+function _rujReset(collectionName, docId, studentLabel){
+  if(!collectionName || !docId){ toast("Ralat: rekod tidak dapat dikenalpasti.","err"); return; }
+  const reason = "RESET_JAWAPAN — kaunselor benarkan pelajar menjawab semula";
+  const ok = confirm(
+    "RESET JAWAPAN UJIAN\n\n" +
+    "Pelajar: " + studentLabel + "\n" +
+    "Instrumen: " + _rujLabelFor(collectionName) + "\n\n" +
+    "Rekod jawapan pelajar ini akan dipadam supaya pelajar boleh menjawab semula ujian dari mula.\n\n" +
+    "Adakah anda pasti?"
+  );
+  if(!ok) return;
+  _rujDeleteRecord(collectionName, docId, studentLabel, reason);
+}
+
+// Plain delete — different reason; still deletes the record
+function _rujDelete(collectionName, docId, studentLabel){
+  if(!collectionName || !docId){ toast("Ralat: rekod tidak dapat dikenalpasti.","err"); return; }
+  const reason = "PADAM REKOD — kaunselor padam rekod tersilap";
+  const ok = confirm(
+    "PADAM REKOD UJIAN\n\n" +
+    "Pelajar: " + studentLabel + "\n" +
+    "Instrumen: " + _rujLabelFor(collectionName) + "\n\n" +
+    "Rekod ini akan dipadam secara kekal dari Firestore.\n\n" +
+    "Adakah anda pasti?"
+  );
+  if(!ok) return;
+  const typed = prompt("Taip PADAM untuk mengesahkan pemadaman rekod " + _rujLabelFor(collectionName) + " bagi " + studentLabel + ":");
+  if(typed !== "PADAM"){ toast("Pemadaman dibatalkan.","inf"); return; }
+  _rujDeleteRecord(collectionName, docId, studentLabel, reason);
+}
+
 </script>
 
 </body>
