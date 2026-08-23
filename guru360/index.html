@@ -220,6 +220,30 @@ h1,h2,h3,h4{font-family:"Outfit",sans-serif}
           </div>
         </div>
       </div>
+
+      <div class="card mt-5">
+        <div class="card-head">
+          <div>
+            <h2 class="font-bold text-navy-800">4. Soal Selidik Kajian</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Simpan pautan soal selidik kajian dan jana QR untuk dikongsikan kepada peserta.</p>
+          </div>
+          <span class="badge bg-pri-50 text-pri-700"><i class="fas fa-flask"></i>Kajian</span>
+        </div>
+        <div class="card-body">
+          <div class="grid sm:grid-cols-[1fr_auto] gap-3 items-end">
+            <div>
+              <label class="fl">Pautan Soal Selidik</label>
+              <input id="researchSurveyUrl" type="url" class="fi" placeholder="https://forms.gle/... atau pautan soal selidik anda">
+            </div>
+            <button id="saveResearchSurvey" class="btn btn-pri"><i class="fas fa-qrcode"></i>Simpan & Jana QR</button>
+          </div>
+          <div class="mt-3">
+            <label class="fl">Tajuk Paparan</label>
+            <input id="researchSurveyTitle" class="fi" value="Soal Selidik Kajian Guru Baharu">
+          </div>
+          <p class="text-[11px] text-gray-400 mt-3"><i class="fas fa-circle-info mr-1"></i>Pautan ini berasingan daripada aktiviti Guru360. Peserta akan dibawa terus ke borang kajian anda.</p>
+        </div>
+      </div>
     </section>
 
     <aside>
@@ -263,7 +287,20 @@ h1,h2,h3,h4{font-family:"Outfit",sans-serif}
       <button id="closeBuilder" class="btn btn-ghost !px-2.5"><i class="fas fa-xmark"></i></button>
     </div>
     <div class="mt-4"><label class="fl">Tajuk Aktiviti</label><input id="activityTitleInput" class="fi"></div>
-    <div class="mt-3"><label class="fl">Soalan / Arahan</label><textarea id="activityPromptInput" class="fi min-h-[95px]"></textarea></div>
+    <div id="singlePromptBox" class="mt-3"><label class="fl">Soalan / Arahan</label><textarea id="activityPromptInput" class="fi min-h-[95px]"></textarea></div>
+
+    <div id="wordcloudQuestionsBox" class="mt-4 hidden">
+      <div class="flex items-center justify-between gap-3 mb-2">
+        <div>
+          <label class="fl !mb-0">Set Soalan Word Cloud</label>
+          <p class="text-[11px] text-gray-400 mt-1">Satu QR untuk semua soalan. Peserta menjawab soalan satu demi satu.</p>
+        </div>
+        <button id="addWordcloudQuestion" type="button" class="btn btn-ghost !py-1.5"><i class="fas fa-plus"></i>Tambah Soalan</button>
+      </div>
+      <div id="wordcloudQuestionList"></div>
+      <div class="text-[11px] text-gray-400 mt-2">Cadangan: 2–5 soalan bagi satu set supaya aktiviti kekal ringkas.</div>
+    </div>
+
     <div id="optionsBox" class="mt-3 hidden"><label class="fl">Pilihan Jawapan — satu baris satu pilihan</label><textarea id="activityOptionsInput" class="fi min-h-[110px]"></textarea></div>
     <div class="flex justify-end gap-2 mt-5">
       <button id="cancelBuilder" class="btn btn-ghost">Batal</button>
@@ -287,13 +324,35 @@ h1,h2,h3,h4{font-family:"Outfit",sans-serif}
   </div>
 </div>
 
+
+<!-- PRATONTON PESERTA DALAM MODAL -->
+<div id="previewModal" class="modal-bg hidden">
+  <div class="modal-box" style="width:min(900px,96vw)">
+    <div class="flex justify-between items-start gap-3 mb-4">
+      <div>
+        <div class="text-[10px] uppercase tracking-wider text-pri-600 font-bold">PRATONTON PESERTA</div>
+        <h3 id="previewTitle" class="font-bold text-xl text-navy-800 mt-1">Aktiviti Guru360</h3>
+        <p class="text-xs text-gray-400 mt-1">Ini ialah paparan yang peserta akan lihat selepas mengimbas QR.</p>
+      </div>
+      <button id="closePreview" class="btn btn-ghost !px-2.5"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="border border-gray-100 rounded-xl overflow-hidden">
+      <div class="bg-navy-800 text-white px-5 py-4">
+        <div id="previewType" class="text-[10px] uppercase tracking-widest text-white/45 font-bold">AKTIVITI GURU360</div>
+        <div id="previewHeaderTitle" class="font-display font-bold text-lg mt-1">Aktiviti</div>
+      </div>
+      <div id="previewBody" class="p-5 sm:p-7 bg-white"></div>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script>
 const HOST_PIN="2468";
 
 const TYPES=[
- {type:"wordcloud",icon:"fa-cloud",name:"Word Cloud",group:"Kenali Diri",desc:"Jawapan perkataan/frasa ringkas.",prompt:"Apakah SATU perkataan yang menggambarkan perasaan anda sebagai guru baharu hari ini?"},
+ {type:"wordcloud",icon:"fa-cloud",name:"Word Cloud",group:"Kenali Diri",desc:"Bina satu set beberapa soalan dengan satu QR.",prompt:"Apakah SATU perkataan yang menggambarkan perasaan anda sebagai guru baharu hari ini?"},
  {type:"dilemma",icon:"fa-route",name:"Dilema Guru",group:"Uji Pilihan",desc:"Pilih respons terhadap situasi.",prompt:"Guru senior menegur cara anda mengajar di hadapan rakan lain. Apakah respons pertama yang paling membantu?",options:["Terus mempertahankan diri","Diam dan simpan perasaan","Elakkan guru tersebut","Tenangkan diri dan dapatkan penjelasan"]},
  {type:"pulse",icon:"fa-heart-pulse",name:"Pulse Check",group:"Terokai Emosi",desc:"Skala cepat 1–10.",prompt:"Pada skala 1–10, bagaimana tahap tenaga emosi anda sekarang?"},
  {type:"ranking",icon:"fa-ranking-star",name:"Ranking",group:"Kenali Diri",desc:"Pilih keutamaan paling penting.",prompt:"Antara berikut, yang manakah paling penting untuk anda bangunkan sebagai guru baharu?",options:["Keyakinan mengajar","Pengurusan emosi","Hubungan dengan murid","Pengurusan masa"]},
@@ -318,13 +377,15 @@ const DEFAULT_QUIZ=[
 
 let myActivities=JSON.parse(localStorage.getItem("g360-simple-activities")||"[]");
 let quizQuestions=JSON.parse(localStorage.getItem("g360-final-quiz")||"null")||DEFAULT_QUIZ;
+let researchSurvey=JSON.parse(localStorage.getItem("g360-research-survey")||"null")||{title:"Soal Selidik Kajian Guru Baharu",url:""};
 let builderType=null;
+let wordcloudBuilderQuestions=[];
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 function toast(msg){$("toast").textContent=msg;$("toast").classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>$("toast").classList.remove("show"),1800)}
 function typeInfo(type){return TYPES.find(x=>x.type===type)}
-function persist(){localStorage.setItem("g360-simple-activities",JSON.stringify(myActivities));localStorage.setItem("g360-final-quiz",JSON.stringify(quizQuestions))}
+function persist(){localStorage.setItem("g360-simple-activities",JSON.stringify(myActivities));localStorage.setItem("g360-final-quiz",JSON.stringify(quizQuestions));localStorage.setItem("g360-research-survey",JSON.stringify(researchSurvey))}
 function baseUrl(){return location.href.split("#")[0].split("?")[0]}
 function encodePayload(obj){return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
 function decodePayload(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";return JSON.parse(decodeURIComponent(escape(atob(s))))}
@@ -361,31 +422,86 @@ function showHost(){
  renderHost()
 }
 
+function renderWordcloudBuilder(){
+ const box=$("wordcloudQuestionList");
+ box.innerHTML=wordcloudBuilderQuestions.map((q,i)=>`
+   <div class="border border-gray-100 rounded-xl p-3 mb-2 bg-gray-50/50">
+     <div class="flex items-center justify-between gap-2 mb-2">
+       <div class="font-semibold text-xs text-navy-800">Soalan ${i+1}</div>
+       <div class="flex gap-1">
+         <button type="button" class="btn btn-ghost !px-2 !py-1 text-[10px]" onclick="moveWordcloudQuestion(${i},-1)" ${i===0?"disabled":""}>↑</button>
+         <button type="button" class="btn btn-ghost !px-2 !py-1 text-[10px]" onclick="moveWordcloudQuestion(${i},1)" ${i===wordcloudBuilderQuestions.length-1?"disabled":""}>↓</button>
+         <button type="button" class="btn btn-danger !px-2 !py-1 text-[10px]" onclick="removeWordcloudQuestion(${i})" ${wordcloudBuilderQuestions.length<=1?"disabled":""}><i class="fas fa-trash"></i></button>
+       </div>
+     </div>
+     <textarea class="fi min-h-[72px] wcq-input" data-index="${i}" placeholder="Taip soalan Word Cloud">${esc(q)}</textarea>
+   </div>`).join("");
+ box.querySelectorAll(".wcq-input").forEach(el=>el.addEventListener("input",()=>{wordcloudBuilderQuestions[Number(el.dataset.index)]=el.value}));
+}
+window.moveWordcloudQuestion=(i,d)=>{
+ const j=i+d;if(j<0||j>=wordcloudBuilderQuestions.length)return;
+ [wordcloudBuilderQuestions[i],wordcloudBuilderQuestions[j]]=[wordcloudBuilderQuestions[j],wordcloudBuilderQuestions[i]];
+ renderWordcloudBuilder();
+};
+window.removeWordcloudQuestion=i=>{
+ if(wordcloudBuilderQuestions.length<=1)return;
+ wordcloudBuilderQuestions.splice(i,1);renderWordcloudBuilder();
+};
+
 window.openBuilder=type=>{
  builderType=type;const t=typeInfo(type);
  $("builderGroup").textContent=t.group;$("builderTitle").textContent=t.name;
  $("activityTitleInput").value=t.name;$("activityPromptInput").value=t.prompt;
+ const isWordcloud=type==="wordcloud";
+ $("singlePromptBox").classList.toggle("hidden",isWordcloud);
+ $("wordcloudQuestionsBox").classList.toggle("hidden",!isWordcloud);
+ if(isWordcloud){
+   wordcloudBuilderQuestions=[
+     t.prompt,
+     "Apakah SATU kekuatan diri yang paling membantu anda sebagai guru?",
+     "Apakah SATU nilai yang anda mahu murid kenang tentang diri anda?"
+   ];
+   renderWordcloudBuilder();
+ }
  const has=Array.isArray(t.options);$("optionsBox").classList.toggle("hidden",!has);
  $("activityOptionsInput").value=has?t.options.join("\n"):"";
  $("builderModal").classList.remove("hidden")
 };
+$("addWordcloudQuestion").onclick=()=>{
+ if(wordcloudBuilderQuestions.length>=10){toast("Maksimum 10 soalan bagi satu set Word Cloud");return}
+ wordcloudBuilderQuestions.push("Soalan baharu");renderWordcloudBuilder();
+};
 $("closeBuilder").onclick=$("cancelBuilder").onclick=()=>$("builderModal").classList.add("hidden");
 $("saveBuiltActivity").onclick=()=>{
- const title=$("activityTitleInput").value.trim(),prompt=$("activityPromptInput").value.trim();
- if(!title||!prompt){toast("Lengkapkan tajuk dan soalan");return}
- const t=typeInfo(builderType),obj={kind:"activity",id:"A"+Date.now().toString(36),type:builderType,title,prompt};
- if(!$("optionsBox").classList.contains("hidden"))obj.options=$("activityOptionsInput").value.split("\n").map(x=>x.trim()).filter(Boolean);
- myActivities.unshift(obj);persist();$("builderModal").classList.add("hidden");renderHost();selectShare(obj.id);toast("Aktiviti disimpan")
+ const title=$("activityTitleInput").value.trim();
+ if(!title){toast("Lengkapkan tajuk aktiviti");return}
+ const t=typeInfo(builderType);
+ let obj={kind:"activity",id:"A"+Date.now().toString(36),type:builderType,title};
+ if(builderType==="wordcloud"){
+   const qs=wordcloudBuilderQuestions.map(x=>String(x||"").trim()).filter(Boolean);
+   if(!qs.length){toast("Masukkan sekurang-kurangnya satu soalan");return}
+   obj.questions=qs;
+   obj.prompt=qs[0];
+ }else{
+   const prompt=$("activityPromptInput").value.trim();
+   if(!prompt){toast("Lengkapkan soalan");return}
+   obj.prompt=prompt;
+   if(!$("optionsBox").classList.contains("hidden"))obj.options=$("activityOptionsInput").value.split("\n").map(x=>x.trim()).filter(Boolean);
+ }
+ myActivities.unshift(obj);persist();$("builderModal").classList.add("hidden");renderHost();selectShare(obj.id);
+ toast(builderType==="wordcloud"?`Set Word Cloud ${obj.questions.length} soalan disimpan`:"Aktiviti disimpan")
 };
 
 function renderHost(){
  renderTypeCards("hostActivityTypes",true);
+ $("researchSurveyTitle").value=researchSurvey.title||"Soal Selidik Kajian Guru Baharu";
+ $("researchSurveyUrl").value=researchSurvey.url||"";
  $("myActivities").innerHTML=myActivities.length?myActivities.map(a=>`
  <div class="border border-gray-100 rounded-lg p-3 flex items-center gap-3 mb-2">
    <div class="w-9 h-9 rounded-lg bg-pri-50 text-pri-600 flex items-center justify-center"><i class="fas ${typeInfo(a.type)?.icon||"fa-bolt"}"></i></div>
    <div class="flex-1 min-w-0">
      <div class="font-semibold text-sm text-navy-800">${esc(a.title)}</div>
-     <div class="text-xs text-gray-400 truncate">${esc(a.prompt)}</div>
+     <div class="text-xs text-gray-400 truncate">${a.type==="wordcloud"&&Array.isArray(a.questions)?`${a.questions.length} soalan · ${esc(a.questions[0]||"")}`:esc(a.prompt)}</div>
    </div>
    <button class="btn btn-ghost !px-2.5 !py-1.5" onclick="selectShare('${a.id}')"><i class="fas fa-qrcode"></i></button>
    <button class="btn btn-danger !px-2.5 !py-1.5" onclick="deleteActivity('${a.id}')"><i class="fas fa-trash"></i></button>
@@ -394,10 +510,11 @@ function renderHost(){
 window.deleteActivity=id=>{myActivities=myActivities.filter(a=>a.id!==id);persist();renderHost();$("sharePanel").innerHTML=`<div class="text-gray-300 text-4xl mb-3"><i class="fas fa-qrcode"></i></div><p class="text-xs text-gray-400">Pilih aktiviti untuk melihat QR.</p>`};
 window.selectShare=id=>{const a=myActivities.find(x=>x.id===id);if(a)renderShare(a)};
 function renderShare(obj){
+ window.__G360_PREVIEW_OBJ=obj;
  const url=shareUrl(obj);
  $("sharePanel").innerHTML=`
    <div class="font-semibold text-sm text-navy-800">${esc(obj.title||"Aktiviti")}</div>
-   <div class="text-xs text-gray-400 mt-1 mb-4">QR ini membawa peserta terus ke aktiviti.</div>
+   <div class="text-xs text-gray-400 mt-1 mb-4">${obj.type==="wordcloud"&&Array.isArray(obj.questions)?`Satu QR untuk ${obj.questions.length} soalan Word Cloud.`:"QR ini membawa peserta terus ke aktiviti."}</div>
    <div class="qr-wrap mx-auto"><img alt="Kod QR aktiviti" src="${qrSrc(url)}"></div>
    <div class="mt-4 text-left">
      <label class="fl">Pautan Aktiviti</label>
@@ -405,14 +522,107 @@ function renderShare(obj){
    </div>
    <div class="grid grid-cols-2 gap-2 mt-3">
      <button class="btn btn-ghost" onclick="copyText(${JSON.stringify(url)})"><i class="fas fa-link"></i>Salin</button>
-     <button class="btn btn-pri" onclick="openPreview(${JSON.stringify(url)})"><i class="fas fa-eye"></i>Pratonton</button>
+     <button class="btn btn-pri" onclick="previewCurrentShare()"><i class="fas fa-eye"></i>Pratonton</button>
    </div>
    ${location.protocol==="file:"?`<div class="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5 text-left"><i class="fas fa-triangle-exclamation mr-1"></i>QR untuk peserta di peranti lain hanya akan berfungsi selepas fail HTML ini dihoskan, contohnya di GitHub Pages.</div>`:""}
  `
 }
 window.copyText=async text=>{try{await navigator.clipboard.writeText(text);toast("Pautan disalin")}catch(e){toast("Salin pautan secara manual")}};
-window.openPreview=url=>window.open(url,"_blank");
 
+window.previewCurrentShare=()=>{
+ const obj=window.__G360_PREVIEW_OBJ;
+ if(!obj){toast("Tiada aktiviti dipilih");return}
+ $("previewModal").classList.remove("hidden");
+ $("previewTitle").textContent=obj.title||"Aktiviti Guru360";
+ $("previewHeaderTitle").textContent=obj.title||"Aktiviti";
+ $("previewType").textContent=obj.kind==="quiz"?"KUIZ AKHIR GURU360":(typeInfo(obj.type)?.group||"AKTIVITI GURU360");
+ renderPreviewContent(obj);
+};
+$("closePreview").onclick=()=>$("previewModal").classList.add("hidden");
+
+function renderPreviewContent(obj){
+ const box=$("previewBody");
+ if(obj.kind==="quiz"){
+   const q=(obj.questions||[])[0];
+   if(!q){box.innerHTML='<p class="text-sm text-gray-400">Tiada soalan kuiz.</p>';return}
+   box.innerHTML=`
+    <div class="flex justify-between text-xs text-gray-400 font-semibold mb-2"><span>Soalan 1 / ${obj.questions.length}</span><span>Skor: 0</span></div>
+    <div class="progress mb-5"><div style="width:0%"></div></div>
+    <h2 class="font-display font-extrabold text-2xl text-navy-800 leading-tight">${esc(q.q)}</h2>
+    <div class="grid gap-2 mt-5">${q.o.map((o,i)=>`<button type="button" class="quiz-option preview-choice"><span class="text-gray-300 mr-1">${String.fromCharCode(65+i)}.</span>${esc(o)}</button>`).join("")}</div>
+    <p class="text-xs text-gray-400 mt-4">Mod pratonton — respons tidak direkodkan.</p>`;
+ }else if(obj.type==="wordcloud" && Array.isArray(obj.questions)){
+   let pidx=0;
+   function drawWordcloudPreview(){
+     const q=obj.questions[pidx]||"";
+     box.innerHTML=`
+       <div class="flex justify-between text-xs text-gray-400 font-semibold mb-2">
+         <span>Soalan ${pidx+1} / ${obj.questions.length}</span><span>Word Cloud</span>
+       </div>
+       <div class="progress mb-5"><div style="width:${((pidx)/obj.questions.length)*100}%"></div></div>
+       <h2 class="font-display font-extrabold text-2xl text-navy-800 leading-tight">${esc(q)}</h2>
+       <div class="mt-5"><input class="fi" maxlength="60" placeholder="Taip satu perkataan atau frasa ringkas"></div>
+       <div class="flex justify-between gap-2 mt-4">
+         <button type="button" id="wcPrev" class="btn btn-ghost" ${pidx===0?"disabled":""}><i class="fas fa-arrow-left"></i>Sebelumnya</button>
+         <button type="button" id="wcNext" class="btn btn-pri">${pidx===obj.questions.length-1?"Selesai Pratonton":"Seterusnya"}<i class="fas fa-arrow-right"></i></button>
+       </div>
+       <p class="text-xs text-gray-400 mt-4">Mod pratonton — respons tidak direkodkan.</p>`;
+     const prev=box.querySelector("#wcPrev"),next=box.querySelector("#wcNext");
+     if(prev)prev.onclick=()=>{if(pidx>0){pidx--;drawWordcloudPreview()}};
+     if(next)next.onclick=()=>{if(pidx<obj.questions.length-1){pidx++;drawWordcloudPreview()}else toast("Pratonton set Word Cloud selesai")};
+   }
+   drawWordcloudPreview();
+   return;
+ }else{
+   let h=`<h2 class="font-display font-extrabold text-2xl text-navy-800 leading-tight">${esc(obj.prompt)}</h2>`;
+   if(["dilemma","ranking","control"].includes(obj.type)){
+     h+=`<div class="grid gap-2 mt-5">${(obj.options||[]).map((o,i)=>`<button type="button" class="activity-option preview-choice"><span class="text-gray-300 mr-1">${String.fromCharCode(65+i)}.</span>${esc(o)}</button>`).join("")}</div>`;
+   }else if(obj.type==="pulse"){
+     h+=`<div class="scale-row mt-5">${Array.from({length:10},(_,i)=>`<button type="button" class="preview-scale">${i+1}</button>`).join("")}</div>`;
+   }else{
+     const ph=obj.type==="wordcloud"?"Taip satu perkataan":"Taip respons anda";
+     h+=`<div class="mt-5"><input class="fi" maxlength="${obj.type==="wordcloud"?50:220}" placeholder="${ph}"></div><button type="button" class="btn btn-pri mt-4 preview-submit"><i class="fas fa-paper-plane"></i>Hantar Respons</button>`;
+   }
+   h+=`<p class="text-xs text-gray-400 mt-4">Mod pratonton — respons tidak direkodkan.</p>`;
+   box.innerHTML=h;
+ }
+ box.querySelectorAll(".preview-choice").forEach(btn=>btn.addEventListener("click",()=>{
+   box.querySelectorAll(".preview-choice").forEach(x=>x.classList.remove("selected","correct","wrong"));
+   btn.classList.add("selected");
+ }));
+ box.querySelectorAll(".preview-scale").forEach(btn=>btn.addEventListener("click",()=>{
+   box.querySelectorAll(".preview-scale").forEach(x=>x.classList.remove("selected"));
+   btn.classList.add("selected");
+ }));
+ const sb=box.querySelector(".preview-submit");
+ if(sb) sb.addEventListener("click",()=>toast("Pratonton sahaja — respons tidak direkodkan"));
+}
+
+$("saveResearchSurvey").onclick=()=>{
+ const title=$("researchSurveyTitle").value.trim()||"Soal Selidik Kajian Guru Baharu";
+ const url=$("researchSurveyUrl").value.trim();
+ if(!url){toast("Masukkan pautan soal selidik");return}
+ try{
+   const u=new URL(url);
+   if(!["http:","https:"].includes(u.protocol))throw new Error();
+ }catch(e){toast("Masukkan pautan https:// yang sah");return}
+ researchSurvey={title,url};persist();renderSurveyShare(researchSurvey);toast("Pautan soal selidik disimpan")
+};
+function renderSurveyShare(s){
+ window.__G360_PREVIEW_OBJ=null;
+ $("sharePanel").innerHTML=`
+   <div class="font-semibold text-sm text-navy-800">${esc(s.title)}</div>
+   <div class="text-xs text-gray-400 mt-1 mb-4">QR ini membawa peserta terus ke soal selidik kajian.</div>
+   <div class="qr-wrap mx-auto"><img alt="Kod QR soal selidik" src="${qrSrc(s.url)}"></div>
+   <div class="mt-4 text-left">
+     <label class="fl">Pautan Soal Selidik</label>
+     <textarea class="fi text-[11px] min-h-[70px]" readonly>${esc(s.url)}</textarea>
+   </div>
+   <div class="grid grid-cols-2 gap-2 mt-3">
+     <button class="btn btn-ghost" onclick="copyText(${JSON.stringify(s.url)})"><i class="fas fa-link"></i>Salin</button>
+     <button class="btn btn-pri" onclick="window.open(${JSON.stringify(s.url)},'_blank','noopener')"><i class="fas fa-arrow-up-right-from-square"></i>Buka Borang</button>
+   </div>`;
+}
 $("openQuizBuilder").onclick=()=>{renderQuizBuilder();$("quizModal").classList.remove("hidden")};
 $("closeQuiz").onclick=()=>$("quizModal").classList.add("hidden");
 
@@ -455,6 +665,7 @@ function directPayload(){
  try{return decodePayload(m[1])}catch(e){return null}
 }
 function renderDirect(obj){
+ if(obj.type==="wordcloud" && !Array.isArray(obj.questions) && obj.prompt) obj.questions=[obj.prompt];
  $("homeView").classList.add("hidden");$("hostView").classList.add("hidden");$("activityView").classList.remove("hidden");
  $("actTitle").textContent=obj.title||"Guru360";
  $("actTypeLabel").textContent=obj.kind==="quiz"?"KUIZ AKHIR GURU360":(typeInfo(obj.type)?.group||"AKTIVITI GURU360");
@@ -469,6 +680,34 @@ function completeMessage(extra=""){
  </div>`
 }
 function renderActivityPlay(obj){
+ if(obj.type==="wordcloud" && Array.isArray(obj.questions) && obj.questions.length){
+   let idx=0;
+   const answers=[];
+   function drawWordQuestion(){
+     const q=obj.questions[idx];
+     $("activityBody").innerHTML=`
+       <div class="flex justify-between text-xs text-gray-400 font-semibold mb-2">
+         <span>Soalan ${idx+1} / ${obj.questions.length}</span><span>Word Cloud</span>
+       </div>
+       <div class="progress mb-5"><div style="width:${(idx/obj.questions.length)*100}%"></div></div>
+       <h2 class="font-display font-extrabold text-2xl text-navy-800 leading-tight">${esc(q)}</h2>
+       <div class="mt-5"><input id="wcAnswer" class="fi" maxlength="60" placeholder="Taip satu perkataan atau frasa ringkas" autofocus></div>
+       <button id="wcNextBtn" class="btn btn-pri mt-4"><i class="fas fa-paper-plane"></i>${idx===obj.questions.length-1?"Hantar & Selesai":"Hantar & Seterusnya"}</button>
+       <p class="text-xs text-gray-400 mt-3">Jawab secara ringkas. Satu QR membawa anda melalui keseluruhan set ini.</p>`;
+     const input=$("wcAnswer");
+     const go=()=>{
+       const val=input.value.trim();
+       if(!val){toast("Sila berikan respons");return}
+       answers[idx]=val;
+       if(idx<obj.questions.length-1){idx++;drawWordQuestion()}
+       else completeMessage(`<div class="text-xs text-gray-400 mt-3">${answers.length} respons selesai.</div>`)
+     };
+     $("wcNextBtn").onclick=go;
+     input.addEventListener("keydown",e=>{if(e.key==="Enter")go()});
+   }
+   drawWordQuestion();
+   return;
+ }
  let h=`<h2 class="font-display font-extrabold text-2xl text-navy-800 leading-tight">${esc(obj.prompt)}</h2>`;
  if(["dilemma","ranking","control"].includes(obj.type)){
    h+=`<div class="grid gap-2 mt-5">${(obj.options||[]).map((o,i)=>`<button class="activity-option" data-value="${i}"><span class="text-gray-300 mr-1">${String.fromCharCode(65+i)}.</span>${esc(o)}</button>`).join("")}</div>
@@ -476,8 +715,8 @@ function renderActivityPlay(obj){
  }else if(obj.type==="pulse"){
    h+=`<div class="scale-row mt-5">${Array.from({length:10},(_,i)=>`<button data-value="${i+1}">${i+1}</button>`).join("")}</div><button id="submitAct" class="btn btn-pri mt-5" disabled><i class="fas fa-paper-plane"></i>Hantar Respons</button>`
  }else{
-   const ph=obj.type==="wordcloud"?"Taip satu perkataan":"Taip respons anda";
-   h+=`<div class="mt-5"><input id="openText" class="fi" maxlength="${obj.type==="wordcloud"?50:220}" placeholder="${ph}"></div><button id="submitAct" class="btn btn-pri mt-4"><i class="fas fa-paper-plane"></i>Hantar Respons</button>`
+   const ph="Taip respons anda";
+   h+=`<div class="mt-5"><input id="openText" class="fi" maxlength="220" placeholder="${ph}"></div><button id="submitAct" class="btn btn-pri mt-4"><i class="fas fa-paper-plane"></i>Hantar Respons</button>`
  }
  $("activityBody").innerHTML=h;
  let selected=null;
@@ -491,6 +730,7 @@ function renderActivityPlay(obj){
    completeMessage()
  }
 }
+
 function renderQuizPlay(obj){
  const qs=obj.questions||[];let idx=0,score=0,locked=false;
  function draw(){
