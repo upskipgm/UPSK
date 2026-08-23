@@ -532,16 +532,39 @@ window.copyText=async text=>{try{await navigator.clipboard.writeText(text);toast
 window.previewCurrentShare=()=>{
  const obj=window.__G360_PREVIEW_OBJ;
  if(!obj){toast("Tiada aktiviti dipilih");return}
- $("previewModal").classList.remove("hidden");
- $("previewTitle").textContent=obj.title||"Aktiviti Guru360";
- $("previewHeaderTitle").textContent=obj.title||"Aktiviti";
- $("previewType").textContent=obj.kind==="quiz"?"KUIZ AKHIR GURU360":(typeInfo(obj.type)?.group||"AKTIVITI GURU360");
- renderPreviewContent(obj);
+
+ // Pratonton dipaparkan terus dalam panel kanan supaya tidak bergantung pada pop-up/modal.
+ let holder=$("inlinePreviewHolder");
+ if(!holder){
+   holder=document.createElement("div");
+   holder.id="inlinePreviewHolder";
+   holder.className="mt-4 text-left border-t border-gray-100 pt-4";
+   $("sharePanel").appendChild(holder);
+ }
+ holder.innerHTML=`
+   <div class="flex items-center justify-between gap-2 mb-3">
+     <div>
+       <div class="text-[10px] uppercase tracking-wider text-pri-600 font-bold">PRATONTON PESERTA</div>
+       <div class="font-semibold text-sm text-navy-800">${esc(obj.title||"Aktiviti Guru360")}</div>
+     </div>
+     <button type="button" id="closeInlinePreview" class="btn btn-ghost !px-2.5 !py-1.5"><i class="fas fa-xmark"></i></button>
+   </div>
+   <div class="rounded-xl overflow-hidden border border-gray-100">
+     <div class="bg-navy-800 text-white px-4 py-3">
+       <div class="text-[9px] uppercase tracking-widest text-white/45 font-bold">${obj.kind==="quiz"?"KUIZ AKHIR GURU360":esc(typeInfo(obj.type)?.group||"AKTIVITI GURU360")}</div>
+       <div class="font-display font-bold mt-1">${esc(obj.title||"Aktiviti")}</div>
+     </div>
+     <div id="inlinePreviewBody" class="p-4 bg-white"></div>
+   </div>`;
+ $("closeInlinePreview").onclick=()=>holder.remove();
+ renderPreviewContentInto(obj,$("inlinePreviewBody"));
+ holder.scrollIntoView({behavior:"smooth",block:"nearest"});
 };
 $("closePreview").onclick=()=>$("previewModal").classList.add("hidden");
 
-function renderPreviewContent(obj){
- const box=$("previewBody");
+function renderPreviewContent(obj){ return renderPreviewContentInto(obj,$("previewBody")); }
+function renderPreviewContentInto(obj,box){
+ if(!box)return;
  if(obj.kind==="quiz"){
    const q=(obj.questions||[])[0];
    if(!q){box.innerHTML='<p class="text-sm text-gray-400">Tiada soalan kuiz.</p>';return}
@@ -620,7 +643,7 @@ function renderSurveyShare(s){
    </div>
    <div class="grid grid-cols-2 gap-2 mt-3">
      <button class="btn btn-ghost" onclick="copyText(${JSON.stringify(s.url)})"><i class="fas fa-link"></i>Salin</button>
-     <button class="btn btn-pri" onclick="window.open(${JSON.stringify(s.url)},'_blank','noopener')"><i class="fas fa-arrow-up-right-from-square"></i>Buka Borang</button>
+     <a class="btn btn-pri" href="${esc(s.url)}" target="_blank" rel="noopener"><i class="fas fa-arrow-up-right-from-square"></i>Buka Borang</a>
    </div>`;
 }
 $("openQuizBuilder").onclick=()=>{renderQuizBuilder();$("quizModal").classList.remove("hidden")};
