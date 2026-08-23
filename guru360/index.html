@@ -54,6 +54,31 @@ h1,h2,h3,h4{font-family:"Outfit",sans-serif}
 .quiz-option.correct{border-color:#86efac;background:#f0fdf4;color:#166534}
 .quiz-option.wrong{border-color:#fecaca;background:#fff1f2;color:#991b1b}
 .progress{height:7px;background:#E2E8F0;border-radius:10px;overflow:hidden}.progress>div{height:100%;background:var(--pri)}
+
+.live-cloud{min-height:270px;border:1px solid #E2E8F0;border-radius:14px;background:linear-gradient(180deg,#fff,#f8fbfa);padding:22px;display:flex;align-content:center;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px 16px;overflow:hidden}
+.live-word{font-family:"Outfit",sans-serif;font-weight:800;line-height:1;transition:.25s;display:inline-block}
+.live-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.live-tab{border:1px solid #E2E8F0;background:#fff;color:#475569;border-radius:8px;padding:6px 9px;font-size:11px;font-weight:700;cursor:pointer}
+.live-tab.active{background:#E6F5F0;color:#084A39;border-color:#80CFB4}
+.live-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#64748B}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#94A3B8}
+.live-dot.on{background:#16A34A;box-shadow:0 0 0 4px rgba(22,163,74,.10)}
+
+
+.live-panel{border-top:1px solid #E2E8F0;padding-top:16px;margin-top:18px}
+.live-result-box{border:1px solid #E2E8F0;border-radius:14px;background:#fff;padding:14px}
+.live-bars{display:grid;gap:11px}
+.live-bar-head{display:flex;justify-content:space-between;gap:12px;font-size:12px;font-weight:700;color:#334155}
+.live-track{height:10px;background:#E2E8F0;border-radius:999px;overflow:hidden;margin-top:5px}
+.live-fill{height:100%;background:linear-gradient(90deg,#0E7C61,#4DBC96);border-radius:999px;transition:width .35s ease}
+.live-wall{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;max-height:420px;overflow:auto}
+.live-note{border:1px solid #E2E8F0;border-radius:11px;background:#FAFCFB;padding:11px;font-size:12px;color:#334155;word-break:break-word}
+.live-kpi-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.live-kpi{border:1px solid #E2E8F0;border-radius:11px;padding:11px;text-align:center;background:#fff}
+.live-kpi b{display:block;font-family:"Outfit";font-size:22px;color:#132238}
+.live-kpi span{font-size:10px;color:#64748B;text-transform:uppercase;letter-spacing:.04em}
+@media(max-width:640px){.live-wall{grid-template-columns:1fr}.live-kpi-grid{grid-template-columns:1fr 1fr}}
+
 @media(max-width:720px){.q-grid{grid-template-columns:1fr}.qr-wrap{width:185px;height:185px}}
 </style>
 </head>
@@ -349,7 +374,89 @@ h1,h2,h3,h4{font-family:"Outfit",sans-serif}
 <div id="toast" class="toast"></div>
 
 <script>
+
 const HOST_PIN="2468";
+
+/* Guru360 Live — menggunakan projek Firebase MyKaunseling/IPGM */
+const G360_FIREBASE_CONFIG={
+  apiKey:"AIzaSyDFL9SDwG0Wae5wtm0xUvtOu2frRaePlK4",
+  authDomain:"mykaunseling-ff939.firebaseapp.com",
+  projectId:"mykaunseling-ff939",
+  storageBucket:"mykaunseling-ff939.firebasestorage.app",
+  messagingSenderId:"1098750062189",
+  appId:"1:1098750062189:web:51335891ce5992d2bd1964",
+  measurementId:"G-VBFCBHFHZG"
+};
+let G360FB={ready:false,loading:null,error:null,uid:null,unsubscribe:null};
+async function initG360Firebase(){
+ if(G360FB.ready)return G360FB;
+ if(G360FB.loading)return G360FB.loading;
+ G360FB.loading=(async()=>{
+   try{
+     const appmod=await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js");
+     const authmod=await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js");
+     const fsmod=await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js");
+     const app=appmod.getApps().find(a=>a.name==="guru360-live")||appmod.initializeApp(G360_FIREBASE_CONFIG,"guru360-live");
+     const auth=authmod.getAuth(app);
+     let user=auth.currentUser;
+     if(!user){
+       const cred=await authmod.signInAnonymously(auth);
+       user=cred.user;
+     }
+     const db=fsmod.getFirestore(app);
+     G360FB={...G360FB,ready:true,error:null,app,auth,db,uid:user.uid,fs:fsmod};
+     return G360FB;
+   }catch(err){
+     console.error("[Guru360 Live]",err);
+     G360FB.error=err;G360FB.ready=false;
+     throw err;
+   }
+ })();
+ return G360FB.loading;
+}
+function normalizeCloudText(v){
+ return String(v||"").trim().toLocaleLowerCase("ms-MY").replace(/\s+/g," ");
+}
+async function saveWordcloudLive(obj,qIndex,question,answer){
+ const fb=await initG360Firebase();
+ const norm=normalizeCloudText(answer);
+ if(!norm)return false;
+ const safeAct=String(obj.id||"aktiviti").replace(/[^a-zA-Z0-9_-]/g,"_");
+ const ref=fb.fs.doc(fb.db,"guru360_wordcloud_responses",`${safeAct}_${fb.uid}_${qIndex}`);
+ await fb.fs.setDoc(ref,{
+   activityId:String(obj.id||""),
+   activityTitle:String(obj.title||"Word Cloud"),
+   questionIndex:Number(qIndex),
+   question:String(question||""),
+   answer:String(answer||"").trim(),
+   normalized:norm,
+   uid:fb.uid,
+   updatedAt:fb.fs.serverTimestamp()
+ },{merge:true});
+ return true;
+}
+
+async function saveLiveResponse(obj,itemIndex,question,value,extra={}){
+ const fb=await initG360Firebase();
+ const safeAct=String(obj.id||"aktiviti").replace(/[^a-zA-Z0-9_-]/g,"_");
+ const safeIndex=String(itemIndex).replace(/[^a-zA-Z0-9_-]/g,"_");
+ const ref=fb.fs.doc(fb.db,"guru360_live_responses",`${safeAct}_${fb.uid}_${safeIndex}`);
+ const raw=typeof value==="string"?value.trim():value;
+ await fb.fs.setDoc(ref,{
+   activityId:String(obj.id||""),
+   activityTitle:String(obj.title||"Aktiviti Guru360"),
+   activityType:String(obj.kind==="quiz"?"quiz":obj.type||"activity"),
+   itemIndex:Number(itemIndex),
+   question:String(question||""),
+   value:raw,
+   normalized:typeof raw==="string"?normalizeCloudText(raw):String(raw),
+   uid:fb.uid,
+   updatedAt:fb.fs.serverTimestamp(),
+   ...extra
+ },{merge:true});
+ return true;
+}
+
 
 const TYPES=[
  {type:"wordcloud",icon:"fa-cloud",name:"Word Cloud",group:"Kenali Diri",desc:"Bina satu set beberapa soalan dengan satu QR.",prompt:"Apakah SATU perkataan yang menggambarkan perasaan anda sebagai guru baharu hari ini?"},
@@ -415,6 +522,8 @@ $("hostPin").addEventListener("keydown",e=>{if(e.key==="Enter")$("loginHost").cl
 $("backHomeBtn").onclick=()=>showHome();
 
 function showHome(){
+ stopLiveActivity();
+ stopLiveWordcloud();
  $("homeView").classList.remove("hidden");$("hostView").classList.add("hidden");$("activityView").classList.add("hidden")
 }
 function showHost(){
@@ -510,6 +619,8 @@ function renderHost(){
 window.deleteActivity=id=>{myActivities=myActivities.filter(a=>a.id!==id);persist();renderHost();$("sharePanel").innerHTML=`<div class="text-gray-300 text-4xl mb-3"><i class="fas fa-qrcode"></i></div><p class="text-xs text-gray-400">Pilih aktiviti untuk melihat QR.</p>`};
 window.selectShare=id=>{const a=myActivities.find(x=>x.id===id);if(a)renderShare(a)};
 function renderShare(obj){
+ stopLiveActivity();
+ stopLiveWordcloud();
  window.__G360_PREVIEW_OBJ=obj;
  const url=shareUrl(obj);
  $("sharePanel").innerHTML=`
@@ -525,8 +636,278 @@ function renderShare(obj){
      <button class="btn btn-pri" onclick="previewCurrentShare()"><i class="fas fa-eye"></i>Pratonton</button>
    </div>
    ${location.protocol==="file:"?`<div class="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5 text-left"><i class="fas fa-triangle-exclamation mr-1"></i>QR untuk peserta di peranti lain hanya akan berfungsi selepas fail HTML ini dihoskan, contohnya di GitHub Pages.</div>`:""}
+   <div id="liveActivityPanel" class="mt-5 text-left"></div>
  `
+ startLiveActivity(obj);
 }
+
+
+let __liveActivityUnsub=null;
+let __liveActivityDocs=[];
+let __liveActivityObj=null;
+let __liveActivityIndex=0;
+
+function stopLiveActivity(){
+ try{if(__liveActivityUnsub)__liveActivityUnsub()}catch(_e){}
+ __liveActivityUnsub=null;
+}
+function activityQuestions(obj){
+ if(obj.kind==="quiz") return (obj.questions||[]).map(q=>q.q);
+ if(obj.type==="wordcloud") return Array.isArray(obj.questions)&&obj.questions.length?obj.questions:[obj.prompt||"Word Cloud"];
+ return [obj.prompt||"Aktiviti Guru360"];
+}
+function activityOptions(obj,index=0){
+ if(obj.kind==="quiz") return obj.questions?.[index]?.o||[];
+ if(["dilemma","ranking","control"].includes(obj.type)) return obj.options||[];
+ if(obj.type==="pulse") return Array.from({length:10},(_,i)=>String(i+1));
+ return [];
+}
+async function startLiveActivity(obj,targetId="liveActivityPanel"){
+ stopLiveActivity();
+ __liveActivityObj=obj;__liveActivityIndex=0;__liveActivityDocs=[];
+ const panel=$(targetId);if(!panel)return;
+ const qs=activityQuestions(obj);
+ panel.innerHTML=`
+  <div class="live-panel">
+   <div class="flex items-center justify-between gap-3 flex-wrap">
+    <div>
+     <div class="font-display font-bold text-navy-800">Keputusan Langsung</div>
+     <div class="live-status mt-1"><span id="${targetId}-dot" class="live-dot"></span><span id="${targetId}-status">Menyambung Firebase…</span></div>
+    </div>
+    <button type="button" class="btn btn-ghost !py-1.5" onclick="openLiveActivityDisplay()"><i class="fas fa-expand"></i>Paparan Besar</button>
+   </div>
+   <div id="${targetId}-tabs" class="live-tabs mt-3"></div>
+   <div id="${targetId}-question" class="mt-3 text-xs text-gray-500 font-semibold"></div>
+   <div id="${targetId}-count" class="mt-2 text-[11px] text-gray-400">0 respons</div>
+   <div id="${targetId}-result" class="live-result-box mt-2"><div class="text-xs text-gray-400 text-center py-6">Menunggu respons peserta…</div></div>
+  </div>`;
+ const tabs=$(targetId+"-tabs");
+ if(qs.length>1 || obj.kind==="quiz"){
+   const labels=qs.map((_,i)=>`<button type="button" class="live-tab ${i===0?"active":""}" data-i="${i}">${obj.kind==="quiz"?"S"+(i+1):"Soalan "+(i+1)}</button>`).join("");
+   tabs.innerHTML=labels+(obj.kind==="quiz"?`<button type="button" class="live-tab" data-i="-1">Skor Akhir</button>`:"");
+   tabs.querySelectorAll(".live-tab").forEach(btn=>btn.onclick=()=>{
+     __liveActivityIndex=Number(btn.dataset.i);
+     tabs.querySelectorAll(".live-tab").forEach(x=>x.classList.toggle("active",x===btn));
+     renderGenericLive(targetId);
+   });
+ } else tabs.innerHTML="";
+ try{
+   const fb=await initG360Firebase();
+   $(targetId+"-dot")?.classList.add("on");
+   if($(targetId+"-status"))$(targetId+"-status").textContent="Live";
+   const q=fb.fs.query(fb.fs.collection(fb.db,"guru360_live_responses"),fb.fs.where("activityId","==",String(obj.id||"")));
+   __liveActivityUnsub=fb.fs.onSnapshot(q,snap=>{
+     __liveActivityDocs=snap.docs.map(d=>({id:d.id,...d.data()}));
+     renderGenericLive(targetId);
+   },err=>{
+     console.error("[Guru360 Live]",err);
+     if($(targetId+"-status"))$(targetId+"-status").textContent="Akses Firestore ditolak";
+     if($(targetId+"-result"))$(targetId+"-result").innerHTML=`<div class="text-xs text-red-600 text-center py-4">Live belum mendapat akses Firestore. Semak Anonymous Authentication dan Security Rules Guru360.</div>`;
+   });
+ }catch(err){
+   console.error(err);
+   if($(targetId+"-status"))$(targetId+"-status").textContent="Firebase belum aktif";
+   if($(targetId+"-result"))$(targetId+"-result").innerHTML=`<div class="text-xs text-red-600 text-center py-4">Tidak dapat menyambung Guru360 Live.</div>`;
+ }
+}
+function frequencyRows(docs){
+ const m=new Map();
+ docs.forEach(d=>{
+   const key=String(d.normalized??d.value??"").trim();
+   if(!key)return;
+   const x=m.get(key)||{key,label:String(d.value??key),count:0};x.count++;m.set(key,x);
+ });
+ return [...m.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label,"ms"));
+}
+function renderBars(box,rows,total){
+ const max=Math.max(...rows.map(x=>x.count),1);
+ box.innerHTML=`<div class="live-bars">${rows.map(x=>{
+   const pct=total?Math.round(x.count/total*100):0;
+   return `<div><div class="live-bar-head"><span>${esc(x.label)}</span><span>${x.count} · ${pct}%</span></div><div class="live-track"><div class="live-fill" style="width:${(x.count/max)*100}%"></div></div></div>`;
+ }).join("")}</div>`;
+}
+function renderTextWall(box,docs){
+ if(!docs.length){box.innerHTML=`<div class="text-xs text-gray-400 text-center py-6">Menunggu respons peserta…</div>`;return}
+ const freq=frequencyRows(docs);
+ box.innerHTML=`<div class="live-wall">${freq.map(x=>`<div class="live-note">${esc(x.label)}${x.count>1?`<span class="badge bg-pri-50 text-pri-700 ml-2">${x.count}×</span>`:""}</div>`).join("")}</div>`;
+}
+function renderGenericLive(targetId="liveActivityPanel"){
+ const obj=__liveActivityObj;if(!obj)return;
+ const idx=__liveActivityIndex;
+ const qs=activityQuestions(obj);
+ const docs=__liveActivityDocs.filter(d=>Number(d.itemIndex)===Number(idx));
+ const qtext=idx===-1?"Ringkasan skor akhir":(qs[idx]||obj.prompt||"");
+ const qEl=$(targetId+"-question"),cEl=$(targetId+"-count"),box=$(targetId+"-result");
+ if(qEl)qEl.textContent=qtext;
+ if(cEl)cEl.textContent=`${docs.length} respons`;
+ if(!box)return;
+
+ if(obj.kind==="quiz" && idx===-1){
+   if(!docs.length){box.innerHTML=`<div class="text-xs text-gray-400 text-center py-6">Menunggu peserta menamatkan kuiz…</div>`;return}
+   const scores=docs.map(d=>Number(d.score??d.value)).filter(Number.isFinite);
+   const maxScore=Number(docs[0]?.maxScore||obj.questions?.length||0);
+   const avg=scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:0;
+   const best=scores.length?Math.max(...scores):0;
+   box.innerHTML=`<div class="live-kpi-grid"><div class="live-kpi"><b>${scores.length}</b><span>Selesai</span></div><div class="live-kpi"><b>${avg.toFixed(1)}/${maxScore}</b><span>Purata</span></div><div class="live-kpi"><b>${best}/${maxScore}</b><span>Tertinggi</span></div></div>`;
+ }else if(obj.type==="wordcloud"){
+   const items=frequencyRows(docs).map(x=>({display:x.label,count:x.count}));
+   box.className="live-cloud mt-2";
+   renderCloudWords(box,items);
+ }else if(["dilemma","ranking","control"].includes(obj.type) || obj.kind==="quiz"){
+   const opts=activityOptions(obj,Math.max(idx,0));
+   const rows=opts.map((label,i)=>({label,count:docs.filter(d=>Number(d.value)===i).length}));
+   renderBars(box,rows,docs.length);
+ }else if(obj.type==="pulse"){
+   const vals=docs.map(d=>Number(d.value)).filter(v=>Number.isFinite(v));
+   const avg=vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0;
+   const rows=Array.from({length:10},(_,i)=>({label:String(i+1),count:vals.filter(v=>v===i+1).length}));
+   box.innerHTML=`<div class="live-kpi-grid mb-3"><div class="live-kpi"><b>${vals.length}</b><span>Respons</span></div><div class="live-kpi"><b>${avg.toFixed(1)}</b><span>Purata</span></div><div class="live-kpi"><b>${vals.length?Math.max(...vals):0}</b><span>Tertinggi</span></div></div><div id="${targetId}-pulsebars"></div>`;
+   renderBars($(targetId+"-pulsebars"),rows,vals.length);
+ }else{
+   renderTextWall(box,docs);
+ }
+ // refresh full display if open
+ if($("liveActivityFull")&&!$("liveActivityFull").classList.contains("hidden")) renderFullLiveFromGeneric();
+}
+window.openLiveActivityDisplay=()=>{
+ let modal=$("liveActivityFull");
+ if(!modal){
+   modal=document.createElement("div");modal.id="liveActivityFull";modal.className="modal-bg";
+   modal.innerHTML=`<div class="modal-box" style="width:min(1180px,97vw)">
+    <div class="flex justify-between items-start gap-3 mb-3"><div><div class="text-[10px] uppercase tracking-wider text-pri-600 font-bold">GURU360 LIVE</div><h2 id="liveActivityFullTitle" class="font-display font-extrabold text-2xl text-navy-800 mt-1"></h2><div id="liveActivityFullCount" class="text-xs text-gray-400 mt-1"></div></div><button id="closeLiveActivityFull" class="btn btn-ghost !px-2.5"><i class="fas fa-xmark"></i></button></div>
+    <div id="liveActivityFullResult" class="live-result-box" style="min-height:420px"></div>
+   </div>`;
+   document.body.appendChild(modal);
+   $("closeLiveActivityFull").onclick=()=>modal.classList.add("hidden");
+ }else modal.classList.remove("hidden");
+ renderFullLiveFromGeneric();
+};
+function renderFullLiveFromGeneric(){
+ const obj=__liveActivityObj;if(!obj)return;
+ const tempId="__full";
+ const title=__liveActivityIndex===-1?"Skor Akhir":(activityQuestions(obj)[__liveActivityIndex]||obj.title);
+ $("liveActivityFullTitle").textContent=title;
+ const docs=__liveActivityDocs.filter(d=>Number(d.itemIndex)===Number(__liveActivityIndex));
+ $("liveActivityFullCount").textContent=`${docs.length} respons`;
+ const box=$("liveActivityFullResult");
+ // mirror current result HTML for consistency
+ const src=$("liveActivityPanel-result");
+ if(src)box.innerHTML=src.innerHTML;
+}
+function showParticipantLive(obj){
+ let holder=$("participantLiveResult");
+ if(!holder){
+   holder=document.createElement("div");holder.id="participantLiveResult";holder.className="mt-5";
+   $("activityBody").appendChild(holder);
+ }
+ startLiveActivity(obj,"participantLiveResult");
+}
+
+let __liveWordcloudQuestion=0;
+function stopLiveWordcloud(){
+ try{if(G360FB.unsubscribe)G360FB.unsubscribe()}catch(_e){}
+ G360FB.unsubscribe=null;
+}
+async function startLiveWordcloud(obj){
+ stopLiveWordcloud();
+ const panel=$("liveWordcloudPanel");if(!panel)return;
+ const qs=Array.isArray(obj.questions)&&obj.questions.length?obj.questions:[obj.prompt||"Soalan Word Cloud"];
+ __liveWordcloudQuestion=0;
+ panel.innerHTML=`
+   <div class="border-t border-gray-100 pt-4">
+     <div class="flex items-center justify-between gap-3 flex-wrap">
+       <div>
+         <div class="font-display font-bold text-navy-800">Word Cloud — Keputusan Live</div>
+         <div class="live-status mt-1"><span id="liveDot" class="live-dot"></span><span id="liveStatus">Menyambung Firebase…</span></div>
+       </div>
+       <button type="button" class="btn btn-ghost !py-1.5" onclick="openLiveCloudDisplay()"><i class="fas fa-expand"></i>Paparan Besar</button>
+     </div>
+     <div id="liveQuestionTabs" class="live-tabs mt-3"></div>
+     <div class="mt-3 text-xs text-gray-500 font-semibold" id="liveQuestionText"></div>
+     <div class="mt-2 flex justify-between text-[11px] text-gray-400"><span id="liveResponseCount">0 respons</span><span>Perkataan sama = lebih besar & tebal</span></div>
+     <div id="liveCloudBox" class="live-cloud mt-2"><span class="text-xs text-gray-400">Menunggu respons peserta…</span></div>
+   </div>`;
+ const tabs=$("liveQuestionTabs");
+ tabs.innerHTML=qs.map((_,i)=>`<button class="live-tab ${i===0?"active":""}" data-q="${i}">Soalan ${i+1}</button>`).join("");
+ tabs.querySelectorAll(".live-tab").forEach(b=>b.onclick=()=>{
+   __liveWordcloudQuestion=Number(b.dataset.q);
+   tabs.querySelectorAll(".live-tab").forEach(x=>x.classList.toggle("active",x===b));
+   renderLiveCloudFromCache(obj);
+ });
+ try{
+   const fb=await initG360Firebase();
+   $("liveDot")?.classList.add("on");
+   if($("liveStatus"))$("liveStatus").textContent="Live";
+   const q=fb.fs.query(fb.fs.collection(fb.db,"guru360_wordcloud_responses"),fb.fs.where("activityId","==",String(obj.id||"")));
+   G360FB.unsubscribe=fb.fs.onSnapshot(q,snap=>{
+     window.__G360_LIVE_DOCS=snap.docs.map(d=>({id:d.id,...d.data()}));
+     window.__G360_LIVE_OBJ=obj;
+     renderLiveCloudFromCache(obj);
+   },err=>{
+     console.error("[Guru360 Word Cloud]",err);
+     if($("liveStatus"))$("liveStatus").textContent="Akses Firestore ditolak";
+     if($("liveCloudBox"))$("liveCloudBox").innerHTML=`<div class="text-xs text-red-600 text-center">Live Word Cloud belum mendapat akses Firestore. Semak Anonymous Authentication dan Security Rules.</div>`;
+   });
+ }catch(err){
+   if($("liveStatus"))$("liveStatus").textContent="Firebase belum aktif";
+   if($("liveCloudBox"))$("liveCloudBox").innerHTML=`<div class="text-xs text-red-600 text-center">Tidak dapat menyambung Guru360 Live. Aktifkan Anonymous Authentication pada Firebase.</div>`;
+ }
+}
+function cloudAggregate(docs,qIndex){
+ const map=new Map();
+ docs.filter(d=>Number(d.questionIndex)===Number(qIndex)).forEach(d=>{
+   const key=normalizeCloudText(d.normalized||d.answer);
+   if(!key)return;
+   const item=map.get(key)||{word:key,count:0,display:String(d.answer||key).trim()};
+   item.count++;map.set(key,item);
+ });
+ return [...map.values()].sort((a,b)=>b.count-a.count||a.word.localeCompare(b.word,"ms"));
+}
+function renderCloudWords(box,items){
+ if(!box)return;
+ if(!items.length){box.innerHTML=`<span class="text-xs text-gray-400">Menunggu respons peserta…</span>`;return}
+ const max=Math.max(...items.map(x=>x.count),1),min=Math.min(...items.map(x=>x.count),1);
+ const colors=["#0E7C61","#132238","#E88D3A","#2563EB","#7C3AED","#059669","#DB2777","#0891B2"];
+ box.innerHTML=items.slice(0,80).map((x,i)=>{
+   const ratio=max===min?0.55:(x.count-min)/(max-min);
+   const size=Math.round(18+ratio*42);
+   const weight=Math.round(650+ratio*250);
+   return `<span class="live-word" title="${x.count} respons" style="font-size:${size}px;font-weight:${weight};color:${colors[i%colors.length]};opacity:${0.72+ratio*.28}">${esc(x.display)}${x.count>1?`<sup style="font-size:10px;margin-left:3px;opacity:.55">${x.count}</sup>`:""}</span>`;
+ }).join("");
+}
+function renderLiveCloudFromCache(obj){
+ const qs=Array.isArray(obj.questions)&&obj.questions.length?obj.questions:[obj.prompt||"Soalan Word Cloud"];
+ const docs=window.__G360_LIVE_DOCS||[];
+ const idx=Math.min(__liveWordcloudQuestion,qs.length-1);
+ if($("liveQuestionText"))$("liveQuestionText").textContent=qs[idx]||"";
+ const filtered=docs.filter(d=>Number(d.questionIndex)===Number(idx));
+ if($("liveResponseCount"))$("liveResponseCount").textContent=`${filtered.length} respons`;
+ renderCloudWords($("liveCloudBox"),cloudAggregate(docs,idx));
+ if($("liveCloudFull")&&!$("liveCloudFull").classList.contains("hidden")){
+   $("liveFullQuestion").textContent=qs[idx]||"";
+   $("liveFullCount").textContent=`${filtered.length} respons`;
+   renderCloudWords($("liveFullWords"),cloudAggregate(docs,idx));
+ }
+}
+window.openLiveCloudDisplay=()=>{
+ const obj=window.__G360_LIVE_OBJ||window.__G360_PREVIEW_OBJ;
+ if(!obj)return;
+ let modal=$("liveCloudFull");
+ if(!modal){
+   modal=document.createElement("div");modal.id="liveCloudFull";modal.className="modal-bg";
+   modal.innerHTML=`<div class="modal-box" style="width:min(1180px,97vw)">
+     <div class="flex items-start justify-between gap-3 mb-3">
+       <div><div class="text-[10px] uppercase tracking-wider text-pri-600 font-bold">WORD CLOUD LIVE</div><h2 class="font-display font-extrabold text-2xl text-navy-800 mt-1" id="liveFullQuestion"></h2><div class="text-xs text-gray-400 mt-1" id="liveFullCount"></div></div>
+       <button type="button" class="btn btn-ghost !px-2.5" id="closeLiveCloudFull"><i class="fas fa-xmark"></i></button>
+     </div>
+     <div id="liveFullWords" class="live-cloud" style="min-height:520px"></div>
+   </div>`;
+   document.body.appendChild(modal);
+   $("closeLiveCloudFull").onclick=()=>modal.classList.add("hidden");
+ }else modal.classList.remove("hidden");
+ renderLiveCloudFromCache(obj);
+};
+
 window.copyText=async text=>{try{await navigator.clipboard.writeText(text);toast("Pautan disalin")}catch(e){toast("Salin pautan secara manual")}};
 
 window.previewCurrentShare=()=>{
@@ -688,6 +1069,7 @@ function directPayload(){
  try{return decodePayload(m[1])}catch(e){return null}
 }
 function renderDirect(obj){
+ stopLiveActivity();
  if(obj.type==="wordcloud" && !Array.isArray(obj.questions) && obj.prompt) obj.questions=[obj.prompt];
  $("homeView").classList.add("hidden");$("hostView").classList.add("hidden");$("activityView").classList.remove("hidden");
  $("actTitle").textContent=obj.title||"Guru360";
@@ -718,12 +1100,23 @@ function renderActivityPlay(obj){
        <button id="wcNextBtn" class="btn btn-pri mt-4"><i class="fas fa-paper-plane"></i>${idx===obj.questions.length-1?"Hantar & Selesai":"Hantar & Seterusnya"}</button>
        <p class="text-xs text-gray-400 mt-3">Jawab secara ringkas. Satu QR membawa anda melalui keseluruhan set ini.</p>`;
      const input=$("wcAnswer");
-     const go=()=>{
+     const go=async()=>{
        const val=input.value.trim();
        if(!val){toast("Sila berikan respons");return}
        answers[idx]=val;
-       if(idx<obj.questions.length-1){idx++;drawWordQuestion()}
-       else completeMessage(`<div class="text-xs text-gray-400 mt-3">${answers.length} respons selesai.</div>`)
+       const btn=$("wcNextBtn");btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>Menghantar...';
+       try{
+         await Promise.all([saveWordcloudLive(obj,idx,q,val),saveLiveResponse(obj,idx,q,val)]);
+         if(idx<obj.questions.length-1){idx++;drawWordQuestion()}
+         else {
+           completeMessage(`<div class="text-xs text-gray-400 mt-3">${answers.length} respons selesai.</div><div id="participantLiveResult" class="mt-5 text-left"></div>`);
+           startLiveActivity(obj,"participantLiveResult");
+           __liveActivityIndex=0;renderGenericLive("participantLiveResult");
+         }
+       }catch(err){
+         console.error(err);btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i>Cuba Hantar Semula';
+         toast("Respons belum dapat dihantar. Semak sambungan/Firebase.")
+       }
      };
      $("wcNextBtn").onclick=go;
      input.addEventListener("keydown",e=>{if(e.key==="Enter")go()});
@@ -747,10 +1140,18 @@ function renderActivityPlay(obj){
    $("activityBody").querySelectorAll("[data-value]").forEach(x=>x.classList.remove("selected"));
    b.classList.add("selected");selected=b.dataset.value;$("submitAct").disabled=false
  }));
- $("submitAct").onclick=()=>{
+ $("submitAct").onclick=async()=>{
    const val=$("openText")?.value.trim()??selected;
    if(val===null||val===""){toast("Sila berikan respons");return}
-   completeMessage()
+   const btn=$("submitAct");btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>Menghantar...';
+   try{
+     const stored=["dilemma","ranking","control"].includes(obj.type)?Number(val):(obj.type==="pulse"?Number(val):String(val));
+     await saveLiveResponse(obj,0,obj.prompt,stored);
+     completeMessage(`<div class="text-xs text-gray-400 mt-3">Anda kini boleh melihat keputusan kumpulan secara langsung.</div><div id="participantLiveResult" class="mt-5 text-left"></div>`);
+     startLiveActivity(obj,"participantLiveResult");
+   }catch(err){
+     console.error(err);btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i>Cuba Hantar Semula';toast("Respons belum dapat dihantar.")
+   }
  }
 }
 
@@ -766,9 +1167,10 @@ function renderQuizPlay(obj){
     <div id="quizFeedback" class="mt-4 text-sm min-h-[24px]"></div>
     <button id="nextQ" class="btn btn-pri mt-3 hidden">${idx===qs.length-1?"Lihat Keputusan":"Soalan Seterusnya"}<i class="fas fa-arrow-right"></i></button>
    `;
-   $("activityBody").querySelectorAll(".quiz-option").forEach(btn=>btn.onclick=()=>{
+   $("activityBody").querySelectorAll(".quiz-option").forEach(btn=>btn.onclick=async()=>{
      if(locked)return;locked=true;
      const chosen=Number(btn.dataset.i),correct=q.a;
+     try{await saveLiveResponse(obj,idx,q.q,chosen,{correctIndex:correct})}catch(e){console.warn("Live quiz response gagal",e)}
      $("activityBody").querySelectorAll(".quiz-option").forEach((b,i)=>{if(i===correct)b.classList.add("correct");else if(i===chosen)b.classList.add("wrong");b.disabled=true});
      if(chosen===correct){score++;$("quizFeedback").innerHTML=`<span class="text-green-700 font-semibold"><i class="fas fa-check mr-1"></i>Betul.</span>`}
      else {$("quizFeedback").innerHTML=`<span class="text-red-700 font-semibold"><i class="fas fa-xmark mr-1"></i>Jawapan betul: ${String.fromCharCode(65+correct)}.</span>`}
@@ -776,15 +1178,20 @@ function renderQuizPlay(obj){
    });
    $("nextQ").onclick=()=>{if(idx<qs.length-1){idx++;draw()}else finish()}
  }
- function finish(){
+ async function finish(){
    const pct=Math.round(score/qs.length*100);
+   try{await saveLiveResponse(obj,-1,"Skor Akhir",score,{score,maxScore:qs.length,pct})}catch(e){console.warn("Skor live gagal",e)}
    $("activityBody").innerHTML=`<div class="text-center py-7">
     <div class="w-20 h-20 rounded-full bg-amb-50 text-amb-600 flex items-center justify-center text-3xl mx-auto mb-4"><i class="fas fa-trophy"></i></div>
     <h2 class="text-2xl font-extrabold text-navy-800">Kuiz Selesai</h2>
     <div class="font-display text-5xl font-extrabold text-pri-600 mt-3">${score}/${qs.length}</div>
     <div class="text-sm text-gray-400 mt-1">${pct}%</div>
-    <p class="text-sm text-gray-400 mt-4">Terima kasih. Sila kembali kepada fasilitator.</p>
-   </div>`
+    <p class="text-sm text-gray-400 mt-4">Keputusan kumpulan dipaparkan secara langsung di bawah.</p>
+    <div id="participantLiveResult" class="mt-5 text-left"></div>
+   </div>`;
+   startLiveActivity(obj,"participantLiveResult");
+   __liveActivityIndex=-1;
+   setTimeout(()=>{const tabs=$("participantLiveResult-tabs");if(tabs){tabs.querySelectorAll(".live-tab").forEach(x=>x.classList.toggle("active",Number(x.dataset.i)===-1))}renderGenericLive("participantLiveResult")},200);
  }
  draw()
 }
