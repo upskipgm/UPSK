@@ -623,6 +623,73 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
         }
         return totalWritten;
       },
+      // ── Enrolmen (Data Pelajar) Firestore CRUD ──
+      // Koleksi ini menyimpan data CSV "Data Pelajar IPGKPM".
+      // Setiap rekod menggunakan no_matrik sebagai docId (stabil & unik).
+      // Skop kampus: kodKampus / kampus_id mesti hadir untuk security rules.
+      listEnrolmen: async (kampusFilter) => {
+        const kod = canonicalKodKampus(kampusFilter);
+        if(kod && kod !== "IPGM"){
+          const exact = await getDocs(query(collection(db, "enrolmen"), where("kodKampus", "==", kod)));
+          if(!exact.empty) return exact.docs.map(d => ({ _docId:d.id, ...d.data() }));
+        }
+        // Pagination: ambil semua rekod walaupun melebihi 500
+        const PAGE_SIZE = 400;
+        let allDocs = [];
+        let lastDoc = null;
+        let page = 0;
+        while (true) {
+          page++;
+          const q = lastDoc
+            ? query(collection(db, "enrolmen"), startAfter(lastDoc), limit(PAGE_SIZE))
+            : query(collection(db, "enrolmen"), limit(PAGE_SIZE));
+          const snap = await getDocs(q);
+          if (snap.empty) break;
+          allDocs = allDocs.concat(snap.docs.map(d => ({ _docId: d.id, ...d.data() })));
+          lastDoc = snap.docs[snap.docs.length - 1];
+          if (snap.docs.length < PAGE_SIZE) break;
+          console.log(`[ENROLMEN] Pagination page ${page}: ${snap.docs.length} rekod, jumlah: ${allDocs.length}`);
+        }
+        console.log(`[ENROLMEN] Total dimuatkan dari Firestore: ${allDocs.length} rekod (${page} halaman)`);
+        return allDocs;
+      },
+      saveEnrolmenBatch: async (records, adminUid, onProgress) => {
+        const BATCH_LIMIT = 499;
+        const DELAY_MS = 300;
+        const MAX_RETRY = 3;
+        const meta = { dikemasKiniOleh: adminUid || null, dikemasKiniPada: serverTimestamp() };
+        let totalWritten = 0;
+        for (let i = 0; i < records.length; i += BATCH_LIMIT) {
+          const chunk = records.slice(i, i + BATCH_LIMIT);
+          let success = false;
+          for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            try {
+              let batch = writeBatch(db);
+              for (let j = 0; j < chunk.length; j++) {
+                const { _docId, ...data } = chunk[j];
+                // docId stabil: no_matrik (jika ada), jika tidak, jana ID unik.
+                const docId = String(_docId || data.no_matrik || "").trim()
+                  || `enrolmen_${String(i+j).padStart(6,"0")}_${Date.now()}_${j}`;
+                const ref = doc(db, "enrolmen", docId);
+                batch.set(ref, { ...withCanonicalKampus(data), ...meta });
+              }
+              await batch.commit();
+              totalWritten += chunk.length;
+              if (typeof onProgress === 'function') onProgress(totalWritten, records.length);
+              success = true;
+              break;
+            } catch (batchErr) {
+              console.warn(`Batch enrolmen gagal (cubaan ${attempt}/${MAX_RETRY}):`, batchErr.message);
+              if (attempt < MAX_RETRY) await new Promise(r => setTimeout(r, DELAY_MS * attempt * 2));
+              else throw batchErr;
+            }
+          }
+          if (success && i + BATCH_LIMIT < records.length) {
+            await new Promise(r => setTimeout(r, DELAY_MS));
+          }
+        }
+        return totalWritten;
+      },
       updateKaunselor: async (docId, data, adminUid) => {
         const clean = { ...data };
         delete clean._docId;
@@ -1319,7 +1386,7 @@ function genKampusData(id){
       id:`${id}-P${String(i+1).padStart(3,"0")}`,
       nama:["Ahmad Fauzi","Nurul Aisyah","Muhammad Haziq","Siti Balqis","Lim Wei Jie","Kavitha a/p Rajan","Mohd Amin","Nur Afiqah"][(i+s)%8],
       noMatrik:`${id}${2024000+i*17}`.slice(0,10),
-      program:["PISMP","PISMP","DPLI","PISMP","BPisMP","PISMP","DPLI","PISMP"][i%8],
+      program:["PPISMP","PISMP","PDPP","PISMP","PPISMP","PISMP","PDPP","PISMP"][i%8],
       semester:String(r(1,8)),
       statusK:i%7===0?"Aktif — Perlu Susulan":"Normal",
       sesiCount:i%4+1,
@@ -2580,7 +2647,7 @@ function pgAKPelajar(c){
         <input type="text" class="fi" style="max-width:220px" placeholder="Cari nama / matrik..." id="cari-pelajar" oninput="filterPelajar()">
         <select class="fi" style="width:auto" id="filter-prog" onchange="filterPelajar()">
           <option value="">Semua Program</option>
-          <option>PISMP</option><option>DPLI</option><option>BPisMP</option>
+          <option>PPISMP</option><option>PISMP</option><option>PDPP</option>
         </select>
         <select class="fi" style="width:auto" id="filter-status" onchange="filterPelajar()">
           <option value="">Semua Status</option>
@@ -2634,7 +2701,7 @@ function modalTambahPelajar(){
           <div><label class="fl">No. Matrik</label><input type="text" id="np-matrik" class="fi" placeholder="Contoh: PI2024001"></div>
         </div>
         <div class="grid grid-cols-3 gap-3">
-          <div><label class="fl">Program</label><select id="np-prog" class="fi"><option>PISMP</option><option>DPLI</option><option>BPisMP</option></select></div>
+          <div><label class="fl">Program</label><select id="np-prog" class="fi"><option>PPISMP</option><option>PISMP</option><option>PDPP</option></select></div>
           <div><label class="fl">Semester</label><select id="np-sem" class="fi">${[1,2,3,4,5,6,7,8].map(s=>`<option>${s}</option>`).join("")}</select></div>
           <div><label class="fl">Status Kaunseling</label><select id="np-sts" class="fi"><option value="Normal">Normal</option><option value="Aktif — Perlu Susulan">Perlu Susulan</option></select></div>
         </div>
@@ -2674,7 +2741,7 @@ function modalEditPelajar(kid,pid){
           <div><label class="fl">No. Matrik</label><input type="text" id="ep-matrik" class="fi" value="${p.noMatrik}"></div>
         </div>
         <div class="grid grid-cols-3 gap-3">
-          <div><label class="fl">Program</label><select id="ep-prog" class="fi"><option${p.program==="PISMP"?" selected":""}>PISMP</option><option${p.program==="DPLI"?" selected":""}>DPLI</option><option${p.program==="BPisMP"?" selected":""}>BPisMP</option></select></div>
+          <div><label class="fl">Program</label><select id="ep-prog" class="fi"><option${p.program==="PPISMP"?" selected":""}>PPISMP</option><option${p.program==="PISMP"?" selected":""}>PISMP</option><option${p.program==="PDPP"?" selected":""}>PDPP</option></select></div>
           <div><label class="fl">Semester</label><select id="ep-sem" class="fi">${[1,2,3,4,5,6,7,8].map(s=>`<option${String(s)===p.semester?" selected":""}>${s}</option>`).join("")}</select></div>
           <div><label class="fl">Status</label><select id="ep-sts" class="fi"><option value="Normal"${p.statusK==="Normal"?" selected":""}>Normal</option><option value="Aktif — Perlu Susulan"${p.statusK.includes("Perlu")?" selected":""}>Perlu Susulan</option></select></div>
         </div>
@@ -3979,8 +4046,8 @@ async function fetchSheetsData(){
         status_pengajian: g("STATUS_PENGAJIAN") || g("STATUS PENGAJIAN"),
         agama:            g("AGAMA"),
         agama_txt:        {"1":"Islam","2":"Kristian","3":"Buddha","4":"Hindu","5":"Lain-lain"}[g("AGAMA")] || g("AGAMA"),
-        program:          g("PROGRAM"),
-        tahun:            g("TAHUN"),
+        program:          g("PROGRAM") || (typeof KOD_PROGRAM_MAP!=="undefined" && KOD_PROGRAM_MAP[String(g("KOD_PROGRAM"))]) || "",
+        tahun:            g("TAHUN") || (function(){var pr=g("PROGRAM")||(typeof KOD_PROGRAM_MAP!=="undefined"&&KOD_PROGRAM_MAP[String(g("KOD_PROGRAM"))])||"";return pr?" "+pr+"/T1":"";})(),
         daerah:           g("DAERAH"),
         negeri:           g("NEGERI"),
         lat:              parseFloat(g("LATITUDE")) || 0,
@@ -4018,11 +4085,16 @@ function getEnrolmenData(kampusId){
 //   DAERAH, NEGERI, LATITUDE, LONGITUDE
 // ══════════════════════════════════════════
 
+// Pemetaan kod program berangka (mengikut CSV Data Pelajar IPGKPM 2026)
+// 101 = PPISMP, 102 = PISMP, 106 = PDPP
+const KOD_PROGRAM_MAP={"101":"PPISMP","102":"PISMP","106":"PDPP"};
+const PROGRAM_KOD_MAP={"PPISMP":101,"PISMP":102,"PDPP":106};
+
 const ENROLMEN_DATA = (function(){
   const nL=["AHMAD FAUZI","MUHAMMAD HAZIQ","MOHD AMIN","RASHDAN MALIK","ADAM AZIM","ATIQ MUSTAQIM","KHAIRUL NIZAM","ZULHILMI","HAFIZUDDIN","IZZAT HAZWAN"];
   const nP=["NURUL AISYAH","SITI BALQIS","NUR AFIQAH","FARAH AIN","NORAINI","ADLINA BATRISYIA","AIDA MAISARAH","AINA BATRISYIA","AISHAH DINI","ALIA QISTINA","ALYA INSYIRAH","AMIRAH ARDINI","ANIS NAJWA","KAVITHA A/P RAJAN","PRIYA A/P MUTHU","SITI NURBAYA"];
   const opsyen=["TSLB","ETSLB","PK","BM","BI","MT","SC","PJ","PSV","KH","TMK","SEJ","GEO","PI","BC","BT","ERT","RBT"];
-  const prog=["PPISMP","PISMP","DPLI"];
+  const prog=["PPISMP","PISMP","PDPP"];
   const aliran=["SK","SJKC","SJKT"];
   const agMap={1:"Islam",2:"Kristian",3:"Buddha",4:"Hindu",5:"Lain-lain"};
   const negeri=["KUALA LUMPUR","SELANGOR","JOHOR","PERAK","KEDAH","PULAU PINANG","KELANTAN","TERENGGANU","PAHANG","NEGERI SEMBILAN","MELAKA","SABAH","SARAWAK","PERLIS"];
@@ -4055,7 +4127,7 @@ const ENROLMEN_DATA = (function(){
         kampus_id:k.id,
         kampus_nama:k.nama,
         aliran_sekolah:al,
-        kod_program:pr==="PPISMP"?101:pr==="PISMP"?102:201,
+        kod_program:PROGRAM_KOD_MAP[pr]||0,
         mod_pengajian:1,
         opsyen_1:ops1,
         opsyen_2:(al!=="SK"&&s%3===0)?"0":ops2,
@@ -4066,7 +4138,7 @@ const ENROLMEN_DATA = (function(){
         agama:ag,
         agama_txt:agMap[ag],
         program:pr,
-        tahun:pr==="PPISMP"?"PPISMP/T"+(s%2+1):pr==="PISMP"?"PISMP/T"+(s%4+1):"DPLI/T1",
+        tahun:pr==="PPISMP"?"PPISMP/T"+(s%2+1):pr==="PISMP"?"PISMP/T"+(s%4+1):"PDPP/T1",
         daerah:daerah[s%daerah.length],
         negeri:negeri[(s+ki)%negeri.length],
         lat:3.0+(s%100)/200,
@@ -4152,13 +4224,52 @@ function pgAUEnrolmenPRSD(c){
 }
 
 async function loadAndRenderEnrolmen(c, kampusId){
-  // Cuba API dulu jika ada data live atau belum cuba
-  // Load Enrolmen: Sheets > IDB > sampel
-  const enrolmenParsed = await loadTabData("enrolmen", _parseEnrolmenRow, {_e: window.ENROLMEN_LIVE||[]}, "_e");
-  if(enrolmenParsed && enrolmenParsed.length > 0){
-    window.ENROLMEN_LIVE = enrolmenParsed;
-    window.ENROLMEN_CSV  = enrolmenParsed;
-    _sheetsLoaded = true;
+  // ═══ PRIORITI SUMBER DATA ═══
+  // 1. Firestore (jika Firebase aktif & bukan demo) — sumber utama
+  // 2. Google Sheets / IDB (fallback)
+  // 3. Data sampel (jika tiada apa-apa)
+  let sumberDipilih = "";
+
+  // ── 1. FIRESTORE ──
+  if(!DEMO_MODE && window.MYFB && window.MYFB_CONFIGURED && window.MYFB.listEnrolmen){
+    try {
+      const fsProgEl = document.getElementById("sheets-load-progress");
+      if(fsProgEl) fsProgEl.textContent = "Membaca data dari Firestore...";
+      const fsData = await window.MYFB.listEnrolmen(kampusId || null);
+      if(fsData && fsData.length > 0){
+        // Tambah medan program (jika tiada) dari kod_program berangka
+        const normalized = fsData.map(d => ({
+          ...d,
+          program: d.program || (typeof KOD_PROGRAM_MAP !== "undefined" && KOD_PROGRAM_MAP[String(d.kod_program)]) || "",
+          tahun: d.tahun || (d.program ? d.program + "/T1" : "")
+        }));
+        window.ENROLMEN_LIVE = normalized;
+        window.ENROLMEN_CSV  = normalized;
+        window._ENROLMEN_SUMBER = "firestore";
+        _sheetsLoaded = true;
+        _sheetsError = null;
+        sumberDipilih = "firestore";
+        console.log(`[ENROLMEN] ${normalized.length} rekod dimuatkan dari Firestore`);
+      } else {
+        console.log("[ENROLMEN] Firestore kosong, cuba Google Sheets / IDB...");
+        if(fsProgEl) fsProgEl.textContent = "Firestore kosong. Cuba Google Sheets...";
+      }
+    } catch(fsErr){
+      console.warn("[ENROLMEN] Firestore load failed, fallback ke Sheets/IDB:", fsErr.message);
+      const fsProgEl = document.getElementById("sheets-load-progress");
+      if(fsProgEl) fsProgEl.textContent = "Firestore tidak tersedia. Cuba Google Sheets...";
+    }
+  }
+
+  // ── 2. GOOGLE SHEETS / IDB (fallback) ──
+  if(!sumberDipilih){
+    const enrolmenParsed = await loadTabData("enrolmen", _parseEnrolmenRow, {_e: window.ENROLMEN_LIVE||[]}, "_e");
+    if(enrolmenParsed && enrolmenParsed.length > 0){
+      window.ENROLMEN_LIVE = enrolmenParsed;
+      window.ENROLMEN_CSV  = enrolmenParsed;
+      _sheetsLoaded = true;
+      sumberDipilih = (window._ENROLMEN_SUMBER === "firestore") ? "firestore" : "live";
+    }
   }
 
   // Tentukan sumber data
@@ -4168,7 +4279,7 @@ async function loadAndRenderEnrolmen(c, kampusId){
   if(window.ENROLMEN_LIVE && window.ENROLMEN_LIVE.length > 0){
     raw = filterKampus(window.ENROLMEN_LIVE, kampusId);
     tajuk = kampusId ? kObj(kampusId).nama : "Semua Kampus IPG Malaysia";
-    sumber = "live";
+    sumber = (window._ENROLMEN_SUMBER === "firestore") ? "firestore" : "live";
   } else if(window.ENROLMEN_CSV && window.ENROLMEN_CSV.length > 0){
     raw = filterKampus(window.ENROLMEN_CSV, kampusId);
     tajuk = kampusId ? kObj(kampusId).nama : "Semua Kampus IPG Malaysia";
@@ -4206,6 +4317,8 @@ async function loadAndRenderEnrolmen(c, kampusId){
         + '<input type=\"file\" accept=\".csv\" id=\"enrol-file-input\" style=\"display:none\">'
         + '</label>'
         + '<a href="https://docs.google.com/spreadsheets/d/1guGwHIr1qGy9QiJgLklrRBA6HBhAl0wkSgqU1kFzzZY/export?format=csv" target="_blank" style="font-size:11px;color:#0E7C61;border:1px solid #0E7C61;padding:4px 10px;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;"><i class=\"fas fa-download\"></i> Muat Turun CSV</a>'
+        + ((!DEMO_MODE && window.MYFB && window.MYFB_CONFIGURED) ? '<button onclick="syncEnrolmenToFirestore()" style="font-size:11px;background:#0E7C61;color:#fff;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:5px;" title="Padam semua & ganti dengan CSV penuh"><i class="fas fa-cloud-arrow-up"></i>Sync Penuh ke Firestore</button>' : '')
+        + ((!DEMO_MODE && window.MYFB && window.MYFB_CONFIGURED) ? '<label style="font-size:11px;background:#1F2C50;color:#fff;padding:5px 12px;border-radius:6px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:5px;" title="Kemas kini rekod tertentu sahaja berdasarkan no_matrik (rekod lain tidak terganggu)"><i class="fas fa-file-pen"></i>Kemas Kini Berkumpulan (CSV)<input type="file" accept=".csv" style="display:none" onchange="kemasKiniBerkumpulanEnrolmen(this)"></label>' : '')
         + deleteBtn
         + '<button onclick="_sheetsError=null;_sheetsLoading=false;navTo(SES.pg)" style="font-size:11px;color:#666;border:1px solid #ddd;padding:4px 10px;border-radius:6px;background:#fff;cursor:pointer;"><i class=\"fas fa-rotate-right\"></i> Cuba Semula</button>'
         + '</div>';
@@ -4470,7 +4583,7 @@ function renderEnrolmenPage(c,rawData,tajuk,isUtama){
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
           <select class="fi" id="en-b-program" style="width:auto;font-size:.8rem;" onchange="enBatchPreview()">
-            <option value="">Semua Program</option><option>PPISMP</option><option>PISMP</option><option>DPLI</option>
+            <option value="">Semua Program</option><option>PPISMP</option><option>PISMP</option><option>PDPP</option>
           </select>
           <select class="fi" id="en-b-sesi" style="width:auto;font-size:.8rem;" onchange="enBatchPreview()">
             <option value="">Semua Sesi Ambilan</option>
@@ -4519,7 +4632,7 @@ function renderEnrolmenPage(c,rawData,tajuk,isUtama){
           <option value="">Semua Aliran</option><option>SK</option><option>SJKC</option><option>SJKT</option>
         </select>
         <select class="fi" style="width:auto;font-size:.8rem;" id="en-prog" onchange="filterEnrolmen()">
-          <option value="">Semua Program</option><option>PPISMP</option><option>PISMP</option><option>DPLI</option>
+          <option value="">Semua Program</option><option>PPISMP</option><option>PISMP</option><option>PDPP</option>
         </select>
         ${isUtama?`<select class="fi" style="width:auto;font-size:.8rem;" id="en-kampus" onchange="filterEnrolmen()">
           <option value="">Semua Kampus</option>${kampusOptgroup()}
@@ -4930,7 +5043,7 @@ function openEnrolmenCampusPrograms(key, kampusId){
           <tbody>${sorted.map((p, i) => {
             const pct = rows.length ? ((p.total / rows.length) * 100).toFixed(1) : "0.0";
             const ratio = p.P ? (p.L / p.P).toFixed(2) : "—";
-            const progLabel = ({PPISMP:"PPISMP — Program Persediaan Ijazah", PISMP:"PISMP — Ijazah Sarjana Muda Perguruan", DPLI:"DPLI — Diploma Pendidikan Lepasan Ijazah"})[p.program] || p.program;
+            const progLabel = ({PPISMP:"PPISMP — Program Persediaan Ijazah", PISMP:"PISMP — Ijazah Sarjana Muda Perguruan", PDPP:"PDPP — Program Diploma Perguruan Lepasan Ijazah"})[p.program] || p.program;
             return `<tr style="cursor:pointer;" onclick="openEnrolmenProgramStudents('${key}','${kampusId.replace(/'/g, "\\'")}','${(p.program || "").replace(/'/g, "\\'")}')" title="Klik untuk senarai pelajar">
               <td style="font-size:.72rem;color:var(--muted);">${i + 1}</td>
               <td><span class="bdg bdg-pri" style="font-size:.72rem;">${p.program || "—"}</span>
@@ -8275,6 +8388,260 @@ async function syncKaunselorToFirestore(){
     hideCoreLoading();
     toast("Gagal sinkronisasi: "+err.message,"err");
   }
+}
+
+// ══════════════════════════════════════════
+// SYNC ENROLMEN (DATA PELAJAR IPGKPM) KE FIRESTORE
+// Koleksi Firestore: "enrolmen"
+// DocId: no_matrik (stabil supaya sync ulangan tidak berganda)
+// Skop: Admin Utama sahaja boleh sync. Security rules guna kampus_id.
+// ══════════════════════════════════════════
+async function syncEnrolmenToFirestore(){
+  if(!isAdmin()){ toast("Hanya Admin Utama dibenarkan sync ke Firestore","err"); return; }
+  if(!window.MYFB || !window.MYFB.saveEnrolmenBatch){ toast("Firebase tidak tersedia. Sila pastikan konfigurasi Firebase telah diisi.","err"); return; }
+
+  const data = window.ENROLMEN_LIVE || window.ENROLMEN_CSV || [];
+  if(!data.length){
+    toast("Tiada data enrolmen untuk disinkronisasi. Sila muat naik CSV dahulu sebelum sync ke Firestore.","err");
+    return;
+  }
+
+  // Ringkasan untuk pengesahan pengguna
+  const kampusCount = new Set(data.map(d => d.kampus_id).filter(Boolean)).size;
+  const tanpaKampus = data.filter(d => !d.kampus_id).length;
+  const tanpaMatrik = data.filter(d => !d.no_matrik).length;
+
+  const ok = confirm(
+    `SINKRONISASI DATA ENROLMEN KE FIRESTORE?\n\n` +
+    `Jumlah rekod: ${data.length.toLocaleString("ms-MY")}\n` +
+    `Bilangan kampus: ${kampusCount}\n` +
+    `Rekod tanpa kampus_id: ${tanpaKampus}\n` +
+    `Rekod tanpa no_matrik: ${tanpaMatrik}\n\n` +
+    `Semua dokumen lama dalam koleksi "enrolmen" akan DIPADAM dan diganti dengan data CSV ini.\n\n` +
+    `Tindakan ini tidak boleh dibatalkan.`
+  );
+  if(!ok) return;
+
+  showCoreLoading("Menyegerakkan data enrolmen ke Firestore...", "Menyediakan rekod...");
+  try {
+    // ── 1. PADAM REKOD LAMA ──
+    // Firestore had 400 dokumen setiap batch untuk elak timeout.
+    const { getDocs:_getDocs, collection:_coll, writeBatch:_wBatch, db:_db, query:_query, limit:_limit } = window.__FS;
+    updateCoreLoading("Memadam rekod lama...");
+    let totalDeleted = 0;
+    let padamPage = 0;
+    while (true) {
+      padamPage++;
+      const q = _query(_coll(_db, "enrolmen"), _limit(400));
+      const snap = await _getDocs(q);
+      if (snap.empty) break;
+      const batch = _wBatch(_db);
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      totalDeleted += snap.docs.length;
+      updateCoreLoading(`Memadam rekod lama... (${totalDeleted.toLocaleString("ms-MY")} dipadam, halaman ${padamPage})`);
+      if (snap.docs.length < 400) break;
+    }
+    console.log(`[SYNC ENROLMEN] ${totalDeleted} rekod lama dipadam.`);
+
+    // ── 2. TULIS REKOD BAHARU ──
+    // Tambah kodKampus selari dengan kampus_id supaya helper recordKod() dalam
+    // Firestore Security Rules dapat mengenalpasti kampus dengan mudah.
+    const records = data.map((d,i) => ({
+      _docId: String(d.no_matrik || "").trim() || `enrolmen_${String(i).padStart(6,"0")}`,
+      ...d,
+      kodKampus: d.kampus_id || "",
+      kampus_id: d.kampus_id || "",
+      sumberImport: "Data Pelajar IPGKPM CSV"
+    }));
+
+    const written = await window.MYFB.saveEnrolmenBatch(records, SES.uid, (done,total)=>{
+      const pct = total ? Math.round((done/total)*100) : 0;
+      updateCoreLoading(`Memuat naik ${done.toLocaleString("ms-MY")} / ${total.toLocaleString("ms-MY")} rekod (${pct}%)`);
+    });
+
+    // ── 3. TANDAI SUMBER & TARIKH ──
+    localStorage.setItem("csv_enrolmen_date", new Date().toLocaleString("ms-MY") + "  ★ Firestore");
+    window._ENROLMEN_SUMBER = "firestore";
+
+    hideCoreLoading();
+    toast(`${written.toLocaleString("ms-MY")} rekod enrolmen berjaya disimpan ke Firestore (${totalDeleted.toLocaleString("ms-MY")} rekod lama dipadam)`, "ok");
+    navTo(SES.pg);
+  } catch(err){
+    hideCoreLoading();
+    console.error("[SYNC ENROLMEN FIRESTORE]", err);
+    let msg = err.message || String(err);
+    if(String(err.code).includes("permission-denied")) msg = "Firestore Security Rules belum membenarkan operasi pada koleksi 'enrolmen'. Sila tambah rules baharu (ruju penerangan dalam sistem).";
+    toast("Gagal sync ke Firestore: " + msg, "err");
+  }
+}
+
+// ══════════════════════════════════════════
+// KEMAS KINI BERKUMPULAN ENROLMEN (SELECTIVE UPDATE)
+// Muat naik CSV sebahagian — hanya rekod yang ada dalam CSV akan dikemas kini.
+// Rekod lain di Firestore TIDAK terganggu. Rekod baru akan dicipta jika no_matrik tidak wujud.
+// Cocok untuk: kemaskini status pengajian, tukar opsyen, pindah kampus, dll.
+// ══════════════════════════════════════════
+function kemasKiniBerkumpulanEnrolmen(input){
+  const file = input.files && input.files[0];
+  if(!file){ return; }
+  if(!isAdmin()){ toast("Hanya Admin Utama dibenarkan kemas kini berkumpulan","err"); input.value=""; return; }
+  if(!window.MYFB || !window.MYFB.saveEnrolmenBatch){ toast("Firebase tidak tersedia","err"); input.value=""; return; }
+
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    try {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if(lines.length < 2){
+        toast("CSV kosong atau tiada data","err");
+        input.value="";
+        return;
+      }
+
+      // Parser CSV mudah (sokong petik & koma dalam medan)
+      const parseCSVLine = (line) => {
+        const out = []; let cur = ""; let inQ = false;
+        for(let i=0;i<line.length;i++){
+          const ch = line[i];
+          if(ch === '"'){ inQ = !inQ; }
+          else if(ch === ',' && !inQ){ out.push(cur); cur = ""; }
+          else { cur += ch; }
+        }
+        out.push(cur);
+        return out.map(v => v.trim().replace(/^"|"$/g, ""));
+      };
+
+      const headers = parseCSVLine(lines[0]).map(h => h.toUpperCase().replace(/\s+/g, " "));
+      const hi = {};
+      headers.forEach((h, i) => { hi[h] = i; });
+
+      // Semak medan wajib — no_matrik mesti ada untuk padanan rekod
+      if(!("NO_MATRIK" in hi) && !("NO KP" in hi)){
+        toast("CSV mesti ada lajur NO_MATRIK atau NO_KP","err");
+        input.value="";
+        return;
+      }
+
+      // Guna semula _parseEnrolmenRow untuk mapping medan (konsisten dengan import penuh)
+      const parsed = lines.slice(1).map((line) => {
+        const row = parseCSVLine(line);
+        return _parseEnrolmenRow(row, hi);
+      }).filter(r => r.no_matrik || r.noKP);
+
+      if(!parsed.length){
+        toast("Tiada rekod sah dalam CSV","err");
+        input.value="";
+        return;
+      }
+
+      // Statistik untuk pengesahan
+      const kampusSet = new Set(parsed.map(d => d.kampus_id).filter(Boolean));
+      const tanpaKampus = parsed.filter(d => !d.kampus_id).length;
+
+      const ok = confirm(
+        `KEMAS KINI BERKUMPULAN ENROLMEN?\n\n` +
+        `Fail: ${file.name}\n` +
+        `Jumlah rekod dalam CSV: ${parsed.length.toLocaleString("ms-MY")}\n` +
+        `Bilangan kampus terlibat: ${kampusSet.size}\n` +
+        `Rekod tanpa kampus_id: ${tanpaKampus}\n\n` +
+        `Tindakan:\n` +
+`• Rekod dengan no_matrik yang sama → DITULIS GANTI (merge)\n` +
+`• Rekod dengan no_matrik baru → DICIPTA\n` +
+`• Rekod lain di Firestore → TIDAK TERGANGGU\n\n` +
+`Teruskan?`
+      );
+      if(!ok){ input.value=""; return; }
+
+      showCoreLoading("Kemas kini berkumpulan enrolmen...", "Menyediakan rekod...");
+
+      // Bina rekod untuk batch — setDoc dengan merge:true, jadi rekod sedia ada akan dikemas kini
+      // tetapi medan lain yang tidak ada dalam CSV kekal utuh.
+      const records = parsed.map((d, i) => ({
+        _docId: String(d.no_matrik || d.noKP || "").trim() || `enrolmen_${String(i).padStart(6, "0")}_${Date.now()}`,
+        ...d,
+        kodKampus: d.kampus_id || "",
+        kampus_id: d.kampus_id || "",
+        sumberImport: "Kemas Kini Berkumpulan CSV"
+      }));
+
+      // Gunakan saveEnrolmenBatch yang sedia ada (gunakan set bukan create, jadi ia akan overwrite)
+      // NOTE: saveEnrolmenBatch guna batch.set() — ini tulis ganti dokumen sepenuhnya.
+      // Untuk merge separa, kami akan guna setDoc merge:true secara langsung di bawah.
+      const { db:_db, doc:_doc, writeBatch:_wBatch } = window.__FS;
+      const BATCH_LIMIT = 499;
+      const DELAY_MS = 300;
+      let totalUpdated = 0;
+      let totalFailed = 0;
+      const importedAt = new Date().toISOString();
+      const adminUid = SES.uid || null;
+
+      for(let i = 0; i < records.length; i += BATCH_LIMIT){
+        const chunk = records.slice(i, i + BATCH_LIMIT);
+        let success = false;
+        for(let attempt = 1; attempt <= 3; attempt++){
+          try {
+            const batch = _wBatch(_db);
+            for(let j = 0; j < chunk.length; j++){
+              const { _docId, ...data } = chunk[j];
+              const ref = _doc(_db, "enrolmen", _docId);
+              // set dengan merge:true — kemas kini medan yang ada, kekal medan lain
+              batch.set(ref, {
+                ...data,
+                dikemasKiniOleh: adminUid,
+                dikemasKiniPada: importedAt
+              }, { merge: true });
+            }
+            await batch.commit();
+            totalUpdated += chunk.length;
+            const pct = Math.round((totalUpdated / records.length) * 100);
+            updateCoreLoading(`Mengemas kini rekod... ${totalUpdated.toLocaleString("ms-MY")} / ${records.length.toLocaleString("ms-MY")} (${pct}%)`);
+            success = true;
+            break;
+          } catch(batchErr){
+            console.warn(`Batch kemas kini gagal (cubaan ${attempt}/3):`, batchErr.message);
+            if(attempt < 3) await new Promise(r => setTimeout(r, DELAY_MS * attempt * 2));
+            else { totalFailed += chunk.length; throw batchErr; }
+          }
+        }
+        if(success && i + BATCH_LIMIT < records.length){
+          await new Promise(r => setTimeout(r, DELAY_MS));
+        }
+      }
+
+      // Refresh cache memori dengan data terkini dari Firestore
+      if(window.MYFB.listEnrolmen){
+        try {
+          const fresh = await window.MYFB.listEnrolmen();
+          if(fresh && fresh.length){
+            const normalized = fresh.map(d => ({
+              ...d,
+              program: d.program || (typeof KOD_PROGRAM_MAP !== "undefined" && KOD_PROGRAM_MAP[String(d.kod_program)]) || "",
+              tahun: d.tahun || (d.program ? d.program + "/T1" : "")
+            }));
+            window.ENROLMEN_LIVE = normalized;
+            window.ENROLMEN_CSV  = normalized;
+          }
+        } catch(e){ console.warn("Refresh cache selepas kemas kini gagal:", e); }
+      }
+
+      localStorage.setItem("csv_enrolmen_date", new Date().toLocaleString("ms-MY") + "  ★ Firestore (kemas kini separa)");
+      window._ENROLMEN_SUMBER = "firestore";
+
+      hideCoreLoading();
+      toast(`${totalUpdated.toLocaleString("ms-MY")} rekod berjaya dikemas kini ke Firestore`, "ok");
+      navTo(SES.pg);
+    } catch(err){
+      hideCoreLoading();
+      console.error("[KEMAS KINI BERKUMPULAN ENROLMEN]", err);
+      let msg = err.message || String(err);
+      if(String(err.code).includes("permission-denied")) msg = "Firestore Security Rules belum membenarkan operasi pada koleksi 'enrolmen'.";
+      toast("Gagal kemas kini: " + msg, "err");
+    } finally {
+      input.value = "";
+    }
+  };
+  reader.readAsText(file);
 }
 
 async function doSeedUsers(){
