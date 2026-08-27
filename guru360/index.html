@@ -80,6 +80,29 @@ h1,h2,h3,h4{font-family:"Outfit",sans-serif}
 @media(max-width:640px){.live-wall{grid-template-columns:1fr}.live-kpi-grid{grid-template-columns:1fr 1fr}}
 
 @media(max-width:720px){.q-grid{grid-template-columns:1fr}.qr-wrap{width:185px;height:185px}}
+
+/* ===== GURU360 LIVE STAGE — gaya paparan ala Slido ===== */
+.live-stage-shell{min-height:calc(100vh - 205px);background:linear-gradient(180deg,#f7fafc,#eef5f3);padding:26px}
+.live-stage-card{max-width:1180px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:24px;box-shadow:0 18px 55px rgba(19,34,56,.10);overflow:hidden}
+.live-stage-head{background:#132238;color:#fff;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.live-stage-kicker{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#72d8bf}
+.live-stage-title{font-family:"Outfit";font-size:clamp(22px,3vw,38px);font-weight:800;line-height:1.1}
+.live-stage-body{padding:24px}
+.live-stage-body .live-panel{border-top:0!important;margin-top:0!important;padding-top:0!important}
+.live-stage-body .font-display.font-bold.text-navy-800{font-size:22px}
+.live-stage-body [id$="-question"]{font-size:clamp(18px,2vw,28px)!important;color:#132238!important;line-height:1.35;margin-top:18px!important}
+.live-stage-body [id$="-count"]{font-size:13px!important}
+.live-stage-body [id$="-result"]{min-height:360px;padding:24px}
+.live-stage-body .live-bar-head{font-size:15px}
+.live-stage-body .live-track{height:18px}
+.live-stage-body .live-note{font-size:15px;padding:15px}
+.live-stage-body .live-kpi b{font-size:34px}
+.live-stage-body .live-word{line-height:1.1}
+.live-stage-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.live-stage-pulse{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#d9fff6}
+.live-stage-pulse:before{content:"";width:9px;height:9px;border-radius:999px;background:#34d399;box-shadow:0 0 0 5px rgba(52,211,153,.12)}
+@media(max-width:640px){.live-stage-shell{padding:12px}.live-stage-body{padding:14px}.live-stage-body [id$="-result"]{min-height:260px;padding:14px}}
+
 </style>
 </head>
 
@@ -190,6 +213,30 @@ h1,h2,h3,h4{font-family:"Outfit",sans-serif}
       <div class="badge bg-white/10 text-white/70"><i class="fas fa-bolt"></i>Aktiviti Mikro</div>
     </div>
     <div id="activityBody" class="card-body p-5 sm:p-7"></div>
+  </div>
+
+</main>
+
+<!-- PUBLIC LIVE STAGE -->
+<main id="liveStageView" class="hidden">
+  <div class="live-stage-shell">
+    <section class="live-stage-card">
+      <div class="live-stage-head">
+        <div>
+          <div class="live-stage-kicker">GURU360 • KEPUTUSAN LANGSUNG</div>
+          <div id="liveStageTitle" class="live-stage-title mt-1">Paparan Live</div>
+          <div id="liveStageSubtitle" class="text-white/55 text-xs mt-2">Keputusan berubah secara masa nyata apabila peserta menghantar respons.</div>
+        </div>
+        <div class="live-stage-actions">
+          <span class="live-stage-pulse">LIVE</span>
+          <button id="liveStageFullscreen" type="button" class="btn btn-ghost !bg-white/10 !text-white !border-white/15"><i class="fas fa-expand"></i>Skrin Penuh</button>
+          <button id="liveStageClose" type="button" class="btn btn-ghost !bg-white/10 !text-white !border-white/15"><i class="fas fa-xmark"></i>Tutup</button>
+        </div>
+      </div>
+      <div class="live-stage-body">
+        <div id="publicLiveStagePanel"></div>
+      </div>
+    </section>
   </div>
 </main>
 
@@ -321,10 +368,11 @@ h1,h2,h3,h4{font-family:"Outfit",sans-serif}
         <label class="fl">Pautan Aktiviti</label>
         <textarea id="qrModalUrl" class="fi text-[11px] min-h-[78px]" readonly></textarea>
       </div>
-      <div class="grid grid-cols-3 gap-2 mt-3">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
         <button id="qrModalCopy" type="button" class="btn btn-ghost"><i class="fas fa-link"></i>Salin</button>
         <a id="qrModalOpen" class="btn btn-ghost" target="_blank" rel="noopener"><i class="fas fa-qrcode"></i>Buka QR</a>
-        <button id="qrModalPreview" type="button" class="btn btn-pri"><i class="fas fa-eye"></i>Pratonton</button>
+        <button id="qrModalPreview" type="button" class="btn btn-ghost"><i class="fas fa-eye"></i>Pratonton</button>
+        <button id="qrModalLive" type="button" class="btn btn-pri"><i class="fas fa-display"></i>LIVE</button>
       </div>
       <div id="qrModalLivePanel" class="mt-5 text-left"></div>
     </div>
@@ -555,6 +603,7 @@ function baseUrl(){return location.href.split("#")[0].split("?")[0]}
 function encodePayload(obj){return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
 function decodePayload(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";return JSON.parse(decodeURIComponent(escape(atob(s))))}
 function shareUrl(obj){return baseUrl()+"#play="+encodePayload(obj)}
+function liveUrl(obj){return baseUrl()+"#live="+encodePayload(obj)}
 function qrSrc(url){return "https://api.qrserver.com/v1/create-qr-code/?size=380x380&margin=12&data="+encodeURIComponent(url)}
 
 function renderTypeCards(target,host=false){
@@ -582,10 +631,10 @@ $("backHomeBtn").onclick=()=>showHome();
 function showHome(){
  stopLiveActivity();
  stopLiveWordcloud();
- $("homeView").classList.remove("hidden");$("hostView").classList.add("hidden");$("activityView").classList.add("hidden")
+ $("homeView").classList.remove("hidden");$("hostView").classList.add("hidden");$("activityView").classList.add("hidden");$("liveStageView").classList.add("hidden")
 }
 function showHost(){
- $("homeView").classList.add("hidden");$("activityView").classList.add("hidden");$("hostView").classList.remove("hidden");
+ $("homeView").classList.add("hidden");$("activityView").classList.add("hidden");$("liveStageView").classList.add("hidden");$("hostView").classList.remove("hidden");
  renderHost()
 }
 
@@ -670,10 +719,14 @@ function renderHost(){
      <div class="font-semibold text-sm text-navy-800">${esc(a.title)}</div>
      <div class="text-xs text-gray-400 truncate">${Array.isArray(a.items)?`${a.items.length} soalan/situasi · ${esc(a.items[0]?.prompt||a.prompt||"")}`:(a.type==="wordcloud"&&Array.isArray(a.questions)?`${a.questions.length} soalan · ${esc(a.questions[0]||"")}`:esc(a.prompt))}</div>
    </div>
+   <button type="button" class="btn btn-pri !px-3 !py-1.5 g360-live-btn" data-id="${esc(a.id)}" title="Paparkan keputusan LIVE"><i class="fas fa-display"></i> LIVE</button>
    <button type="button" class="btn btn-ghost !px-3 !py-1.5 g360-qr-btn" data-id="${esc(a.id)}" title="Paparkan QR"><i class="fas fa-qrcode"></i> QR</button>
    <button type="button" class="btn btn-danger !px-2.5 !py-1.5 g360-delete-btn" data-id="${esc(a.id)}" title="Padam aktiviti"><i class="fas fa-trash"></i></button>
  </div>`).join(""):`<div class="text-xs text-gray-400 py-4">Belum ada aktiviti. Pilih satu jenis aktiviti di atas.</div>`;
  // Bind secara programatik supaya butang QR tetap berfungsi walaupun inline onclick disekat oleh pelayan/CSP.
+ $("myActivities").querySelectorAll(".g360-live-btn").forEach(btn=>{
+   btn.addEventListener("click",()=>openHostLiveStage(btn.dataset.id));
+ });
  $("myActivities").querySelectorAll(".g360-qr-btn").forEach(btn=>{
    btn.addEventListener("click",()=>openQrActivity(btn.dataset.id));
  });
@@ -702,6 +755,7 @@ window.openQrActivity=id=>{
  $("qrActivityModal").classList.remove("hidden");
  $("qrModalCopy").onclick=()=>copyText(url);
  $("qrModalPreview").onclick=()=>previewCurrentShare();
+ $("qrModalLive").onclick=()=>window.open(liveUrl(a),"_blank","noopener");
 
  // Paparan keputusan LIVE terus di dalam tetingkap QR host.
  setTimeout(()=>{
@@ -717,6 +771,48 @@ $("closeQrActivityModal").onclick=()=>{
 $("qrActivityModal").addEventListener("click",e=>{
  if(e.target===$("qrActivityModal"))$("qrActivityModal").classList.add("hidden");
 });
+
+
+window.openHostLiveStage=id=>{
+ const a=myActivities.find(x=>String(x.id)===String(id));
+ if(!a){toast("Aktiviti tidak ditemui");return}
+ window.open(liveUrl(a),"_blank","noopener");
+};
+
+function directLivePayload(){
+ const m=location.hash.match(/^#live=(.+)$/);
+ if(!m)return null;
+ try{return decodePayload(m[1])}catch(e){console.error(e);return null}
+}
+
+function renderPublicLiveStage(obj){
+ stopLiveActivity();
+ stopLiveWordcloud();
+ window.__G360_PREVIEW_OBJ=obj;
+ $("homeView").classList.add("hidden");
+ $("hostView").classList.add("hidden");
+ $("activityView").classList.add("hidden");
+ $("liveStageView").classList.remove("hidden");
+ $("liveStageTitle").textContent=obj.title||"Guru360 Live";
+ const qs=activityQuestions(obj);
+ $("liveStageSubtitle").textContent=qs.length>1
+   ? `${qs.length} soalan/situasi • pilih tab soalan untuk melihat keputusan.`
+   : "Keputusan berubah secara masa nyata apabila peserta menghantar respons.";
+ setTimeout(()=>startLiveActivity(obj,"publicLiveStagePanel"),60);
+}
+
+$("liveStageFullscreen").onclick=async()=>{
+ try{
+   const el=document.documentElement;
+   if(!document.fullscreenElement) await el.requestFullscreen();
+   else await document.exitFullscreen();
+ }catch(e){console.warn(e)}
+};
+$("liveStageClose").onclick=()=>{
+ if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});
+ location.hash="";
+ showHome();
+};
 
 window.deleteActivity=id=>{myActivities=myActivities.filter(a=>a.id!==id);persist();renderHost();$("sharePanel").innerHTML=`<div class="text-gray-300 text-4xl mb-3"><i class="fas fa-qrcode"></i></div><p class="text-xs text-gray-400">Pilih aktiviti untuk melihat QR.</p>`};
 window.selectShare=id=>openQrActivity(id);
@@ -1175,8 +1271,9 @@ function directPayload(){
 }
 function renderDirect(obj){
  stopLiveActivity();
+ window.__G360_PREVIEW_OBJ=obj;
  if(obj.type==="wordcloud" && !Array.isArray(obj.questions) && obj.prompt) obj.questions=[obj.prompt];
- $("homeView").classList.add("hidden");$("hostView").classList.add("hidden");$("activityView").classList.remove("hidden");
+ $("homeView").classList.add("hidden");$("hostView").classList.add("hidden");$("liveStageView").classList.add("hidden");$("activityView").classList.remove("hidden");
  $("actTitle").textContent=obj.title||"Guru360";
  $("actTypeLabel").textContent=obj.kind==="quiz"?"KUIZ AKHIR GURU360":(typeInfo(obj.type)?.group||"AKTIVITI GURU360");
  if(obj.kind==="quiz")renderQuizPlay(obj);else renderActivityPlay(obj)
@@ -1187,6 +1284,7 @@ function completeMessage(extra=""){
    <h2 class="text-xl font-bold text-navy-800">Respons diterima</h2>
    ${extra}
    <p class="text-sm text-gray-400 mt-2">Sila kembali mengikuti sesi perkongsian.</p>
+   ${window.__G360_PREVIEW_OBJ?`<div class="mt-4"><a class="btn btn-pri" href="${liveUrl(window.__G360_PREVIEW_OBJ)}" target="_blank" rel="noopener"><i class="fas fa-chart-column"></i>Lihat Polling LIVE</a></div>`:""}
  </div>`
 }
 function renderActivityPlay(obj){
@@ -1356,8 +1454,11 @@ function renderQuizPlay(obj){
 
 renderTypeCards("publicActivityTypes",false);
 renderTypeCards("hostActivityTypes",true);
+const livePayload=directLivePayload();
 const payload=directPayload();
-if(payload)renderDirect(payload);else showHome();
+if(livePayload)renderPublicLiveStage(livePayload);
+else if(payload)renderDirect(payload);
+else showHome();
 </script>
 </body>
 </html>
