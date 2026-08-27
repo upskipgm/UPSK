@@ -326,6 +326,7 @@ h1,h2,h3,h4{font-family:"Outfit",sans-serif}
         <a id="qrModalOpen" class="btn btn-ghost" target="_blank" rel="noopener"><i class="fas fa-qrcode"></i>Buka QR</a>
         <button id="qrModalPreview" type="button" class="btn btn-pri"><i class="fas fa-eye"></i>Pratonton</button>
       </div>
+      <div id="qrModalLivePanel" class="mt-5 text-left"></div>
     </div>
   </div>
 </div>
@@ -701,9 +702,18 @@ window.openQrActivity=id=>{
  $("qrActivityModal").classList.remove("hidden");
  $("qrModalCopy").onclick=()=>copyText(url);
  $("qrModalPreview").onclick=()=>previewCurrentShare();
+
+ // Paparan keputusan LIVE terus di dalam tetingkap QR host.
+ setTimeout(()=>{
+   startLiveActivity(a,"qrModalLivePanel");
+ },80);
 };
 
-$("closeQrActivityModal").onclick=()=>$("qrActivityModal").classList.add("hidden");
+$("closeQrActivityModal").onclick=()=>{
+ $("qrActivityModal").classList.add("hidden");
+ const a=window.__G360_PREVIEW_OBJ;
+ if(a && $("liveActivityPanel")) startLiveActivity(a,"liveActivityPanel");
+};
 $("qrActivityModal").addEventListener("click",e=>{
  if(e.target===$("qrActivityModal"))$("qrActivityModal").classList.add("hidden");
 });
@@ -1204,9 +1214,12 @@ function renderActivityPlay(obj){
          await Promise.all([saveWordcloudLive(obj,idx,q,val),saveLiveResponse(obj,idx,q,val)]);
          if(idx<obj.questions.length-1){idx++;drawWordQuestion()}
          else {
-           completeMessage(`<div class="text-xs text-gray-400 mt-3">${answers.length} respons selesai.</div><div id="participantLiveResult" class="mt-5 text-left"></div>`);
-           startLiveActivity(obj,"participantLiveResult");
-           __liveActivityIndex=0;renderGenericLive("participantLiveResult");
+           completeMessage(`<div class="text-xs text-gray-400 mt-3">${answers.length} respons selesai. Keputusan kumpulan LIVE dipaparkan di bawah.</div><div id="participantLiveResult" class="mt-5 text-left"></div>`);
+           setTimeout(()=>{
+             startLiveActivity(obj,"participantLiveResult");
+             __liveActivityIndex=0;
+             renderGenericLive("participantLiveResult");
+           },80);
          }
        }catch(err){
          console.error(err);btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i>Cuba Hantar Semula';
@@ -1254,9 +1267,12 @@ function renderActivityPlay(obj){
          saved[idx]=stored;
          if(idx<obj.items.length-1){idx++;drawItem()}
          else{
-           completeMessage(`<div class="text-xs text-gray-400 mt-3">${saved.length} respons selesai.</div><div id="participantLiveResult" class="mt-5 text-left"></div>`);
-           startLiveActivity(obj,"participantLiveResult");
-           __liveActivityIndex=0;renderGenericLive("participantLiveResult");
+           completeMessage(`<div class="text-xs text-gray-400 mt-3">${saved.length} respons selesai. Keputusan kumpulan LIVE dipaparkan di bawah.</div><div id="participantLiveResult" class="mt-5 text-left"></div>`);
+           setTimeout(()=>{
+             startLiveActivity(obj,"participantLiveResult");
+             __liveActivityIndex=0;
+             renderGenericLive("participantLiveResult");
+           },80);
          }
        }catch(err){
          console.error(err);btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i>Cuba Hantar Semula';toast("Respons belum dapat dihantar.")
@@ -1289,8 +1305,8 @@ function renderActivityPlay(obj){
    try{
      const stored=["dilemma","ranking","control"].includes(obj.type)?Number(val):(obj.type==="pulse"?Number(val):String(val));
      await saveLiveResponse(obj,0,obj.prompt,stored);
-     completeMessage(`<div class="text-xs text-gray-400 mt-3">Anda kini boleh melihat keputusan kumpulan secara langsung.</div><div id="participantLiveResult" class="mt-5 text-left"></div>`);
-     startLiveActivity(obj,"participantLiveResult");
+     completeMessage(`<div class="text-xs text-gray-400 mt-3">Respons anda telah direkodkan. Keputusan kumpulan LIVE dipaparkan di bawah.</div><div id="participantLiveResult" class="mt-5 text-left"></div>`);
+     setTimeout(()=>startLiveActivity(obj,"participantLiveResult"),80);
    }catch(err){
      console.error(err);btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i>Cuba Hantar Semula';toast("Respons belum dapat dihantar.")
    }
