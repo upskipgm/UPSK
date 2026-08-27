@@ -100,7 +100,7 @@ h1,h2,h3,h4{font-family:"Outfit",sans-serif}
   <div class="max-w-7xl mx-auto px-5 h-11 flex items-center justify-between">
     <div class="text-white/55 text-xs flex items-center gap-2">
       <i class="fas fa-circle-nodes text-pri-300"></i>
-      <span>Platform Aktiviti Interaktif Kaunselor Pendidikan IPG</span>
+      <span>Platform Aktiviti Interaktif Pembangunan Sahsiah</span>
     </div>
     <button id="hostBtn" class="text-white/70 hover:text-white text-xs font-semibold">
       <i class="fas fa-lock mr-1"></i>Host
@@ -469,21 +469,49 @@ const TYPES=[
  {type:"identity",icon:"fa-chalkboard-user",name:"Identiti Guru",group:"Bina Identiti Guru",desc:"Refleksi penutup identiti profesional.",prompt:"Guru bagaimana yang anda mahu jadi?"}
 ];
 
-const DEFAULT_QUIZ=[
- {q:"Apakah yang dimaksudkan dengan pengurusan emosi?",o:["Mengabaikan perasaan yang dirasai","Mengenali, memahami dan mengawal emosi dengan positif","Menyembunyikan semua emosi daripada orang lain","Bertindak secara impulsif terhadap perasaan"],a:1},
- {q:"Antara berikut, yang manakah merupakan aspek utama pengurusan emosi?",o:["Kesedaran emosi","Persaingan sumber","Perancangan kewangan","Delegasi tugas"],a:0},
- {q:"Antara berikut, yang manakah strategi pengurusan emosi yang berkesan?",o:["Cognitive reframing","Mengelakkan semua sokongan sosial","Menangguhkan semua tugasan","Menyembunyikan semua perasaan"],a:0},
- {q:"Apakah langkah pertama dalam mengurus emosi dalam situasi sukar?",o:["Kenal pasti emosi","Menyalahkan orang lain","Bertindak segera","Mengabaikan punca"],a:0},
- {q:"Antara berikut, yang manakah boleh menjadi punca konflik dalam organisasi?",o:["Komunikasi tidak berkesan","Tidur yang berkualiti","Matlamat yang sangat jelas","Sokongan sosial yang baik"],a:0},
- {q:"Apakah tujuan utama sleep hygiene?",o:["Meningkatkan kualiti tidur yang sihat dan mencukupi","Mengurangkan masa tidur sebanyak mungkin","Menggantikan tidur dengan kafein","Membolehkan kerja berterusan tanpa rehat"],a:0},
- {q:"Antara berikut, yang manakah prinsip sleep hygiene?",o:["Jadual tidur yang konsisten","Pengambilan kafein sebelum tidur","Penggunaan skrin tanpa had sebelum tidur","Makan berat setiap kali sebelum tidur"],a:0},
- {q:"Apakah salah satu kepentingan work-life balance?",o:["Mengurangkan risiko burnout","Meningkatkan konflik interpersonal","Menghapuskan keperluan rehat","Menambah tekanan kerja"],a:0},
- {q:"Dalam komunikasi, emosi boleh mempengaruhi perkara berikut KECUALI:",o:["Nada suara","Bahasa tubuh","Reaksi seseorang","Kod kampus organisasi"],a:3},
- {q:"Kawalan diri merangkumi keupayaan mengurus emosi, mengawal tingkah laku dan...",o:["Mengawal pemikiran","Mengawal semua orang lain","Menghapuskan semua konflik","Mengawal cuaca"],a:0}
+const SAHSIAH_PRESET_ACTIVITIES=[
+ {kind:"activity",id:"SAH-A1",type:"wordcloud",title:"Aktiviti 1: Kompas Nilai Saya",prompt:"Apakah SATU nilai yang paling penting untuk anda pegang sebagai seorang guru?",questions:["Apakah SATU nilai yang paling penting untuk anda pegang sebagai seorang guru?"]},
+ {kind:"activity",id:"SAH-A2",type:"dilemma",title:"Aktiviti 2: Dilema Seorang Guru",prompt:"Dilema Seorang Guru",items:[
+   {prompt:"Seorang rakan guru meminta anda menandakan kehadirannya dalam satu aktiviti walaupun dia sebenarnya tidak hadir. Apakah tindakan anda?",options:["Membantu kerana mahu menjaga hubungan dengan rakan","Menolak dengan baik dan menerangkan bahawa rekod perlu dibuat dengan betul","Tidak mahu terlibat dan meminta orang lain menguruskannya","Terus melaporkan kepada pihak atasan tanpa berbincang"]},
+   {prompt:"Seorang murid berulang kali tidak menyiapkan tugasan. Apabila ditanya, anda mengetahui dia berhadapan masalah keluarga. Apakah respons awal anda?",options:["Tetap mengenakan tindakan kerana peraturan mesti sama untuk semua","Membebaskannya terus daripada tugasan","Mendengar situasinya dan mencari penyelesaian yang masih mengekalkan tanggungjawab pembelajaran","Menyerahkan perkara tersebut sepenuhnya kepada guru kaunseling"]},
+   {prompt:"Dalam kumpulan WhatsApp guru, beberapa rakan mula mengkritik seorang murid secara terbuka. Apakah tindakan anda?",options:["Turut memberi pandangan kerana kumpulan itu hanya untuk guru","Tidak memberi respons tetapi terus membaca perbualan","Mengingatkan secara berhemah supaya isu murid dibincangkan melalui saluran yang sesuai","Mengambil tangkap layar dan berkongsi kepada rakan lain"]}
+ ]},
+ {kind:"activity",id:"SAH-A3",type:"pulse",title:"Aktiviti 3: Termometer Emosi Saya",prompt:"Pada skala 1 hingga 10, bagaimana keadaan emosi anda ketika memikirkan peranan dan tanggungjawab sebagai guru pada masa ini?"},
+ {kind:"activity",id:"SAH-A4",type:"reflection",title:"Aktiviti 4: Tukar Lensa",prompt:"Tukar Lensa",items:[
+   {prompt:"Situasi: Selepas satu sesi PdP, guru senior berkata, ‘Cara awak mengajar tadi macam kurang menjadi. Murid nampak tidak begitu fokus.’ Apakah pemikiran spontan pertama yang mungkin terlintas dalam fikiran anda?"},
+   {prompt:"Sekarang lihat situasi yang sama dari sudut yang lebih rasional dan membantu. Apakah pemikiran alternatif anda?"}
+ ]},
+ {kind:"activity",id:"SAH-A5",type:"control",title:"Aktiviti 5: Audit Tabiat Tidur",prompt:"Audit Tabiat Tidur",items:[
+   {prompt:"Saya masih melihat skrin telefon, komputer atau televisyen dalam tempoh 1 jam sebelum tidur.",options:["Ya","Tidak"]},
+   {prompt:"Saya minum minuman berkafein seperti kopi atau teh pada waktu petang atau malam.",options:["Ya","Tidak"]},
+   {prompt:"Waktu tidur dan waktu bangun saya tidak konsisten setiap hari.",options:["Ya","Tidak"]},
+   {prompt:"Saya makan makanan berat sejurus sebelum tidur.",options:["Ya","Tidak"]},
+   {prompt:"Suasana bilik tidur saya tidak kondusif, contohnya panas, terlalu terang atau bising.",options:["Ya","Tidak"]}
+ ]},
+ {kind:"activity",id:"SAH-A6",type:"control",title:"Aktiviti 6: Pilih Respons Saya",prompt:"Pilih aspek kawalan diri yang paling utama diperlukan.",items:[
+   {prompt:"Seorang murid mempertikaikan arahan anda di hadapan kelas dan anda mula berasa sangat marah. Aspek kawalan diri manakah yang paling utama diperlukan?",options:["Kawalan Emosi","Kawalan Tingkah Laku","Kawalan Pemikiran"]},
+   {prompt:"Anda menerima mesej WhatsApp yang membuatkan anda tersinggung. Anda hampir menaip balasan yang keras dan mahu terus menekan ‘Send’. Aspek kawalan diri manakah yang paling utama diperlukan?",options:["Kawalan Emosi","Kawalan Tingkah Laku","Kawalan Pemikiran"]},
+   {prompt:"Selepas satu PdP yang kurang menjadi, anda mula berfikir: ‘Aku memang tidak layak jadi guru. Esok mesti gagal lagi.’ Aspek kawalan diri manakah yang paling utama diperlukan?",options:["Kawalan Emosi","Kawalan Tingkah Laku","Kawalan Pemikiran"]},
+   {prompt:"Anda menerima teguran daripada pentadbir. Anda kecewa, tetapi memilih untuk bertenang, meneliti teguran dan merancang penambahbaikan. Aspek kawalan diri manakah yang paling jelas diamalkan?",options:["Kawalan Emosi","Kawalan Tingkah Laku","Kawalan Pemikiran"]}
+ ]},
+ {kind:"activity",id:"SAH-A7",type:"wordcloud",title:"Aktiviti 7: Seronok Jadi Cikgu",prompt:"Apakah SATU perkara yang membuatkan anda berasa seronok dan bermakna ketika bekerja sebagai seorang guru?",questions:["Apakah SATU perkara yang membuatkan anda berasa seronok dan bermakna ketika bekerja sebagai seorang guru?"]}
 ];
 
-let myActivities=JSON.parse(localStorage.getItem("g360-simple-activities")||"[]");
-let quizQuestions=JSON.parse(localStorage.getItem("g360-final-quiz")||"null")||DEFAULT_QUIZ;
+const DEFAULT_QUIZ=[
+ {q:"Apakah maksud pengurusan emosi?",o:["Mengabaikan perasaan yang dirasai","Mengenali, memahami dan mengawal emosi dengan positif","Menyembunyikan emosi daripada orang lain","Bertindak secara impulsif terhadap perasaan"],a:1},
+ {q:"Apakah hubungan emosi dengan kesejahteraan psikologi?",o:["Tidak mempunyai kaitan","Emosi boleh mempengaruhi cara berfikir, berinteraksi dan mengurus kehidupan","Emosi hanya berkaitan dengan murid","Emosi hanya perlu disembunyikan"],a:1},
+ {q:"Antara berikut, yang manakah aspek utama pengurusan emosi?",o:["Kesedaran emosi","Persaingan sumber","Pengawalan hutang","Delegasi tugas"],a:0},
+ {q:"Apakah maksud cognitive reframing?",o:["Menukar fakta supaya kelihatan mudah","Melihat situasi daripada perspektif yang lebih seimbang dan membantu","Mengelakkan semua teguran","Menyalahkan orang lain"],a:1},
+ {q:"Antara berikut, yang manakah punca konflik dalam organisasi?",o:["Komunikasi tidak berkesan","Jadual tidur konsisten","Sokongan sosial yang sihat","Persekitaran kondusif"],a:0},
+ {q:"Apakah tujuan utama pengurusan masa?",o:["Merancang, mengawal dan mengatur penggunaan masa dengan berkesan","Membuat semua kerja pada saat akhir","Mengelakkan semua tugasan","Menunggu arahan sahaja"],a:0},
+ {q:"Antara berikut, yang manakah prinsip sleep hygiene?",o:["Hadkan pendedahan kepada skrin sebelum tidur","Makan berat sebelum tidur","Minum kafein sebelum tidur","Tidur pada waktu berbeza setiap hari"],a:0},
+ {q:"Apakah kepentingan work-life balance?",o:["Mengurangkan risiko burnout","Menambah tekanan kerja","Menghapuskan masa rehat","Mengabaikan keluarga"],a:0},
+ {q:"Kawalan diri merangkumi keupayaan mengurus emosi, mengawal tingkah laku dan...",o:["Mengawal pemikiran","Mengawal semua orang lain","Mengawal cuaca","Menghapuskan semua konflik"],a:0},
+ {q:"Antara berikut, yang manakah faktor yang menyumbang kepada keseronokan bekerja?",o:["Budaya kerja positif","Komunikasi tidak berkesan","Ketidakadilan tempat kerja","Peranan yang tidak jelas"],a:0}
+];
+
+let myActivities=JSON.parse(localStorage.getItem("g360-sahsiah-activities-v1")||"null")||SAHSIAH_PRESET_ACTIVITIES;
+let quizQuestions=JSON.parse(localStorage.getItem("g360-final-quiz-sahsiah-v1")||"null")||DEFAULT_QUIZ;
 let researchSurvey=JSON.parse(localStorage.getItem("g360-research-survey")||"null")||{title:"Soal Selidik Kajian Guru Baharu",url:""};
 let builderType=null;
 let wordcloudBuilderQuestions=[];
@@ -492,7 +520,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 function toast(msg){$("toast").textContent=msg;$("toast").classList.add("show");clearTimeout(window.__t);window.__t=setTimeout(()=>$("toast").classList.remove("show"),1800)}
 function typeInfo(type){return TYPES.find(x=>x.type===type)}
-function persist(){localStorage.setItem("g360-simple-activities",JSON.stringify(myActivities));localStorage.setItem("g360-final-quiz",JSON.stringify(quizQuestions));localStorage.setItem("g360-research-survey",JSON.stringify(researchSurvey))}
+function persist(){localStorage.setItem("g360-sahsiah-activities-v1",JSON.stringify(myActivities));localStorage.setItem("g360-final-quiz-sahsiah-v1",JSON.stringify(quizQuestions));localStorage.setItem("g360-research-survey",JSON.stringify(researchSurvey))}
 function baseUrl(){return location.href.split("#")[0].split("?")[0]}
 function encodePayload(obj){return btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
 function decodePayload(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";return JSON.parse(decodeURIComponent(escape(atob(s))))}
@@ -610,7 +638,7 @@ function renderHost(){
    <div class="w-9 h-9 rounded-lg bg-pri-50 text-pri-600 flex items-center justify-center"><i class="fas ${typeInfo(a.type)?.icon||"fa-bolt"}"></i></div>
    <div class="flex-1 min-w-0">
      <div class="font-semibold text-sm text-navy-800">${esc(a.title)}</div>
-     <div class="text-xs text-gray-400 truncate">${a.type==="wordcloud"&&Array.isArray(a.questions)?`${a.questions.length} soalan · ${esc(a.questions[0]||"")}`:esc(a.prompt)}</div>
+     <div class="text-xs text-gray-400 truncate">${Array.isArray(a.items)?`${a.items.length} soalan/situasi · ${esc(a.items[0]?.prompt||a.prompt||"")}`:(a.type==="wordcloud"&&Array.isArray(a.questions)?`${a.questions.length} soalan · ${esc(a.questions[0]||"")}`:esc(a.prompt))}</div>
    </div>
    <button class="btn btn-ghost !px-2.5 !py-1.5" onclick="selectShare('${a.id}')"><i class="fas fa-qrcode"></i></button>
    <button class="btn btn-danger !px-2.5 !py-1.5" onclick="deleteActivity('${a.id}')"><i class="fas fa-trash"></i></button>
@@ -654,10 +682,12 @@ function stopLiveActivity(){
 function activityQuestions(obj){
  if(obj.kind==="quiz") return (obj.questions||[]).map(q=>q.q);
  if(obj.type==="wordcloud") return Array.isArray(obj.questions)&&obj.questions.length?obj.questions:[obj.prompt||"Word Cloud"];
+ if(Array.isArray(obj.items)&&obj.items.length) return obj.items.map(x=>x.prompt||x.q||"Aktiviti Guru360");
  return [obj.prompt||"Aktiviti Guru360"];
 }
 function activityOptions(obj,index=0){
  if(obj.kind==="quiz") return obj.questions?.[index]?.o||[];
+ if(Array.isArray(obj.items)&&obj.items[index]?.options) return obj.items[index].options;
  if(["dilemma","ranking","control"].includes(obj.type)) return obj.options||[];
  if(obj.type==="pulse") return Array.from({length:10},(_,i)=>String(i+1));
  return [];
@@ -1122,6 +1152,53 @@ function renderActivityPlay(obj){
      input.addEventListener("keydown",e=>{if(e.key==="Enter")go()});
    }
    drawWordQuestion();
+   return;
+ }
+ if(Array.isArray(obj.items)&&obj.items.length){
+   let idx=0;
+   const saved=[];
+   function drawItem(){
+     const item=obj.items[idx];
+     const prompt=item.prompt||item.q||"Aktiviti Guru360";
+     const opts=item.options||[];
+     const isPulse=obj.type==="pulse";
+     let h=`<div class="flex justify-between text-xs text-gray-400 font-semibold mb-2"><span>Soalan ${idx+1} / ${obj.items.length}</span><span>${esc(obj.title||"Aktiviti")}</span></div>
+       <div class="progress mb-5"><div style="width:${(idx/obj.items.length)*100}%"></div></div>
+       <h2 class="font-display font-extrabold text-2xl text-navy-800 leading-tight">${esc(prompt)}</h2>`;
+     if(opts.length){
+       h+=`<div class="grid gap-2 mt-5">${opts.map((o,i)=>`<button class="activity-option" data-value="${i}"><span class="text-gray-300 mr-1">${String.fromCharCode(65+i)}.</span>${esc(o)}</button>`).join("")}</div>`;
+     }else if(isPulse){
+       h+=`<div class="scale-row mt-5">${Array.from({length:10},(_,i)=>`<button data-value="${i+1}">${i+1}</button>`).join("")}</div>`;
+     }else{
+       h+=`<div class="mt-5"><input id="openText" class="fi" maxlength="220" placeholder="Taip respons anda"></div>`;
+     }
+     h+=`<button id="submitAct" class="btn btn-pri mt-5" ${opts.length||isPulse?"disabled":""}><i class="fas fa-paper-plane"></i>${idx===obj.items.length-1?"Hantar & Selesai":"Hantar & Seterusnya"}</button>`;
+     $("activityBody").innerHTML=h;
+     let selected=null;
+     $("activityBody").querySelectorAll("[data-value]").forEach(b=>b.addEventListener("click",()=>{
+       $("activityBody").querySelectorAll("[data-value]").forEach(x=>x.classList.remove("selected"));
+       b.classList.add("selected");selected=b.dataset.value;$("submitAct").disabled=false;
+     }));
+     $("submitAct").onclick=async()=>{
+       const val=$("openText")?.value.trim()??selected;
+       if(val===null||val===""){toast("Sila berikan respons");return}
+       const btn=$("submitAct");btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>Menghantar...';
+       try{
+         const stored=opts.length?Number(val):(isPulse?Number(val):String(val));
+         await saveLiveResponse(obj,idx,prompt,stored,{optionText:opts.length?opts[Number(val)]:null});
+         saved[idx]=stored;
+         if(idx<obj.items.length-1){idx++;drawItem()}
+         else{
+           completeMessage(`<div class="text-xs text-gray-400 mt-3">${saved.length} respons selesai.</div><div id="participantLiveResult" class="mt-5 text-left"></div>`);
+           startLiveActivity(obj,"participantLiveResult");
+           __liveActivityIndex=0;renderGenericLive("participantLiveResult");
+         }
+       }catch(err){
+         console.error(err);btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i>Cuba Hantar Semula';toast("Respons belum dapat dihantar.")
+       }
+     };
+   }
+   drawItem();
    return;
  }
  let h=`<h2 class="font-display font-extrabold text-2xl text-navy-800 leading-tight">${esc(obj.prompt)}</h2>`;
