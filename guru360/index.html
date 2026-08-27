@@ -626,7 +626,7 @@ $("saveBuiltActivity").onclick=()=>{
    if(!$("optionsBox").classList.contains("hidden"))obj.options=$("activityOptionsInput").value.split("\n").map(x=>x.trim()).filter(Boolean);
  }
  myActivities.unshift(obj);persist();$("builderModal").classList.add("hidden");renderHost();selectShare(obj.id);
- toast(builderType==="wordcloud"?`Set Word Cloud ${obj.questions.length} soalan disimpan`:"Aktiviti disimpan")
+ toast(builderType==="wordcloud"?`Set Word Cloud ${obj.questions.length} soalan disimpan — QR dipaparkan di bawah`:"Aktiviti disimpan — QR dipaparkan di bawah")
 };
 
 function renderHost(){
@@ -640,27 +640,28 @@ function renderHost(){
      <div class="font-semibold text-sm text-navy-800">${esc(a.title)}</div>
      <div class="text-xs text-gray-400 truncate">${Array.isArray(a.items)?`${a.items.length} soalan/situasi · ${esc(a.items[0]?.prompt||a.prompt||"")}`:(a.type==="wordcloud"&&Array.isArray(a.questions)?`${a.questions.length} soalan · ${esc(a.questions[0]||"")}`:esc(a.prompt))}</div>
    </div>
-   <button class="btn btn-ghost !px-2.5 !py-1.5" onclick="selectShare('${a.id}')"><i class="fas fa-qrcode"></i></button>
+   <button class="btn btn-ghost !px-3 !py-1.5" onclick="selectShare('${a.id}')"><i class="fas fa-qrcode"></i> QR</button>
    <button class="btn btn-danger !px-2.5 !py-1.5" onclick="deleteActivity('${a.id}')"><i class="fas fa-trash"></i></button>
  </div>`).join(""):`<div class="text-xs text-gray-400 py-4">Belum ada aktiviti. Pilih satu jenis aktiviti di atas.</div>`
 }
 window.deleteActivity=id=>{myActivities=myActivities.filter(a=>a.id!==id);persist();renderHost();$("sharePanel").innerHTML=`<div class="text-gray-300 text-4xl mb-3"><i class="fas fa-qrcode"></i></div><p class="text-xs text-gray-400">Pilih aktiviti untuk melihat QR.</p>`};
-window.selectShare=id=>{const a=myActivities.find(x=>x.id===id);if(a)renderShare(a)};
+window.selectShare=id=>{const a=myActivities.find(x=>x.id===id);if(a){renderShare(a);setTimeout(()=>{const el=document.getElementById('sharePanel');if(el)el.scrollIntoView({behavior:'smooth',block:'center'})},120)}};
 function renderShare(obj){
  stopLiveActivity();
  stopLiveWordcloud();
  window.__G360_PREVIEW_OBJ=obj;
  const url=shareUrl(obj);
  $("sharePanel").innerHTML=`
-   <div class="font-semibold text-sm text-navy-800">${esc(obj.title||"Aktiviti")}</div>
+   <div class="text-[10px] uppercase tracking-wider text-pri-600 font-bold mb-1">QR SIAP DIJANA</div><div class="font-semibold text-sm text-navy-800">${esc(obj.title||"Aktiviti")}</div>
    <div class="text-xs text-gray-400 mt-1 mb-4">${obj.type==="wordcloud"&&Array.isArray(obj.questions)?`Satu QR untuk ${obj.questions.length} soalan Word Cloud.`:"QR ini membawa peserta terus ke aktiviti."}</div>
    <div class="qr-wrap mx-auto"><img alt="Kod QR aktiviti" src="${qrSrc(url)}"></div>
    <div class="mt-4 text-left">
      <label class="fl">Pautan Aktiviti</label>
      <textarea class="fi text-[11px] min-h-[70px]" readonly>${esc(url)}</textarea>
    </div>
-   <div class="grid grid-cols-2 gap-2 mt-3">
+   <div class="grid grid-cols-3 gap-2 mt-3">
      <button class="btn btn-ghost" onclick="copyText(${JSON.stringify(url)})"><i class="fas fa-link"></i>Salin</button>
+     <a class="btn btn-ghost" href="${qrSrc(url)}" target="_blank" rel="noopener"><i class="fas fa-qrcode"></i>Buka QR</a>
      <button class="btn btn-pri" onclick="previewCurrentShare()"><i class="fas fa-eye"></i>Pratonton</button>
    </div>
    ${location.protocol==="file:"?`<div class="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5 text-left"><i class="fas fa-triangle-exclamation mr-1"></i>QR untuk peserta di peranti lain hanya akan berfungsi selepas fail HTML ini dihoskan, contohnya di GitHub Pages.</div>`:""}
