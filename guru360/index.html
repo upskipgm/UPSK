@@ -295,9 +295,38 @@ h1,h2,h3,h4{font-family:"Outfit",sans-serif}
       <div><h3 class="font-bold text-lg text-navy-800">Log Masuk Host</h3><p class="text-xs text-gray-400 mt-1">Akses untuk fasilitator / Kaunselor Pendidikan.</p></div>
       <button id="closeLogin" class="btn btn-ghost !px-2.5"><i class="fas fa-xmark"></i></button>
     </div>
-    <div class="mt-4"><label class="fl">PIN Host</label><input id="hostPin" type="password" inputmode="numeric" class="fi" placeholder="••••"></div>
+    <div class="mt-4"><label class="fl">PIN Host</label><input id="hostPin" type="password" inputmode="numeric" autocomplete="off" class="fi" placeholder="Masukkan PIN host"></div>
     <button id="loginHost" class="btn btn-pri w-full mt-4"><i class="fas fa-lock-open"></i>Masuk</button>
-    <p class="text-[11px] text-gray-400 mt-3">PIN demonstrasi: <b>2468</b></p>
+    
+  </div>
+</div>
+
+
+<!-- QR ACTIVITY MODAL -->
+<div id="qrActivityModal" class="modal-bg hidden">
+  <div class="modal-box" style="width:min(620px,94vw)">
+    <div class="flex justify-between items-start gap-3 mb-3">
+      <div>
+        <div class="text-[10px] uppercase tracking-wider text-pri-600 font-bold">QR AKTIVITI GURU360</div>
+        <h3 id="qrModalTitle" class="font-bold text-xl text-navy-800 mt-1">Aktiviti</h3>
+        <p id="qrModalMeta" class="text-xs text-gray-400 mt-1"></p>
+      </div>
+      <button id="closeQrActivityModal" type="button" class="btn btn-ghost !px-2.5"><i class="fas fa-xmark"></i></button>
+    </div>
+    <div class="text-center">
+      <div class="qr-wrap mx-auto" style="width:310px;height:310px;max-width:78vw;max-height:78vw">
+        <img id="qrModalImg" alt="Kod QR aktiviti" style="width:100%;height:100%;object-fit:contain">
+      </div>
+      <div class="mt-4 text-left">
+        <label class="fl">Pautan Aktiviti</label>
+        <textarea id="qrModalUrl" class="fi text-[11px] min-h-[78px]" readonly></textarea>
+      </div>
+      <div class="grid grid-cols-3 gap-2 mt-3">
+        <button id="qrModalCopy" type="button" class="btn btn-ghost"><i class="fas fa-link"></i>Salin</button>
+        <a id="qrModalOpen" class="btn btn-ghost" target="_blank" rel="noopener"><i class="fas fa-qrcode"></i>Buka QR</a>
+        <button id="qrModalPreview" type="button" class="btn btn-pri"><i class="fas fa-eye"></i>Pratonton</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -625,7 +654,7 @@ $("saveBuiltActivity").onclick=()=>{
    obj.prompt=prompt;
    if(!$("optionsBox").classList.contains("hidden"))obj.options=$("activityOptionsInput").value.split("\n").map(x=>x.trim()).filter(Boolean);
  }
- myActivities.unshift(obj);persist();$("builderModal").classList.add("hidden");renderHost();selectShare(obj.id);
+ myActivities.unshift(obj);persist();$("builderModal").classList.add("hidden");renderHost();setTimeout(()=>openQrActivity(obj.id),80);
  toast(builderType==="wordcloud"?`Set Word Cloud ${obj.questions.length} soalan disimpan — QR dipaparkan di bawah`:"Aktiviti disimpan — QR dipaparkan di bawah")
 };
 
@@ -640,12 +669,47 @@ function renderHost(){
      <div class="font-semibold text-sm text-navy-800">${esc(a.title)}</div>
      <div class="text-xs text-gray-400 truncate">${Array.isArray(a.items)?`${a.items.length} soalan/situasi · ${esc(a.items[0]?.prompt||a.prompt||"")}`:(a.type==="wordcloud"&&Array.isArray(a.questions)?`${a.questions.length} soalan · ${esc(a.questions[0]||"")}`:esc(a.prompt))}</div>
    </div>
-   <button class="btn btn-ghost !px-3 !py-1.5" onclick="selectShare('${a.id}')"><i class="fas fa-qrcode"></i> QR</button>
-   <button class="btn btn-danger !px-2.5 !py-1.5" onclick="deleteActivity('${a.id}')"><i class="fas fa-trash"></i></button>
- </div>`).join(""):`<div class="text-xs text-gray-400 py-4">Belum ada aktiviti. Pilih satu jenis aktiviti di atas.</div>`
+   <button type="button" class="btn btn-ghost !px-3 !py-1.5 g360-qr-btn" data-id="${esc(a.id)}" title="Paparkan QR"><i class="fas fa-qrcode"></i> QR</button>
+   <button type="button" class="btn btn-danger !px-2.5 !py-1.5 g360-delete-btn" data-id="${esc(a.id)}" title="Padam aktiviti"><i class="fas fa-trash"></i></button>
+ </div>`).join(""):`<div class="text-xs text-gray-400 py-4">Belum ada aktiviti. Pilih satu jenis aktiviti di atas.</div>`;
+ // Bind secara programatik supaya butang QR tetap berfungsi walaupun inline onclick disekat oleh pelayan/CSP.
+ $("myActivities").querySelectorAll(".g360-qr-btn").forEach(btn=>{
+   btn.addEventListener("click",()=>openQrActivity(btn.dataset.id));
+ });
+ $("myActivities").querySelectorAll(".g360-delete-btn").forEach(btn=>{
+   btn.addEventListener("click",()=>deleteActivity(btn.dataset.id));
+ });
 }
+
+window.openQrActivity=id=>{
+ const a=myActivities.find(x=>String(x.id)===String(id));
+ if(!a){toast("Aktiviti tidak ditemui");return}
+ window.__G360_PREVIEW_OBJ=a;
+ const url=shareUrl(a);
+
+ // Kemaskini panel host
+ try{renderShare(a)}catch(err){console.error("renderShare:",err)}
+
+ // Paparkan modal QR serta-merta
+ $("qrModalTitle").textContent=a.title||"Aktiviti Guru360";
+ $("qrModalMeta").textContent=(a.type==="wordcloud"&&Array.isArray(a.questions))
+   ? `Satu QR untuk ${a.questions.length} soalan.`
+   : (Array.isArray(a.items)?`${a.items.length} soalan/situasi dalam satu QR.`:"Peserta terus masuk ke aktiviti ini.");
+ $("qrModalImg").src=qrSrc(url);
+ $("qrModalUrl").value=url;
+ $("qrModalOpen").href=qrSrc(url);
+ $("qrActivityModal").classList.remove("hidden");
+ $("qrModalCopy").onclick=()=>copyText(url);
+ $("qrModalPreview").onclick=()=>previewCurrentShare();
+};
+
+$("closeQrActivityModal").onclick=()=>$("qrActivityModal").classList.add("hidden");
+$("qrActivityModal").addEventListener("click",e=>{
+ if(e.target===$("qrActivityModal"))$("qrActivityModal").classList.add("hidden");
+});
+
 window.deleteActivity=id=>{myActivities=myActivities.filter(a=>a.id!==id);persist();renderHost();$("sharePanel").innerHTML=`<div class="text-gray-300 text-4xl mb-3"><i class="fas fa-qrcode"></i></div><p class="text-xs text-gray-400">Pilih aktiviti untuk melihat QR.</p>`};
-window.selectShare=id=>{const a=myActivities.find(x=>x.id===id);if(a){renderShare(a);setTimeout(()=>{const el=document.getElementById('sharePanel');if(el)el.scrollIntoView({behavior:'smooth',block:'center'})},120)}};
+window.selectShare=id=>openQrActivity(id);
 function renderShare(obj){
  stopLiveActivity();
  stopLiveWordcloud();
