@@ -260,7 +260,7 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
       IPH:"IPH", IPGKI:"IPH", I:"IPH", IPOH:"IPH", KIPOH:"IPH",
       PR:"PR", PL:"PR", IPGKPR:"PR", KPLS:"PR",
       KT:"KT", IPGKKT:"KT", KENT:"KT",
-      KG:"KG", IPGKKG:"KG", KENINGAU:"KG", KKNG:"KG",
+      KG:"KG", IPGKKG:"KG", KENINGAU:"KG", KKNG:"KG", KN:"KG",
       GYA:"GYA", IPGKGY:"GYA", GY:"GYA", GAYA:"GYA",
       TW:"TW", IPGKTW:"TW", TAWAU:"TW",
       BL:"BL", IPGKBL:"BL", KBL:"BL",
@@ -966,7 +966,235 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
       deletePermohonan: async (docId) => {
         await deleteDoc(doc(db, "permohonan_peruntukan", docId));
       },
-      // ── Seed semua pengguna demo ke Firebase ──
+
+            // ── Kes Kewangan Firestore CRUD ──
+      // Koleksi ini menyimpan rekod staf/klien berkaitan isu kewangan
+      // (keterhutangan, potongan gaji, simpanan).
+      // Setiap rekod menggunakan noGaji/noKp sebagai docId (stabil & unik).
+      // Skop kampus: kodKampus wajib ada untuk security rules per-kampus.
+      listKesKewangan: async (kampusFilter) => {
+        const kod = canonicalKodKampus(kampusFilter);
+        if(kod && kod !== "IPGM"){
+          const exact = await getDocs(query(collection(db, "kes_kewangan"), where("kodKampus", "==", kod)));
+          if(!exact.empty) return exact.docs.map(d => ({ _docId:d.id, ...d.data() }));
+        }
+        const PAGE_SIZE = 400;
+        let allDocs = [], lastDoc = null, page = 0;
+        while (true) {
+          page++;
+          const q = lastDoc
+            ? query(collection(db, "kes_kewangan"), startAfter(lastDoc), limit(PAGE_SIZE))
+            : query(collection(db, "kes_kewangan"), limit(PAGE_SIZE));
+          const snap = await getDocs(q);
+          if (snap.empty) break;
+          allDocs = allDocs.concat(snap.docs.map(d => ({ _docId: d.id, ...d.data() })));
+          lastDoc = snap.docs[snap.docs.length - 1];
+          if (snap.docs.length < PAGE_SIZE) break;
+        }
+        console.log(`[KES_KEWANGAN] Total dimuatkan: ${allDocs.length} rekod`);
+        return allDocs;
+      },
+      saveKesKewanganBatch: async (records, adminUid, onProgress) => {
+        const BATCH_LIMIT = 499, DELAY_MS = 300, MAX_RETRY = 3;
+        const meta = { dikemasKiniOleh: adminUid || null, dikemasKiniPada: serverTimestamp() };
+        let totalWritten = 0;
+        for (let i = 0; i < records.length; i += BATCH_LIMIT) {
+          const chunk = records.slice(i, i + BATCH_LIMIT);
+          let success = false;
+          for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            try {
+              let batch = writeBatch(db);
+              for (let j = 0; j < chunk.length; j++) {
+                const { _docId, ...data } = chunk[j];
+                const docId = String(_docId || data.noGaji || data.noKp || "").trim()
+                  || `kes_kewangan_${String(i+j).padStart(6,"0")}_${Date.now()}_${j}`;
+                batch.set(doc(db, "kes_kewangan", docId), { ...withCanonicalKampus(data), ...meta });
+              }
+              await batch.commit();
+              totalWritten += chunk.length;
+              if (typeof onProgress === 'function') onProgress(totalWritten, records.length);
+              success = true; break;
+            } catch (e) {
+              if (attempt < MAX_RETRY) await new Promise(r => setTimeout(r, DELAY_MS * attempt * 2));
+              else throw e;
+            }
+          }
+          if (success && i + BATCH_LIMIT < records.length) await new Promise(r => setTimeout(r, DELAY_MS));
+        }
+        return totalWritten;
+      },
+      deleteKesKewangan: async (docId) => {
+        await deleteDoc(doc(db, "kes_kewangan", docId));
+      },
+      clearKesKewanganByKampus: async (kodKampus, adminUid) => {
+        const kod = canonicalKodKampus(kodKampus);
+        if(!kod) throw new Error("Kod kampus diperlukan untuk clear");
+        const snap = await getDocs(query(collection(db, "kes_kewangan"), where("kodKampus", "==", kod)));
+        let totalDeleted = 0;
+        for (let i = 0; i < snap.docs.length; i += 499) {
+          const batch = writeBatch(db);
+          snap.docs.slice(i, i + 499).forEach(d => batch.delete(d.ref));
+          await batch.commit();
+          totalDeleted += Math.min(499, snap.docs.length - i);
+        }
+        return totalDeleted;
+      },
+      // ── Update intervensi untuk rekod tunggal (shared across 3 collections) ──
+      updateKesKewangan: async (tabId, docId, updateData, adminUid) => {
+        const collName = tabId === "pool" ? "kes_kewangan_pool"
+                       : tabId === "prestasi" ? "kes_kewangan_prestasi"
+                       : "kes_kewangan";
+        await updateDoc(doc(db, collName, docId), {
+          ...updateData,
+          intervensiKemasKini: serverTimestamp(),
+          dikemasKiniOleh: adminUid || null,
+          dikemasKiniPada: serverTimestamp()
+        });
+      },
+      deleteKesKewanganRecord: async (tabId, docId) => {
+        const collName = tabId === "pool" ? "kes_kewangan_pool"
+                       : tabId === "prestasi" ? "kes_kewangan_prestasi"
+                       : "kes_kewangan";
+        await deleteDoc(doc(db, collName, docId));
+      },
+
+      // ── Kes Kewangan POOL AKP Firestore CRUD ──
+      // Koleksi untuk staf AKP dalam "pool" isu jenayah/kesihatan.
+      // kodKampus di-resolve dari alamat teks (ALAMAT ASAL).
+      listKesKewanganPool: async (kampusFilter) => {
+        const kod = canonicalKodKampus(kampusFilter);
+        if(kod && kod !== "IPGM"){
+          const exact = await getDocs(query(collection(db, "kes_kewangan_pool"), where("kodKampus", "==", kod)));
+          if(!exact.empty) return exact.docs.map(d => ({ _docId:d.id, ...d.data() }));
+        }
+        const PAGE_SIZE = 400;
+        let allDocs = [], lastDoc = null, page = 0;
+        while (true) {
+          page++;
+          const q = lastDoc
+            ? query(collection(db, "kes_kewangan_pool"), startAfter(lastDoc), limit(PAGE_SIZE))
+            : query(collection(db, "kes_kewangan_pool"), limit(PAGE_SIZE));
+          const snap = await getDocs(q);
+          if (snap.empty) break;
+          allDocs = allDocs.concat(snap.docs.map(d => ({ _docId: d.id, ...d.data() })));
+          lastDoc = snap.docs[snap.docs.length - 1];
+          if (snap.docs.length < PAGE_SIZE) break;
+        }
+        console.log(`[KES_KEWANGAN_POOL] Total dimuatkan: ${allDocs.length} rekod`);
+        return allDocs;
+      },
+      saveKesKewanganPoolBatch: async (records, adminUid, onProgress) => {
+        const BATCH_LIMIT = 499, DELAY_MS = 300, MAX_RETRY = 3;
+        const meta = { dikemasKiniOleh: adminUid || null, dikemasKiniPada: serverTimestamp() };
+        let totalWritten = 0;
+        for (let i = 0; i < records.length; i += BATCH_LIMIT) {
+          const chunk = records.slice(i, i + BATCH_LIMIT);
+          let success = false;
+          for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            try {
+              let batch = writeBatch(db);
+              for (let j = 0; j < chunk.length; j++) {
+                const { _docId, ...data } = chunk[j];
+                const docId = String(_docId || data.noKp || "").trim()
+                  || `pool_${String(i+j).padStart(6,"0")}_${Date.now()}_${j}`;
+                batch.set(doc(db, "kes_kewangan_pool", docId), { ...withCanonicalKampus(data), ...meta });
+              }
+              await batch.commit();
+              totalWritten += chunk.length;
+              if (typeof onProgress === 'function') onProgress(totalWritten, records.length);
+              success = true; break;
+            } catch (e) {
+              if (attempt < MAX_RETRY) await new Promise(r => setTimeout(r, DELAY_MS * attempt * 2));
+              else throw e;
+            }
+          }
+          if (success && i + BATCH_LIMIT < records.length) await new Promise(r => setTimeout(r, DELAY_MS));
+        }
+        return totalWritten;
+      },
+      clearKesKewanganPoolByKampus: async (kodKampus, adminUid) => {
+        const kod = canonicalKodKampus(kodKampus);
+        if(!kod) throw new Error("Kod kampus diperlukan");
+        const snap = await getDocs(query(collection(db, "kes_kewangan_pool"), where("kodKampus", "==", kod)));
+        let totalDeleted = 0;
+        for (let i = 0; i < snap.docs.length; i += 499) {
+          const batch = writeBatch(db);
+          snap.docs.slice(i, i + 499).forEach(d => batch.delete(d.ref));
+          await batch.commit();
+          totalDeleted += Math.min(499, snap.docs.length - i);
+        }
+        return totalDeleted;
+      },
+
+      // ── Kes Kewangan PRESTASI SEDERHANA Firestore CRUD ──
+      // Koleksi untuk staf dengan skor prestasi 60-74.99%.
+      // kodKampus di-resolve dari BuLevel5 (hierarki organisasi).
+      listKesKewanganPrestasi: async (kampusFilter) => {
+        const kod = canonicalKodKampus(kampusFilter);
+        if(kod && kod !== "IPGM"){
+          const exact = await getDocs(query(collection(db, "kes_kewangan_prestasi"), where("kodKampus", "==", kod)));
+          if(!exact.empty) return exact.docs.map(d => ({ _docId:d.id, ...d.data() }));
+        }
+        const PAGE_SIZE = 400;
+        let allDocs = [], lastDoc = null, page = 0;
+        while (true) {
+          page++;
+          const q = lastDoc
+            ? query(collection(db, "kes_kewangan_prestasi"), startAfter(lastDoc), limit(PAGE_SIZE))
+            : query(collection(db, "kes_kewangan_prestasi"), limit(PAGE_SIZE));
+          const snap = await getDocs(q);
+          if (snap.empty) break;
+          allDocs = allDocs.concat(snap.docs.map(d => ({ _docId: d.id, ...d.data() })));
+          lastDoc = snap.docs[snap.docs.length - 1];
+          if (snap.docs.length < PAGE_SIZE) break;
+        }
+        console.log(`[KES_KEWANGAN_PRESTASI] Total dimuatkan: ${allDocs.length} rekod`);
+        return allDocs;
+      },
+      saveKesKewanganPrestasiBatch: async (records, adminUid, onProgress) => {
+        const BATCH_LIMIT = 499, DELAY_MS = 300, MAX_RETRY = 3;
+        const meta = { dikemasKiniOleh: adminUid || null, dikemasKiniPada: serverTimestamp() };
+        let totalWritten = 0;
+        for (let i = 0; i < records.length; i += BATCH_LIMIT) {
+          const chunk = records.slice(i, i + BATCH_LIMIT);
+          let success = false;
+          for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            try {
+              let batch = writeBatch(db);
+              for (let j = 0; j < chunk.length; j++) {
+                const { _docId, ...data } = chunk[j];
+                const docId = String(_docId || data.noKp || "").trim()
+                  || `prestasi_${String(i+j).padStart(6,"0")}_${Date.now()}_${j}`;
+                batch.set(doc(db, "kes_kewangan_prestasi", docId), { ...withCanonicalKampus(data), ...meta });
+              }
+              await batch.commit();
+              totalWritten += chunk.length;
+              if (typeof onProgress === 'function') onProgress(totalWritten, records.length);
+              success = true; break;
+            } catch (e) {
+              if (attempt < MAX_RETRY) await new Promise(r => setTimeout(r, DELAY_MS * attempt * 2));
+              else throw e;
+            }
+          }
+          if (success && i + BATCH_LIMIT < records.length) await new Promise(r => setTimeout(r, DELAY_MS));
+        }
+        return totalWritten;
+      },
+      clearKesKewanganPrestasiByKampus: async (kodKampus, adminUid) => {
+        const kod = canonicalKodKampus(kodKampus);
+        if(!kod) throw new Error("Kod kampus diperlukan");
+        const snap = await getDocs(query(collection(db, "kes_kewangan_prestasi"), where("kodKampus", "==", kod)));
+        let totalDeleted = 0;
+        for (let i = 0; i < snap.docs.length; i += 499) {
+          const batch = writeBatch(db);
+          snap.docs.slice(i, i + 499).forEach(d => batch.delete(d.ref));
+          await batch.commit();
+          totalDeleted += Math.min(499, snap.docs.length - i);
+        }
+        return totalDeleted;
+      },
+
+      // ── Seed semua pengguna demo ke Firebase ──// ── Seed semua pengguna demo ke Firebase ──
       seedAllUsers: async (adminUid, onProgress) => {
         if (!window.DEMO_ACCOUNTS) return 0;
         const DFLT_PW = window.DFLT_KATA_LALUAN || "666444";
@@ -9706,7 +9934,31 @@ function readExcelFile(file){
         const wb = XLSX.read(e.target.result, { type: "array" });
         const result = {};
         for(const name of wb.SheetNames){
-          result[name] = XLSX.utils.sheet_to_json(wb.Sheets[name]);
+          const ws = wb.Sheets[name];
+          // ── Auto-detect title row ──
+          // Sesetengah sheet Excel ada "TITLE ROW" di Row 1 (cell A1 sahaja
+          // berisi, contoh "DATA ANGGOTA KUMPULAN PELAKSANAAN..."), manakala
+          // actual headers berada di Row 2. Jika kita guna default sheet_to_json,
+          // SheetJS akan anggap Row 1 sebagai header → semua data tak dapat di-parse.
+          //
+          // Heuristik: jika Row 1 ada ≤2 cell berisi DAN Row 2 ada ≥3 cell berisi,
+          // skip Row 1 dan guna Row 2 sebagai header.
+          let headerRowOffset = 0;
+          try {
+            const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: "" });
+            if(aoa.length >= 2){
+              const filledCount = (row) => (row || []).filter(c => String(c || "").trim() !== "").length;
+              const row1Filled = filledCount(aoa[0]);
+              const row2Filled = filledCount(aoa[1]);
+              if(row1Filled <= 2 && row2Filled >= 3){
+                headerRowOffset = 1;  // skip title row, guna Row 2 sebagai header
+                console.log(`[EXCEL] Sheet "${name}": title row detected (Row 1: ${row1Filled} cells, Row 2: ${row2Filled} cells) — using Row 2 as header`);
+              }
+            }
+          } catch(e){ console.warn(`[EXCEL] Title row detection failed for "${name}":`, e); }
+          // Parse dengan header dari Row (1 + headerRowOffset)
+          result[name] = XLSX.utils.sheet_to_json(ws, { range: headerRowOffset, defval: "" });
+          console.log(`[EXCEL] Sheet "${name}": ${(result[name] || []).length} rows parsed (headerRowOffset=${headerRowOffset})`);
         }
         resolve(result);
       } catch(err){ reject(err); }
@@ -11541,6 +11793,1258 @@ function programStat(data){
   };
 }
 
+
+// ════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════
+// DATA KES KEWANGAN — Firestore-backed, per-kampus access control
+// Ciri v2: 3 tabs (Keterhutangan | Pool AKP | Prestasi Sederhana)
+//          + Sistem intervensi per rekod (modal form)
+// ════════════════════════════════════════════════════════════════════════
+
+window.__KEWANGAN_ACTIVE_TAB = "keterhutangan";
+window.__KEWANGAN_CACHE = { keterhutangan: [], pool: [], prestasi: [] };
+window.__KEWANGAN_SCOPE = null;
+
+const KEWANGAN_TABS = [
+  { id: "keterhutangan", label: "Kes Keterhutangan",   icon: "fa-hand-holding-dollar", color: "#0E7C61", coll: "kes_kewangan" },
+  { id: "pool",          label: "Pool AKP",             icon: "fa-users-slash",         color: "#C47428", coll: "kes_kewangan_pool" },
+  { id: "prestasi",      label: "Prestasi Sederhana",   icon: "fa-chart-line",           color: "#3D5490", coll: "kes_kewangan_prestasi" },
+];
+
+// ── PARSER 1: Keterhutangan CSV (index-based) ──
+function parseKewanganRow(row){
+  const g = (i) => (row[i]||"").toString().trim();
+  const n = (i) => { const v=parseFloat((row[i]||"").toString().replace(/,/g,"").trim()); return isNaN(v)?0:v; };
+  const d = (i) => {
+    const v = g(i);
+    if(!v) return null;
+    if(/^\d+$/.test(v) && parseInt(v) > 30000 && parseInt(v) < 60000){
+      return new Date(Date.UTC(1899,11,30) + parseInt(v)*86400000).toISOString().slice(0,10);
+    }
+    const dt = new Date(v);
+    return isNaN(dt.getTime()) ? null : dt.toISOString().slice(0,10);
+  };
+  return {
+    bil: n(0), kodAo: g(1), namaAo: g(2), ptj: g(3), negeriPtj: g(4), namaPtj: g(5),
+    kodKampus: g(6).toUpperCase(), pusatBayar: g(7), namaPusatBayar: g(8),
+    noKp: g(9), noGaji: g(10), nama: g(11), jawatan: g(12), gredJawatan: g(13),
+    jenisSkim: g(14), jantina: g(15), bangsa: g(16), emel: g(17),
+    tarikhBersara: d(18), tarikhLahir: d(19),
+    jumlahPendapatan: n(20), jumlahPotongan: n(21), peratusGajiBersih: n(22), jumlahSimpanan: n(23),
+  };
+}
+
+// ── PARSER 2: Keterhutangan XLSX (header-key based) ──
+function parseKewanganXlsxRow(row){
+  const find = (keys) => {
+    for(const k of Object.keys(row)){
+      const norm = k.toString().trim().toLowerCase().replace(/\s+/g," ").replace(/\n/g," ");
+      for(const t of keys){ if(norm === t) return row[k]; }
+    }
+    return "";
+  };
+  const g = (keys) => (find(keys)||"").toString().trim();
+  const n = (keys) => { const v=parseFloat((find(keys)||"").toString().replace(/,/g,"").trim()); return isNaN(v)?0:v; };
+  const d = (keys) => {
+    const v = g(keys);
+    if(!v) return null;
+    if(/^\d+$/.test(v) && parseInt(v) > 30000 && parseInt(v) < 60000){
+      return new Date(Date.UTC(1899,11,30) + parseInt(v)*86400000).toISOString().slice(0,10);
+    }
+    const dt = new Date(v);
+    return isNaN(dt.getTime()) ? null : dt.toISOString().slice(0,10);
+  };
+  return {
+    bil: n(["bil"]), kodAo: g(["kod ao","kodao"]), namaAo: g(["nama ao"]),
+    ptj: g(["ptj"]), negeriPtj: g(["negeri"]), namaPtj: g(["nama ptj"]),
+    kodKampus: g(["kodkampus","kod kampus"]).toUpperCase(),
+    pusatBayar: g(["pusat pembayar","pusat bayar"]),
+    namaPusatBayar: g(["nama pusat pembayar","nama pusat bayar"]),
+    noKp: g(["no kad pengenalan","no kp","nokp","kad pengenalan"]),
+    noGaji: g(["no gaji","nogaji"]), nama: g(["nama pegawai","nama"]),
+    jawatan: g(["jawatan"]), gredJawatan: g(["gred jawatan","gred"]),
+    jenisSkim: g(["jenis skim","jenis skim (ppp, akp, pegawai gunasama)"]),
+    jantina: g(["jantina"]), bangsa: g(["bangsa"]), emel: g(["alamat emel","emel","email"]),
+    tarikhBersara: d(["tarikh bersara"]), tarikhLahir: d(["tarikh lahir"]),
+    jumlahPendapatan: n(["jumlah pendapatan"]),
+    jumlahPotongan: n(["jumlah potongan (rm)","jumlah potongan"]),
+    peratusGajiBersih: n(["% gaji bersih","peratus gaji bersih"]),
+    jumlahSimpanan: n(["jumlah simpanan"]),
+  };
+}
+
+// ── Helper: Resolve kodKampus dari mana-mana teks (alamat, nama institusi) ──
+// Lebih robust daripada canonicalKodKampusGlobal kerana:
+// 1. TIDAK truncate prefix "IPG KAMPUS"
+// 2. Normalize "IPGM KAMPUS" → "IPG KAMPUS" supaya match dengan nama MASTER_KAMPUS
+// 3. Matching dua-arah: upper.includes(nama) ATAU nama.includes(upper)
+//    (untuk sokong stripped text yang lebih pendek dari nama penuh)
+// 4. EXCLUDE IPGM jika ada kampus spesifik yang match
+function resolveKampusFromText(text){
+  if(!text) return "";
+  let s = String(text).toUpperCase().trim();
+  // Normalize: "IPGM KAMPUS XXX" → "IPG KAMPUS XXX" (buang 'M' yang redundant)
+  s = s.replace(/\bIPGM\s+KAMPUS/g, "IPG KAMPUS");
+  // Buang semua non-alphanumeric (spaces, commas, dashes)
+  const upper = s.replace(/[^A-Z0-9]/g, "");
+  if(!upper || upper.length < 5) return "";
+  // Cari semua kampus yang nama ada dalam text ATAU text ada dalam nama
+  // (Direction 2 untuk sokong stripped text yang lebih pendek)
+  const matches = MASTER_KAMPUS.filter(k => {
+    const nama = k.nama.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if(!nama || nama.length < 8) return false;
+    // Direction 1: upper mengandungi nama kampus (match standard)
+    if(upper.includes(nama)) return true;
+    // Direction 2: nama kampus mengandungi upper (untuk stripped text)
+    // Require minimum length 8 untuk halang false positive
+    if(upper.length >= 8 && nama.includes(upper)) return true;
+    return false;
+  });
+  if(matches.length === 0) return "";
+  // ── EXCLUDE IPGM jika ada kampus spesifik yang match ──
+  // Contoh: "INSTITUT PENDIDIKAN GURU MALAYSIA KAMPUS BAHASA MELAYU"
+  // akan match kedua-dua IPGM dan BM. Kerana kita nak kampus spesifik (BM),
+  // exclude IPGM dari pilihan jika ada match lain.
+  const nonIpgmMatches = matches.filter(k => k.id !== "IPGM");
+  const candidates = nonIpgmMatches.length > 0 ? nonIpgmMatches : matches;
+  // Pilih yang paling panjang (paling spesifik)
+  candidates.sort((a,b) => b.nama.length - a.nama.length);
+  return candidates[0].id;
+}
+
+// ── PARSER 3: Pool AKP XLSX (auto-resolve kodKampus dari ALAMAT ASAL) ──
+function parsePoolAkpXlsxRow(row){
+  // find() cuba padan exact match dahulu, kemudian partial match sebagai fallback
+  const find = (keys) => {
+    // Pass 1: exact match (normalized)
+    for(const k of Object.keys(row)){
+      const norm = k.toString().trim().toLowerCase().replace(/\s+/g," ").replace(/\n/g," ");
+      for(const t of keys){ if(norm === t) return row[k]; }
+    }
+    // Pass 2: partial match — header contains any of the target keys
+    for(const k of Object.keys(row)){
+      const norm = k.toString().trim().toLowerCase().replace(/\s+/g," ").replace(/\n/g," ");
+      for(const t of keys){
+        if(norm.length > 0 && (norm.includes(t) || t.includes(norm))){
+          return row[k];
+        }
+      }
+    }
+    return "";
+  };
+  const g = (keys) => (find(keys)||"").toString().trim();
+  const n = (keys) => { const v=parseFloat((find(keys)||"").toString().replace(/,/g,"").trim()); return isNaN(v)?0:v; };
+  // Cuba pelbagai nama column untuk alamat
+  const alamatAsal = g(["alamat asal","alamat asal 1","alamat 1","asal"]);
+  const alamatSemasa = g(["alamat semasa","alamat semasa 1","alamat 2","semasa"]);
+  // Resolve kodKampus dari alamat menggunakan helper baru yang lebih robust
+  // (canonicalKodKampusGlobal truncate prefix "IPG KAMPUS" → compact gagal match)
+  const _kodKampus = resolveKampusFromText(alamatAsal) || resolveKampusFromText(alamatSemasa);
+  if(!_kodKampus){
+    console.warn(`[POOL PARSER] kodKampus tidak resolve untuk row: nama="${g(["nama"])}", alamatAsal="${alamatAsal}"`);
+  }
+  return {
+    bil: n(["bil"]), nama: g(["nama","nama pegawai","nama staf","nama pekerja"]),
+    noKp: g(["no kp","no kad pengenalan","nokp","kad pengenalan","no. kp","ic","ic number"]),
+    jawatan: g(["jawatan","jawatan sebenar","nama jawatan"]),
+    alamatAsal, negeri1: g(["negeri 1","negeri asal","negeri asal 1"]),
+    alamatSemasa, negeri2: g(["negeri 2","negeri semasa","negeri semasa 1"]),
+    tarikhMasuk: g(["tarikh masuk jawatan kumpulan","tarikh masuk","tarikh masuk jawatan"]),
+    kategori: g(["kategori","jenis kes","kategori kes"]),
+    kodKampus: _kodKampus,
+  };
+}
+
+// ── PARSER 4: Prestasi Sederhana XLSX (auto-resolve kodKampus dari BuLevel) ──
+function parsePrestasiSederhanaXlsxRow(row){
+  // find() cuba exact match dahulu, kemudian partial match
+  const find = (keys) => {
+    // Pass 1: exact match (normalized)
+    for(const k of Object.keys(row)){
+      const norm = k.toString().trim().toLowerCase().replace(/\s+/g," ").replace(/\n/g," ");
+      for(const t of keys){ if(norm === t) return row[k]; }
+    }
+    // Pass 2: partial match
+    for(const k of Object.keys(row)){
+      const norm = k.toString().trim().toLowerCase().replace(/\s+/g," ").replace(/\n/g," ");
+      for(const t of keys){
+        if(norm.length > 0 && (norm.includes(t) || t.includes(norm))){
+          return row[k];
+        }
+      }
+    }
+    return "";
+  };
+  const g = (keys) => (find(keys)||"").toString().trim();
+  const n = (keys) => {
+    const v = (find(keys)||"").toString().trim();
+    if(v === "" || v.toLowerCase() === "null") return 0;
+    const p = parseFloat(v.replace(/,/g,""));
+    return isNaN(p)?0:p;
+  };
+  const buLevel5 = g(["bulevel5","bu level5","bu level 5"]);
+  const buLevel4 = g(["bulevel4","bu level4","bu level 4"]);
+  const buLevel3 = g(["bulevel3","bu level3","bu level 3"]);
+  const buLevel2 = g(["bulevel2","bu level2","bu level 2"]);
+
+  // ── Strip prefix "INSTITUT PENDIDIKAN GURU MALAYSIA" ──
+  // BuLevel biasanya berformat: "INSTITUT PENDIDIKAN GURU MALAYSIA KAMPUS XXX"
+  // Kita strip prefix ini supaya resolveKampusFromText boleh match nama kampus
+  // spesifik (e.g., "IPG Kampus Bahasa Melayu") yang ada prefix "IPG KAMPUS".
+  // Untuk staf IPGM HQ sebenar, BuLevel5 = "INSTITUT PENDIDIKAN GURU MALAYSIA"
+  // (tiada "KAMPUS" suffix) → stripped = "" → fallback ke BuLevel asal.
+  const IPGM_PREFIX_REGEX = /INSTITUT\s+PENDIDIKAN\s+GURU\s+MALAYSIA\s*/i;
+  const stripIpgm = (s) => (s || "").toString().replace(IPGM_PREFIX_REGEX, "").trim();
+
+  // Pass 1: BuLevel yang dah di-strip prefix IPGM (untuk cari kampus spesifik)
+  // Pass 2: Fallback ke BuLevel asal (untuk IPGM HQ sebenar)
+  const _kodKampus = resolveKampusFromText(stripIpgm(buLevel5))
+                  || resolveKampusFromText(stripIpgm(buLevel4))
+                  || resolveKampusFromText(stripIpgm(buLevel3))
+                  || resolveKampusFromText(stripIpgm(buLevel2))
+                  || resolveKampusFromText(buLevel5)
+                  || resolveKampusFromText(buLevel4)
+                  || resolveKampusFromText(buLevel3)
+                  || resolveKampusFromText(buLevel2);
+
+  if(!_kodKampus){
+    console.warn(`[PRESTASI PARSER] kodKampus tidak resolve untuk row: nama="${g(["nama pemilik kompetensi","nama"])}", BuLevel5="${buLevel5}", stripped="${stripIpgm(buLevel5)}"`);
+  } else {
+    console.log(`[PRESTASI PARSER] kodKampus="${_kodKampus}" resolved dari BuLevel5="${buLevel5}"`);
+  }
+  return {
+    buLevel1: g(["bulevel1","bu level1"]), buLevel2,
+    buLevel3, buLevel4, buLevel5,
+    buLevel6: g(["bulevel6","bu level6"]), buLevel7: g(["bulevel7","bu level7"]),
+    buLevel8: g(["bulevel8","bu level8"]), buLevel9: g(["bulevel9","bu level9"]),
+    nama: g(["nama pemilik kompetensi","nama","nama pegawai","nama staf"]),
+    noKp: g(["no kad pengenalan","no kp","nokp","kad pengenalan","no. kp","ic"]),
+    skimPerkhidmatan: g(["skim perkhidmatan","skim"]),
+    jawatanSebenar: g(["jawatan sebenar","jawatan"]),
+    namaJawatanSebenar: g(["nama jawatan sebenar","nama jawatan"]),
+    gredGaji: g(["gred gaji","gred"]),
+    skuWajaran: n(["sku_wajaran","sku wajaran","skuwajaran"]),
+    pnsWajaran: n(["pns_wajaran","pns wajaran","pnswajaran"]),
+    nsWajaran: n(["ns_wajaran","ns wajaran","nswajaran"]),
+    ktlWajaran: n(["ktl_wajaran","ktl wajaran","ktlwajaran"]),
+    kfWajaran: n(["kf_wajaran","kf wajaran","kfwajaran"]),
+    myPerformancePms: n(["myperformance_pms","my performance pms","myperformance","my performance","pms"]),
+    kodKampus: _kodKampus,
+  };
+}
+
+// ── STATS untuk Keterhutangan ──
+function kewanganStat(data){
+  const today = new Date();
+  const twoYearsLater = new Date(today.getFullYear() + 2, today.getMonth(), today.getDate());
+  const sum = (key) => data.reduce((s,d)=>s+(parseFloat(d[key])||0),0);
+  let stafAktif = 0, hampirBersara = 0, telahBersara = 0, perluDiperhatikan = 0;
+  data.forEach(d => {
+    const t = d.tarikhBersara ? new Date(d.tarikhBersara) : null;
+    if (t) {
+      if (t < today) telahBersara++;
+      else { stafAktif++; if (t < twoYearsLater) hampirBersara++; }
+    } else stafAktif++;
+    if ((parseFloat(d.peratusGajiBersih) || 0) < 30) perluDiperhatikan++;
+  });
+  return {
+    n: data.length, jumlahStaf: data.length, stafAktif, hampirBersara,
+    telahBersara, perluDiperhatikan,
+    jumlahPendapatan: sum("jumlahPendapatan"), jumlahPotongan: sum("jumlahPotongan"),
+    jumlahSimpanan: sum("jumlahSimpanan"),
+  };
+}
+
+// ── RENDER HALAMAN UTAMA (dengan tab navigation) ──
+async function renderKesKewanganPage(c, skop){
+  const kampusTxt = skop ? kNama(skop) : "Semua Kampus IPG Malaysia";
+  window.__KEWANGAN_SCOPE = skop;
+  if(!window.__KEWANGAN_ACTIVE_TAB) window.__KEWANGAN_ACTIVE_TAB = "keterhutangan";
+
+  c.innerHTML = `
+    <div class="afu bg-gradient-to-br from-navy-800 to-pri-700 rounded-xl p-5 mb-5 text-white">
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-white/15 flex items-center justify-center text-xl">
+          <i class="fas fa-hand-holding-dollar"></i>
+        </div>
+        <div>
+          <div class="font-display font-800 text-xl">Data Kes Kewangan</div>
+          <div class="text-white/60 text-sm">${kampusTxt}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4"><div class="card-body">
+      <p class="text-sm text-gray-500">
+        Pengurusan rekod staf berkaitan isu kewangan &mdash; <b>keterhutangan</b>, <b>pool AKP</b>,
+        dan <b>prestasi sederhana</b>. Data ditapis mengikut kod kampus pengguna.
+        Setiap rekod menyokong <b>pelaporan intervensi</b> (kemas kini status, jenis bantuan, catatan).
+      </p>
+    </div></div>
+
+    <div style="display:flex;gap:4px;border-bottom:2px solid #E2E8F0;margin-bottom:18px;flex-wrap:wrap;">
+      ${KEWANGAN_TABS.map(t => `
+        <button onclick="switchKewanganTab('${t.id}')"
+          id="kewangan-tab-btn-${t.id}"
+          style="padding:10px 18px;border:none;background:transparent;cursor:pointer;
+                 font-family:'Outfit',sans-serif;font-weight:600;font-size:13px;
+                 color:${window.__KEWANGAN_ACTIVE_TAB===t.id?t.color:'#64748B'};
+                 border-bottom:3px solid ${window.__KEWANGAN_ACTIVE_TAB===t.id?t.color:'transparent'};
+                 margin-bottom:-2px;display:inline-flex;align-items:center;gap:8px;">
+          <i class="fas ${t.icon}"></i> ${t.label}
+          <span id="kewangan-tab-count-${t.id}"
+            style="background:${t.color}20;color:${t.color};padding:1px 8px;border-radius:10px;font-size:11px;font-weight:700;min-width:18px;text-align:center;">—</span>
+        </button>
+      `).join("")}
+    </div>
+
+    <div id="kewangan-tab-content">
+      <div class="text-center py-10">
+        <i class="fas fa-spinner fa-spin text-3xl text-gray-300 mb-3"></i>
+        <div class="text-sm text-gray-400">Memuatkan data...</div>
+      </div>
+    </div>
+  `;
+
+  await loadKewanganTab(window.__KEWANGAN_ACTIVE_TAB);
+}
+
+async function switchKewanganTab(tabId){
+  window.__KEWANGAN_ACTIVE_TAB = tabId;
+  KEWANGAN_TABS.forEach(t => {
+    const btn = document.getElementById(`kewangan-tab-btn-${t.id}`);
+    if(btn){
+      btn.style.color = tabId === t.id ? t.color : '#64748B';
+      btn.style.borderBottom = `3px solid ${tabId === t.id ? t.color : 'transparent'}`;
+    }
+  });
+  const content = document.getElementById('kewangan-tab-content');
+  if(content){
+    content.innerHTML = `<div class="text-center py-10">
+      <i class="fas fa-spinner fa-spin text-3xl text-gray-300 mb-3"></i>
+      <div class="text-sm text-gray-400">Memuatkan data ${tabId}...</div>
+    </div>`;
+  }
+  await loadKewanganTab(tabId);
+}
+
+async function loadKewanganTab(tabId){
+  const skop = window.__KEWANGAN_SCOPE;
+  try {
+    if(!window.MYFB) throw new Error("Firebase belum sedia. Sila log masuk semula.");
+    let data = [];
+    if(tabId === "keterhutangan") data = await window.MYFB.listKesKewangan(skop);
+    else if(tabId === "pool" && typeof window.MYFB.listKesKewanganPool === 'function')
+      data = await window.MYFB.listKesKewanganPool(skop);
+    else if(tabId === "prestasi" && typeof window.MYFB.listKesKewanganPrestasi === 'function')
+      data = await window.MYFB.listKesKewanganPrestasi(skop);
+    window.__KEWANGAN_CACHE[tabId] = data;
+    renderKewanganTabData(tabId, data, skop);
+    updateKewanganTabCounts();
+  } catch(err){
+    console.error("[KES_KEWANGAN] Load error:", err);
+    const content = document.getElementById('kewangan-tab-content');
+    if(content){
+      content.innerHTML = `<div class="text-center py-10">
+        <i class="fas fa-triangle-exclamation text-3xl text-red-300 mb-3"></i>
+        <div class="font-semibold text-red-700">Gagal memuatkan data</div>
+        <div class="text-sm text-gray-400 mt-1">${err.message}</div>
+      </div>`;
+    }
+  }
+}
+
+function updateKewanganTabCounts(){
+  KEWANGAN_TABS.forEach(t => {
+    const el = document.getElementById(`kewangan-tab-count-${t.id}`);
+    if(el){
+      const count = (window.__KEWANGAN_CACHE[t.id] || []).length;
+      el.textContent = count > 0 ? count.toLocaleString("ms-MY") : "0";
+    }
+  });
+}
+
+function renderKewanganTabData(tabId, data, skop){
+  const content = document.getElementById('kewangan-tab-content');
+  if(!content) return;
+  const tab = KEWANGAN_TABS.find(t => t.id === tabId);
+  const date = localStorage.getItem(`csv_kewangan_${tabId}_date`) || "";
+
+  let statsHtml = "", tableHtml = "", desc = "";
+  if(tabId === "keterhutangan"){
+    desc = "Staf dengan rekod keterhutangan, potongan gaji & simpanan. Import dari sheet \"KETERHUTANGAN IPGM_K\".";
+    statsHtml = renderKeterhutanganStats(data);
+    tableHtml = renderKeterhutanganTable(data);
+  } else if(tabId === "pool"){
+    desc = "Staf AKP dalam pool isu jenayah/kesihatan. Import dari sheet \"POOL AKP IPG\". Kod kampus auto-resolve dari alamat.";
+    statsHtml = renderPoolStats(data);
+    tableHtml = renderPoolTable(data);
+  } else if(tabId === "prestasi"){
+    desc = "Staf dengan skor prestasi 60-74.99%. Import dari sheet \"PRESTASI SEDERHANA IPG\". Kod kampus auto-resolve dari hierarki organisasi.";
+    statsHtml = renderPrestasiStats(data);
+    tableHtml = renderPrestasiTable(data);
+  }
+
+  content.innerHTML = `
+    <div class="card mb-4"><div class="card-body">
+      <p class="text-sm text-gray-500">${desc}</p>
+    </div></div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">${statsHtml}</div>
+
+    <div class="card">
+      <div class="card-head" style="flex-wrap:wrap;gap:10px;">
+        <span class="card-title">Rekod ${tab.label}</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto;">
+          <span style="font-size:11px;color:#64748B;display:inline-flex;align-items:center;gap:4px;">
+            <i class="fas fa-cloud" style="color:${tab.color};"></i>
+            ${data.length.toLocaleString("ms-MY")} rekod di Firestore
+            ${date ? `&middot; <i class="fas fa-clock"></i> ${date}` : ''}
+          </span>
+          <label style="background:${tab.color};color:#fff;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+            <i class="fas fa-upload"></i> Muat Naik
+            <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importKewanganFile(this,'${tabId}')">
+          </label>
+          ${isAdmin() ? `
+          <button onclick="clearKesKewanganData('${tabId}')" style="background:#fff;color:#991b1b;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;border:1px solid #fca5a5;cursor:pointer;">
+            <i class="fas fa-trash"></i> Padam
+          </button>` : ``}
+          <button onclick="exportKewanganXlsx('${tabId}')" style="background:#f1f5f9;color:#475569;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;border:1px solid #e2e8f0;cursor:pointer;">
+            <i class="fas fa-file-excel mr-1" style="color:#16A34A;"></i>Export
+          </button>
+        </div>
+      </div>
+      <div class="card-body">${tableHtml}</div>
+    </div>
+  `;
+}
+
+function renderKeterhutanganStats(data){
+  const s = kewanganStat(data);
+  const fmt0 = (v) => (v||0).toLocaleString("ms-MY");
+  const fmtRM = (v) => "RM " + (v||0).toLocaleString("ms-MY",{minimumFractionDigits:0,maximumFractionDigits:0});
+  const cards = [
+    { val: fmt0(s.jumlahStaf), sub: `Pendapatan: ${fmtRM(s.jumlahPendapatan)}` },
+    { val: fmt0(s.stafAktif), sub: `Hampir bersara (<2 thn): ${s.hampirBersara}` },
+    { val: fmt0(s.perluDiperhatikan), sub: `% gaji bersih < 30%` },
+    { val: fmt0(s.telahBersara), sub: `Telah tamat perkhidmatan` },
+  ];
+  const labels = ['Jumlah Staf','Staf Aktif','Perlu Diperhatikan','Telah Bersara'];
+  const colors = ['sc-pri','sc-amb','sc-navy','sc-red'];
+  return cards.map((c,i) => `<div class="stat-card ${colors[i]}">
+    <div class="stat-val">${c.val}</div><div class="stat-lbl">${labels[i]}</div>
+    <div class="stat-sub text-gray-400">${c.sub}</div></div>`).join("");
+}
+
+function renderPoolStats(data){
+  const byKategori = {}, byKampus = {};
+  data.forEach(d => {
+    const k = d.kategori || "Tidak diketahui";
+    byKategori[k] = (byKategori[k]||0)+1;
+    const kp = d.kodKampus || "?";
+    byKampus[kp] = (byKampus[kp]||0)+1;
+  });
+  const jumlahKampus = Object.keys(byKampus).length;
+  const topKategori = Object.entries(byKategori).sort((a,b)=>b[1]-a[1])[0];
+  const fmt = (v) => (v||0).toLocaleString("ms-MY");
+  const cards = [
+    { val: fmt(data.length), sub: `Di ${jumlahKampus} kampus` },
+    { val: fmt(jumlahKampus), sub: `Kampus terlibat` },
+    { val: fmt(Object.keys(byKategori).length), sub: `Kategori isu` },
+    { val: topKategori ? topKategori[1] : 0, sub: topKategori ? `Teratas: ${topKategori[0].slice(0,40)}` : 'Tiada data' },
+  ];
+  const labels = ['Jumlah Staf','Kampus Terlibat','Kategori Isu','Bilangan Tertinggi'];
+  const colors = ['sc-pri','sc-amb','sc-navy','sc-red'];
+  return cards.map((c,i) => `<div class="stat-card ${colors[i]}">
+    <div class="stat-val">${c.val}</div><div class="stat-lbl">${labels[i]}</div>
+    <div class="stat-sub text-gray-400">${c.sub}</div></div>`).join("");
+}
+
+function renderPrestasiStats(data){
+  const purata = data.length ? (data.reduce((s,d)=>s+(parseFloat(d.myPerformancePms)||0),0) / data.length).toFixed(2) : 0;
+  const below60 = data.filter(d => (parseFloat(d.myPerformancePms)||0) < 60).length;
+  const above70 = data.filter(d => (parseFloat(d.myPerformancePms)||0) >= 70).length;
+  const byKampus = {};
+  data.forEach(d => { const kp = d.kodKampus || "?"; byKampus[kp] = (byKampus[kp]||0)+1; });
+  const fmt = (v) => (v||0).toLocaleString("ms-MY");
+  const cards = [
+    { val: fmt(data.length), sub: `Di ${Object.keys(byKampus).length} kampus` },
+    { val: purata + '%', sub: `Purata MyPerformance PMS` },
+    { val: fmt(below60), sub: `Skor < 60% (kritis)` },
+    { val: fmt(above70), sub: `Skor ≥ 70% (baik)` },
+  ];
+  const labels = ['Jumlah Staf','Purata Skor','Skor Rendah','Skor Tinggi'];
+  const colors = ['sc-pri','sc-navy','sc-red','sc-amb'];
+  return cards.map((c,i) => `<div class="stat-card ${colors[i]}">
+    <div class="stat-val">${c.val}</div><div class="stat-lbl">${labels[i]}</div>
+    <div class="stat-sub text-gray-400">${c.sub}</div></div>`).join("");
+}
+
+function renderKeterhutanganTable(data){
+  if(data.length === 0) return renderEmptyState();
+  data.sort((a,b) => {
+    const ka = (a.kodKampus||"").toString(), kb = (b.kodKampus||"").toString();
+    if(ka !== kb) return ka.localeCompare(kb);
+    return (a.nama||"").localeCompare(b.nama||"");
+  });
+  const today = new Date();
+  const twoYearsLater = new Date(today.getFullYear()+2, today.getMonth(), today.getDate());
+  const fmtRM = (v) => (parseFloat(v)||0).toLocaleString("ms-MY",{minimumFractionDigits:2,maximumFractionDigits:2});
+  return `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr style="background:#f1f5f9;text-align:left;">
+      ${['Kampus','No. KP','Nama','Jawatan','Gred','Pendapatan','Potongan','% Gaji Bersih','Tarikh Bersara','Status','Intervensi'].map((h,i) =>
+        `<th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;font-weight:700;${i>=5&&i<=8?'text-align:right;':''}">${h}</th>`).join("")}
+    </tr></thead><tbody>
+    ${data.map(d => {
+      const tBersara = d.tarikhBersara ? new Date(d.tarikhBersara) : null;
+      let badge = '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;">Aktif</span>';
+      if(tBersara){
+        if(tBersara < today) badge = '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;">Bersara</span>';
+        else if(tBersara < twoYearsLater) badge = '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;">Hampir</span>';
+      }
+      const pg = parseFloat(d.peratusGajiBersih) || 0;
+      const pgStyle = pg < 30 ? 'color:#991b1b;font-weight:700;' : '';
+      const intervBadge = renderIntervensiBadge(d);
+      return `<tr style="border-bottom:1px solid #f1f5f9;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+        <td style="padding:8px 10px;"><div style="font-weight:600;">${d.kodKampus || '-'}</div><div style="font-size:10px;color:#64748B;">${d.kampus || d.namaPtj || ''}</div></td>
+        <td style="padding:8px 10px;font-family:monospace;font-size:11px;">${d.noKp || '-'}</td>
+        <td style="padding:8px 10px;font-weight:500;">${d.nama || '-'}</td>
+        <td style="padding:8px 10px;">${d.jawatan || '-'}</td>
+        <td style="padding:8px 10px;">${d.gredJawatan || '-'}</td>
+        <td style="padding:8px 10px;text-align:right;">${fmtRM(d.jumlahPendapatan)}</td>
+        <td style="padding:8px 10px;text-align:right;color:#991b1b;">${fmtRM(d.jumlahPotongan)}</td>
+        <td style="padding:8px 10px;text-align:right;${pgStyle}">${pg.toFixed(2)}%</td>
+        <td style="padding:8px 10px;font-size:11px;">${d.tarikhBersara ? new Date(d.tarikhBersara).toLocaleDateString("ms-MY",{day:"2-digit",month:"short",year:"numeric"}) : '-'}</td>
+        <td style="padding:8px 10px;">${badge}</td>
+        <td style="padding:8px 10px;white-space:nowrap;">${intervBadge}
+          <button onclick="showIntervensiModal('${d._docId}','keterhutangan')" title="Pelaporan Intervensi" style="background:#0E7C61;color:#fff;border:none;padding:3px 7px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;margin-right:3px;"><i class="fas fa-clipboard-list"></i></button>
+          <button onclick="showEditRekodModal('${d._docId}','keterhutangan')" title="Edit Rekod" style="background:#3D5490;color:#fff;border:none;padding:3px 7px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;"><i class="fas fa-pen"></i></button>
+        </td>
+      </tr>`;
+    }).join("")}
+    </tbody></table></div>`;
+}
+
+function renderPoolTable(data){
+  if(data.length === 0) return renderEmptyState();
+  data.sort((a,b) => {
+    const ka = (a.kodKampus||"").toString(), kb = (b.kodKampus||"").toString();
+    if(ka !== kb) return ka.localeCompare(kb);
+    return (a.nama||"").localeCompare(b.nama||"");
+  });
+  return `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr style="background:#f1f5f9;text-align:left;">
+      ${['Kampus','No. KP','Nama','Jawatan','Alamat Asal','Negeri','Kategori','Tarikh Masuk','Intervensi'].map(h =>
+        `<th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;font-weight:700;">${h}</th>`).join("")}
+    </tr></thead><tbody>
+    ${data.map(d => {
+      const intervBadge = renderIntervensiBadge(d);
+      return `<tr style="border-bottom:1px solid #f1f5f9;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+        <td style="padding:8px 10px;"><div style="font-weight:600;">${d.kodKampus || '?'}</div><div style="font-size:10px;color:#64748B;">${d.kampus || '-'}</div></td>
+        <td style="padding:8px 10px;font-family:monospace;font-size:11px;">${d.noKp || '-'}</td>
+        <td style="padding:8px 10px;font-weight:500;">${d.nama || '-'}</td>
+        <td style="padding:8px 10px;">${d.jawatan || '-'}</td>
+        <td style="padding:8px 10px;font-size:11px;max-width:200px;">${d.alamatAsal || '-'}</td>
+        <td style="padding:8px 10px;">${d.negeri1 || d.negeri2 || '-'}</td>
+        <td style="padding:8px 10px;"><span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;">${d.kategori || '-'}</span></td>
+        <td style="padding:8px 10px;font-size:11px;">${d.tarikhMasuk || '-'}</td>
+        <td style="padding:8px 10px;white-space:nowrap;">${intervBadge}
+          <button onclick="showIntervensiModal('${d._docId}','pool')" title="Pelaporan Intervensi" style="background:#C47428;color:#fff;border:none;padding:3px 7px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;margin-right:3px;"><i class="fas fa-clipboard-list"></i></button>
+          <button onclick="showEditRekodModal('${d._docId}','pool')" title="Edit Rekod" style="background:#3D5490;color:#fff;border:none;padding:3px 7px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;"><i class="fas fa-pen"></i></button>
+        </td>
+      </tr>`;
+    }).join("")}
+    </tbody></table></div>`;
+}
+
+function renderPrestasiTable(data){
+  if(data.length === 0) return renderEmptyState();
+  data.sort((a,b) => {
+    const ka = (a.kodKampus||"").toString(), kb = (b.kodKampus||"").toString();
+    if(ka !== kb) return ka.localeCompare(kb);
+    return (a.nama||"").localeCompare(b.nama||"");
+  });
+  return `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr style="background:#f1f5f9;text-align:left;">
+      ${['Kampus','No. KP','Nama','Skim','Jawatan','Gred','SKU','PnS','NS','KTL','KF','PMS','Intervensi'].map((h,i) =>
+        `<th style="padding:8px 10px;border-bottom:2px solid #e2e8f0;font-weight:700;${i>=6&&i<=11?'text-align:right;':''}">${h}</th>`).join("")}
+    </tr></thead><tbody>
+    ${data.map(d => {
+      const pms = parseFloat(d.myPerformancePms) || 0;
+      const pmsStyle = pms < 60 ? 'color:#991b1b;font-weight:700;' : pms >= 70 ? 'color:#166534;font-weight:700;' : '';
+      const f = (v) => (parseFloat(v)||0).toFixed(2);
+      const intervBadge = renderIntervensiBadge(d);
+      return `<tr style="border-bottom:1px solid #f1f5f9;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+        <td style="padding:8px 10px;"><div style="font-weight:600;">${d.kodKampus || '?'}</div><div style="font-size:10px;color:#64748B;">${d.kampus || '-'}</div></td>
+        <td style="padding:8px 10px;font-family:monospace;font-size:11px;">${d.noKp || '-'}</td>
+        <td style="padding:8px 10px;font-weight:500;">${d.nama || '-'}</td>
+        <td style="padding:8px 10px;font-size:11px;">${d.skimPerkhidmatan || '-'}</td>
+        <td style="padding:8px 10px;font-size:11px;max-width:150px;">${d.namaJawatanSebenar || d.jawatanSebenar || '-'}</td>
+        <td style="padding:8px 10px;">${d.gredGaji || '-'}</td>
+        <td style="padding:8px 10px;text-align:right;">${f(d.skuWajaran)}</td>
+        <td style="padding:8px 10px;text-align:right;">${f(d.pnsWajaran)}</td>
+        <td style="padding:8px 10px;text-align:right;">${f(d.nsWajaran)}</td>
+        <td style="padding:8px 10px;text-align:right;">${f(d.ktlWajaran)}</td>
+        <td style="padding:8px 10px;text-align:right;">${f(d.kfWajaran)}</td>
+        <td style="padding:8px 10px;text-align:right;${pmsStyle}">${pms.toFixed(2)}</td>
+        <td style="padding:8px 10px;white-space:nowrap;">${intervBadge}
+          <button onclick="showIntervensiModal('${d._docId}','prestasi')" title="Pelaporan Intervensi" style="background:#3D5490;color:#fff;border:none;padding:3px 7px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;margin-right:3px;"><i class="fas fa-clipboard-list"></i></button>
+          <button onclick="showEditRekodModal('${d._docId}','prestasi')" title="Edit Rekod" style="background:#3D5490;color:#fff;border:none;padding:3px 7px;border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;"><i class="fas fa-pen"></i></button>
+        </td>
+      </tr>`;
+    }).join("")}
+    </tbody></table></div>`;
+}
+
+function renderIntervensiBadge(d){
+  if(!d.intervensiStatus) return '';
+  const colors = {
+    'Belum Mula':  { bg: '#f1f5f9', fg: '#475569' },
+    'Dalam Proses':{ bg: '#fef3c7', fg: '#92400e' },
+    'Selesai':      { bg: '#dcfce7', fg: '#166534' },
+  };
+  const c = colors[d.intervensiStatus] || { bg: '#f1f5f9', fg: '#475569' };
+  return `<span style="background:${c.bg};color:${c.fg};padding:2px 6px;border-radius:8px;font-size:9px;font-weight:600;" title="${d.intervensiJenis||''}: ${(d.intervensiCatatan||'').slice(0,60)}">${d.intervensiStatus}</span>`;
+}
+
+function renderEmptyState(){
+  return `<div class="text-center py-10">
+    <i class="fas fa-database text-3xl text-gray-300 mb-3"></i>
+    <div class="font-semibold text-navy-800">Tiada data tersedia</div>
+    <div class="text-sm text-gray-400 mt-1">Muat naik fail Excel (.xlsx) untuk memaparkan analisis.</div>
+  </div>`;
+}
+
+// ── MODAL INTERVENSI ──
+function showIntervensiModal(docId, tabId){
+  const data = (window.__KEWANGAN_CACHE[tabId] || []).find(d => d._docId === docId);
+  if(!data){ toast("Rekod tidak dijumpai","err"); return; }
+  const tab = KEWANGAN_TABS.find(t => t.id === tabId);
+  const readOnly = !isAdmin() && SES.role !== 'kaunselor';
+
+  const fmtDate = (v) => {
+    if(!v) return '-';
+    if(v.seconds) return new Date(v.seconds*1000).toLocaleString("ms-MY");
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? '-' : d.toLocaleString("ms-MY");
+  };
+
+  document.getElementById("modal-wrap").innerHTML = `
+    <div class="modal-bg" onclick="if(event.target===this)closeModal()" style="background:rgba(0,0,0,.5);position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px;">
+      <div class="modal-box" style="background:#fff;border-radius:12px;max-width:680px;width:100%;max-height:92vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #E2E8F0;padding-bottom:14px;margin-bottom:18px;">
+          <div>
+            <h3 style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1.15rem;color:#132238;margin:0;">
+              <i class="fas fa-clipboard-list mr-2" style="color:${tab.color};"></i>Pelaporan Intervensi
+            </h3>
+            <div style="font-size:11px;color:#64748B;margin-top:4px;">
+              ${tab.label} · ${data.kodKampus || '-'} · ${data.nama || data.noKp || docId}
+            </div>
+          </div>
+          <button onclick="closeModal()" style="background:none;border:none;font-size:28px;cursor:pointer;color:#64748B;line-height:1;padding:0 4px;">&times;</button>
+        </div>
+
+        <div style="background:#f8fafc;border:1px solid #E2E8F0;border-radius:8px;padding:12px;margin-bottom:18px;">
+          <div style="font-size:11px;color:#64748B;text-transform:uppercase;font-weight:600;margin-bottom:8px;">
+            <i class="fas fa-user mr-1"></i>Maklumat Staf
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+            <div><b>Nama:</b> ${data.nama || '-'}</div>
+            <div><b>No. KP:</b> ${data.noKp || '-'}</div>
+            <div><b>Jawatan:</b> ${data.jawatan || data.namaJawatanSebenar || '-'}</div>
+            <div><b>Kampus:</b> ${data.kampus || data.kodKampus || '-'}</div>
+            ${tabId === 'keterhutangan' ? `<div><b>Jumlah Pendapatan:</b> RM ${(parseFloat(data.jumlahPendapatan)||0).toLocaleString("ms-MY")}</div><div><b>Jumlah Potongan:</b> RM ${(parseFloat(data.jumlahPotongan)||0).toLocaleString("ms-MY")}</div>` : ''}
+            ${tabId === 'pool' ? `<div><b>Kategori:</b> ${data.kategori || '-'}</div><div><b>Alamat Asal:</b> ${data.alamatAsal || '-'}</div>` : ''}
+            ${tabId === 'prestasi' ? `<div><b>Skor PMS:</b> ${(parseFloat(data.myPerformancePms)||0).toFixed(2)}%</div><div><b>Gred:</b> ${data.gredGaji || '-'}</div>` : ''}
+          </div>
+        </div>
+
+        <div style="display:grid;gap:14px;">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:#1A2332;margin-bottom:4px;">Tarikh Intervensi <span style="color:#DC2626;">*</span></label>
+            <input type="date" id="intervensi-tarikh" value="${data.intervensiTarikh || new Date().toISOString().slice(0,10)}" ${readOnly ? 'disabled' : ''}
+              style="width:100%;padding:8px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;box-sizing:border-box;">
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:#1A2332;margin-bottom:4px;">Jenis Intervensi <span style="color:#DC2626;">*</span></label>
+            <select id="intervensi-jenis" ${readOnly ? 'disabled' : ''}
+              style="width:100%;padding:8px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;box-sizing:border-box;">
+              ${['Bantuan Kewangan','Rujukan Agensi','Kaunseling','Pemantauan','Khidmat Sokongan','Siasatan','Lain-lain'].map(j =>
+                `<option value="${j}" ${data.intervensiJenis === j ? 'selected' : ''}>${j}</option>`).join("")}
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:#1A2332;margin-bottom:4px;">Status Intervensi</label>
+            <select id="intervensi-status" ${readOnly ? 'disabled' : ''}
+              style="width:100%;padding:8px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;box-sizing:border-box;">
+              ${['Belum Mula','Dalam Proses','Selesai'].map(s =>
+                `<option value="${s}" ${data.intervensiStatus === s ? 'selected' : ''}>${s}</option>`).join("")}
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:#1A2332;margin-bottom:4px;">Catatan Intervensi</label>
+            <textarea id="intervensi-catatan" rows="4" placeholder="Ringkasan tindakan yang diambil..." ${readOnly ? 'disabled' : ''}
+              style="width:100%;padding:8px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;">${data.intervensiCatatan || ''}</textarea>
+          </div>
+          ${data.intervensiPegawai ? `
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px 10px;font-size:11px;color:#166534;">
+            <i class="fas fa-user-check mr-1"></i>
+            Kemas kini terakhir oleh: <b>${data.intervensiPegawai || '-'}</b>
+            ${data.intervensiKemasKini ? ` pada ${fmtDate(data.intervensiKemasKini)}` : ''}
+          </div>` : ''}
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:space-between;margin-top:22px;padding-top:16px;border-top:1px solid #E2E8F0;">
+          ${isAdmin() ? `
+          <button onclick="deleteKesKewanganRecordConfirm('${docId}','${tabId}')" style="background:#fff;color:#991b1b;padding:8px 14px;border-radius:6px;border:1px solid #fca5a5;cursor:pointer;font-size:12px;font-weight:600;">
+            <i class="fas fa-trash mr-1"></i>Padam Rekod
+          </button>` : '<div></div>'}
+          <div style="display:flex;gap:8px;">
+            <button onclick="closeModal()" style="background:#f1f5f9;color:#475569;padding:8px 16px;border-radius:6px;border:1px solid #E2E8F0;cursor:pointer;font-size:13px;font-weight:600;">Tutup</button>
+            ${!readOnly ? `
+            <button onclick="saveIntervensi('${docId}','${tabId}')"
+              style="background:${tab.color};color:#fff;padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:600;">
+              <i class="fas fa-save mr-1"></i>Simpan
+            </button>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.style.overflow = "hidden";
+}
+
+async function saveIntervensi(docId, tabId){
+  const tarikh = document.getElementById('intervensi-tarikh').value;
+  const jenis = document.getElementById('intervensi-jenis').value;
+  const status = document.getElementById('intervensi-status').value;
+  const catatan = document.getElementById('intervensi-catatan').value.trim();
+  if(!tarikh || !jenis){ toast("Tarikh dan jenis intervensi wajib diisi","err"); return; }
+  const updateData = {
+    intervensiTarikh: tarikh,
+    intervensiJenis: jenis,
+    intervensiStatus: status,
+    intervensiCatatan: catatan,
+    intervensiPegawai: SES.nama || SES.id || SES.uid,
+  };
+  showCoreLoading("Menyimpan intervensi...", `Rekod: ${docId}`);
+  try {
+    await window.MYFB.updateKesKewangan(tabId, docId, updateData, SES.uid);
+    hideCoreLoading();
+    toast("Intervensi berjaya disimpan!","ok");
+    closeModal();
+    await loadKewanganTab(tabId);
+    updateKewanganTabCounts();
+  } catch(err){
+    hideCoreLoading();
+    console.error("[INTERVENSI] Save error:", err);
+    toast("Gagal simpan: " + err.message, "err");
+  }
+}
+
+async function deleteKesKewanganRecordConfirm(docId, tabId){
+  if(!confirm(`Padam rekod ini secara kekal dari Firestore?\n\nID: ${docId}\nTab: ${tabId}`)) return;
+  showCoreLoading("Memadam rekod...", docId);
+  try {
+    await window.MYFB.deleteKesKewanganRecord(tabId, docId);
+    hideCoreLoading();
+    toast("Rekod berjaya dipadam","ok");
+    closeModal();
+    await loadKewanganTab(tabId);
+    updateKewanganTabCounts();
+  } catch(err){
+    hideCoreLoading();
+    toast("Gagal padam: " + err.message, "err");
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+// EDIT REKOD — kemas kini maklumat staf (termasuk pindah kampus)
+// ════════════════════════════════════════════════════════════════════════
+// Akses:
+//   - Admin Utama: boleh edit SEMUA field termasuk kodKampus (boleh pindah)
+//   - Admin Kampus: boleh edit SEMUA field KECUALI kodKampus
+//   - Kaunselor: read-only (field disabled)
+
+function showEditRekodModal(docId, tabId){
+  const data = (window.__KEWANGAN_CACHE[tabId] || []).find(d => d._docId === docId);
+  if(!data){ toast("Rekod tidak dijumpai","err"); return; }
+  const tab = KEWANGAN_TABS.find(t => t.id === tabId);
+  // Hanya admin boleh edit; kaunselor = read-only
+  const isKaunselorOnly = !isAdmin() && SES.role === 'kaunselor';
+  // Admin utama boleh tukar kodKampus (pindah kampus)
+  const canChangeKampus = isAdmin();
+
+  // Generate field definitions per tab
+  const fields = getEditFieldsForTab(tabId, data);
+
+  const fmtDate = (v) => {
+    if(!v) return '';
+    if(v.seconds) return new Date(v.seconds*1000).toISOString().slice(0,10);
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? '' : d.toISOString().slice(0,10);
+  };
+
+  document.getElementById("modal-wrap").innerHTML = `
+    <div class="modal-bg" onclick="if(event.target===this)closeModal()" style="background:rgba(0,0,0,.5);position:fixed;inset:0;display:flex;align-items:flex-start;justify-content:center;z-index:9999;padding:20px;overflow-y:auto;">
+      <div class="modal-box" style="background:#fff;border-radius:12px;max-width:780px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3);margin:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #E2E8F0;padding-bottom:14px;margin-bottom:18px;">
+          <div>
+            <h3 style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1.15rem;color:#132238;margin:0;">
+              <i class="fas fa-pen mr-2" style="color:${tab.color};"></i>Edit Rekod ${tab.label}
+            </h3>
+            <div style="font-size:11px;color:#64748B;margin-top:4px;">
+              ID: <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;">${docId}</code>
+              ${isKaunselorOnly ? '<span style="color:#92400e;margin-left:8px;"><i class="fas fa-lock"></i> Mod baca sahaja (kaunselor)</span>' : ''}
+              ${!canChangeKampus && !isKaunselorOnly ? '<span style="color:#92400e;margin-left:8px;"><i class="fas fa-info-circle"></i> Tukar kodKampus memerlukan admin utama</span>' : ''}
+            </div>
+          </div>
+          <button onclick="closeModal()" style="background:none;border:none;font-size:28px;cursor:pointer;color:#64748B;line-height:1;padding:0 4px;">&times;</button>
+        </div>
+
+        <form id="edit-rekod-form" onsubmit="event.preventDefault();saveRekodEdit('${docId}','${tabId}');">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            ${fields.map(f => renderEditField(f, data, canChangeKampus, isKaunselorOnly)).join("")}
+          </div>
+
+          ${canChangeKampus ? `
+          <div style="margin-top:18px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;">
+            <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:8px;">
+              <i class="fas fa-exchange-alt mr-1"></i>Pindah Kampus (Admin Utama Sahaja)
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <select id="edit-pindah-kampus" onchange="onPindahKampusChange()" style="flex:1;min-width:200px;padding:8px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;">
+                <option value="">-- Kekalkan kampus sedia ada (${data.kodKampus || '-'}) --</option>
+                ${MASTER_KAMPUS.filter(k => k.id !== "IPGM").map(k =>
+                  `<option value="${k.id}" ${data.kodKampus === k.id ? 'selected' : ''}>${k.id} — ${k.nama} (${k.zon})</option>`
+                ).join("")}
+              </select>
+              <span style="font-size:11px;color:#64748B;" id="pindah-kampus-info"></span>
+            </div>
+            <div style="font-size:10px;color:#92400e;margin-top:6px;">
+              ⚠️ Pindah kampus akan mengubah rekod ini menjadi milik kampus baharu. Admin kampus lama tidak lagi boleh akses rekod ini.
+            </div>
+          </div>` : ''}
+
+          <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;padding:8px 10px;margin-top:14px;font-size:11px;color:#0c4a6e;">
+            <i class="fas fa-user-edit mr-1"></i>
+            Kemas kini terakhir oleh: <b>${data.dikemasKiniOleh || 'Tidak diketahui'}</b>
+            ${data.dikemasKiniPada ? ` pada ${fmtDate(data.dikemasKiniPada)}` : ''}
+          </div>
+
+          <div style="display:flex;gap:8px;justify-content:space-between;margin-top:22px;padding-top:16px;border-top:1px solid #E2E8F0;">
+            ${isAdmin() ? `
+            <button type="button" onclick="deleteKesKewanganRecordConfirm('${docId}','${tabId}')" style="background:#fff;color:#991b1b;padding:8px 14px;border-radius:6px;border:1px solid #fca5a5;cursor:pointer;font-size:12px;font-weight:600;">
+              <i class="fas fa-trash mr-1"></i>Padam Rekod
+            </button>` : '<div></div>'}
+            <div style="display:flex;gap:8px;">
+              <button type="button" onclick="closeModal()" style="background:#f1f5f9;color:#475569;padding:8px 16px;border-radius:6px;border:1px solid #E2E8F0;cursor:pointer;font-size:13px;font-weight:600;">Batal</button>
+              ${!isKaunselorOnly ? `
+              <button type="submit" style="background:${tab.color};color:#fff;padding:8px 18px;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:600;">
+                <i class="fas fa-save mr-1"></i>Simpan Kemas Kini
+              </button>` : ''}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  document.body.style.overflow = "hidden";
+}
+
+function getEditFieldsForTab(tabId, data){
+  if(tabId === "keterhutangan"){
+    return [
+      { key: "kodKampus",      label: "Kod Kampus",       type: "text",     span: 1, group: "kampus" },
+      { key: "namaPtj",        label: "Nama PTJ",          type: "text",     span: 1 },
+      { key: "negeriPtj",      label: "Negeri PTJ",        type: "text",     span: 1 },
+      { key: "noKp",            label: "No. Kad Pengenalan",type: "text",     span: 1 },
+      { key: "noGaji",          label: "No. Gaji",           type: "text",     span: 1 },
+      { key: "nama",            label: "Nama Pegawai",      type: "text",     span: 2 },
+      { key: "jawatan",         label: "Jawatan",            type: "text",     span: 1 },
+      { key: "gredJawatan",     label: "Gred Jawatan",      type: "text",     span: 1 },
+      { key: "jenisSkim",       label: "Jenis Skim",         type: "text",     span: 1 },
+      { key: "jantina",         label: "Jantina",            type: "select",   span: 1, options: ["","Male","Female"] },
+      { key: "bangsa",          label: "Bangsa",             type: "text",     span: 1 },
+      { key: "emel",            label: "Emel",               type: "email",    span: 2 },
+      { key: "tarikhBersara",   label: "Tarikh Bersara",     type: "date",     span: 1 },
+      { key: "tarikhLahir",     label: "Tarikh Lahir",       type: "date",     span: 1 },
+      { key: "jumlahPendapatan",label: "Jumlah Pendapatan (RM)", type: "number", span: 1 },
+      { key: "jumlahPotongan",  label: "Jumlah Potongan (RM)",   type: "number", span: 1 },
+      { key: "peratusGajiBersih",label: "% Gaji Bersih",         type: "number", span: 1 },
+      { key: "jumlahSimpanan",  label: "Jumlah Simpanan (RM)",   type: "number", span: 1 },
+    ];
+  }
+  if(tabId === "pool"){
+    return [
+      { key: "kodKampus",   label: "Kod Kampus",         type: "text",   span: 1, group: "kampus" },
+      { key: "kategori",    label: "Kategori",            type: "text",   span: 1 },
+      { key: "noKp",         label: "No. Kad Pengenalan",  type: "text",   span: 1 },
+      { key: "tarikhMasuk",  label: "Tarikh Masuk",        type: "text",   span: 1 },
+      { key: "nama",         label: "Nama",                type: "text",   span: 2 },
+      { key: "jawatan",      label: "Jawatan",             type: "text",   span: 2 },
+      { key: "alamatAsal",   label: "Alamat Asal",         type: "textarea", span: 2 },
+      { key: "negeri1",      label: "Negeri Asal",         type: "text",   span: 1 },
+      { key: "negeri2",      label: "Negeri Semasa",       type: "text",   span: 1 },
+      { key: "alamatSemasa",  label: "Alamat Semasa",       type: "textarea", span: 2 },
+    ];
+  }
+  if(tabId === "prestasi"){
+    return [
+      { key: "kodKampus",            label: "Kod Kampus",          type: "text",   span: 1, group: "kampus" },
+      { key: "gredGaji",              label: "Gred Gaji",            type: "text",   span: 1 },
+      { key: "noKp",                  label: "No. Kad Pengenalan",  type: "text",   span: 1 },
+      { key: "myPerformancePms",      label: "Skor PMS (%)",         type: "number", span: 1 },
+      { key: "nama",                  label: "Nama Pemilik Kompetensi", type: "text", span: 2 },
+      { key: "skimPerkhidmatan",      label: "Skim Perkhidmatan",    type: "text",   span: 2 },
+      { key: "namaJawatanSebenar",    label: "Nama Jawatan Sebenar", type: "text",   span: 2 },
+      { key: "skuWajaran",            label: "SKU Wajaran",          type: "number", span: 1 },
+      { key: "pnsWajaran",            label: "PnS Wajaran",          type: "number", span: 1 },
+      { key: "nsWajaran",             label: "NS Wajaran",           type: "number", span: 1 },
+      { key: "ktlWajaran",            label: "KTL Wajaran",          type: "number", span: 1 },
+      { key: "kfWajaran",              label: "KF Wajaran",           type: "number", span: 1 },
+    ];
+  }
+  return [];
+}
+
+function renderEditField(f, data, canChangeKampus, isKaunselorOnly){
+  const isKampusField = f.group === "kampus";
+  // Field kodKampus disabled jika bukan admin utama
+  const disabled = (isKampusField && !canChangeKampus) || isKaunselorOnly;
+  const spanClass = f.span === 2 ? 'grid-column:span 2;' : '';
+  const rawVal = data[f.key];
+  let valStr = "";
+  if(rawVal !== null && rawVal !== undefined){
+    if(typeof rawVal === "object" && rawVal.seconds){
+      valStr = new Date(rawVal.seconds*1000).toISOString().slice(0,10);
+    } else if(f.type === "date" && typeof rawVal === "string"){
+      const d = new Date(rawVal);
+      valStr = isNaN(d.getTime()) ? "" : d.toISOString().slice(0,10);
+    } else {
+      valStr = String(rawVal);
+    }
+  }
+
+  let input;
+  if(f.type === "textarea"){
+    input = `<textarea id="edit-${f.key}" ${disabled?'disabled':''} rows="2"
+      style="width:100%;padding:8px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box;${disabled?'background:#f8fafc;color:#64748B;':''}">${valStr}</textarea>`;
+  } else if(f.type === "select"){
+    input = `<select id="edit-${f.key}" ${disabled?'disabled':''}
+      style="width:100%;padding:8px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;box-sizing:border-box;${disabled?'background:#f8fafc;color:#64748B;':''}">
+      ${f.options.map(o => `<option value="${o}" ${valStr === o ? 'selected' : ''}>${o || '-- Pilih --'}</option>`).join("")}
+    </select>`;
+  } else {
+    input = `<input type="${f.type}" id="edit-${f.key}" value="${valStr.replace(/"/g,'&quot;')}" ${disabled?'disabled':''}
+      style="width:100%;padding:8px 10px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;box-sizing:border-box;${disabled?'background:#f8fafc;color:#64748B;':''}">`;
+  }
+  return `<div style="${spanClass}">
+    <label style="display:block;font-size:12px;font-weight:600;color:#1A2332;margin-bottom:4px;">
+      ${f.label}
+      ${isKampusField && disabled && !isKaunselorOnly ? '<span style="color:#92400e;font-size:10px;">(Admin utama sahaja)</span>' : ''}
+    </label>
+    ${input}
+  </div>`;
+}
+
+function onPindahKampusChange(){
+  const sel = document.getElementById('edit-pindah-kampus');
+  const info = document.getElementById('pindah-kampus-info');
+  if(!sel || !info) return;
+  const kod = sel.value;
+  if(!kod){ info.innerHTML = ''; return; }
+  const k = MASTER_KAMPUS.find(m => m.id === kod);
+  if(k){
+    info.innerHTML = `<i class="fas fa-info-circle"></i> ${k.nama} · ${k.zon} · ${k.negeri}`;
+    // Auto-update field kodKampus + namaPtj untuk konsisten
+    const kodField = document.getElementById('edit-kodKampus');
+    if(kodField) kodField.value = kod;
+    const namaPtjField = document.getElementById('edit-namaPtj');
+    if(namaPtjField) namaPtjField.value = "INSTITUT PENDIDIKAN GURU " + k.nama.toUpperCase().replace("IPG KAMPUS ", "KAMPUS ");
+  }
+}
+
+async function saveRekodEdit(docId, tabId){
+  const data = (window.__KEWANGAN_CACHE[tabId] || []).find(d => d._docId === docId);
+  if(!data){ toast("Rekod tidak dijumpai","err"); return; }
+  const fields = getEditFieldsForTab(tabId, data);
+  const canChangeKampus = isAdmin();
+  const updateData = {};
+  let hasChanges = false;
+
+  fields.forEach(f => {
+    const el = document.getElementById(`edit-${f.key}`);
+    if(!el) return;
+    let v = el.value.trim();
+    if(f.type === "number"){
+      v = parseFloat(v);
+      if(isNaN(v)) v = 0;
+    }
+    // Bandingkan dengan nilai asal
+    let origVal = data[f.key];
+    if(typeof origVal === "object" && origVal && origVal.seconds){
+      origVal = new Date(origVal.seconds*1000).toISOString().slice(0,10);
+    }
+    if(f.type === "number" && typeof origVal === "number"){
+      if(Math.abs((v||0) - origVal) > 0.001){
+        updateData[f.key] = v;
+        hasChanges = true;
+      }
+    } else if(String(v||"") !== String(origVal||"")){
+      updateData[f.key] = v;
+      hasChanges = true;
+    }
+  });
+
+  // Jika admin utama dan ada pilihan pindah kampus
+  if(canChangeKampus){
+    const pindahSel = document.getElementById('edit-pindah-kampus');
+    if(pindahSel){
+      const newKod = pindahSel.value.trim();
+      if(newKod && newKod !== data.kodKampus){
+        // Validate kod
+        const k = MASTER_KAMPUS.find(m => m.id === newKod);
+        if(!k){ toast("Kod kampus tidak sah","err"); return; }
+        updateData.kodKampus = newKod;
+        updateData.kampus_id = newKod;
+        updateData.kampus = k.nama;
+        updateData.zon = k.zon;
+        updateData.negeri = k.negeri;
+        updateData.namaKampus = k.nama;
+        updateData.organisasi = k.nama;
+        hasChanges = true;
+      }
+    }
+  }
+
+  if(!hasChanges){
+    toast("Tiada perubahan untuk disimpan","inf");
+    closeModal();
+    return;
+  }
+
+  if(!confirm("Simpan kemas kini rekod ini?\n\nPerubahan:\n" +
+    Object.keys(updateData).map(k => `• ${k}: "${data[k] || ''}" → "${updateData[k]}"`).join("\n")
+  )) return;
+
+  showCoreLoading("Menyimpan kemas kini...", `Rekod: ${docId}`);
+  try {
+    // Guna updateKesKewangan (sama seperti intervensi tapi dengan field lain)
+    await window.MYFB.updateKesKewangan(tabId, docId, updateData, SES.uid);
+    hideCoreLoading();
+    toast("Kemas kini berjaya disimpan!","ok");
+    closeModal();
+    await loadKewanganTab(tabId);
+    updateKewanganTabCounts();
+  } catch(err){
+    hideCoreLoading();
+    console.error("[EDIT REKOD] Save error:", err);
+    let msg = err.message || "Gagal simpan";
+    if(msg.includes("permission") || msg.includes("denied")){
+      msg = "Tiada kebenaran. Jika anda admin kampus, anda tidak boleh menukar kodKampus — sila hubungi admin utama.";
+    }
+    toast("Gagal simpan: " + msg, "err");
+  }
+}
+
+
+// ── IMPORT Excel/CSV (auto-detect semua 3 sheet) ──
+async function importKewanganFile(input, tabId){
+  const file = input.files[0];
+  if(!file) return;
+  if(!window.MYFB || typeof window.MYFB.saveKesKewanganBatch !== 'function'){
+    toast("Firebase belum sedia. Sila log masuk semula.","err");
+    return;
+  }
+  const isXlsx = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+  showCoreLoading("Mengimport Data Kes Kewangan...", isXlsx ? "Membaca fail Excel..." : "Membaca fail CSV...");
+  try {
+    let sheetsToImport = [];
+    if(isXlsx){
+      const data = await readExcelFile(file);
+      const sheetNames = Object.keys(data);
+      const kSheet = sheetNames.find(n => n.toLowerCase().includes("keterhutangan"));
+      const pSheet = sheetNames.find(n => n.toLowerCase().includes("pool"));
+      const sSheet = sheetNames.find(n => n.toLowerCase().includes("prestasi"));
+      if((tabId === "keterhutangan" || !tabId) && kSheet)
+        sheetsToImport.push({ tabId: "keterhutangan", sheetName: kSheet, rows: data[kSheet].map(r => parseKewanganXlsxRow(r)) });
+      if((tabId === "pool" || !tabId) && pSheet)
+        sheetsToImport.push({ tabId: "pool", sheetName: pSheet, rows: data[pSheet].map(r => parsePoolAkpXlsxRow(r)) });
+      if((tabId === "prestasi" || !tabId) && sSheet)
+        sheetsToImport.push({ tabId: "prestasi", sheetName: sSheet, rows: data[sSheet].map(r => parsePrestasiSederhanaXlsxRow(r)) });
+      // Jika tiada match nama, fallback ke first sheet untuk tab yang dipilih
+      if(sheetsToImport.length === 0 && tabId){
+        const firstSheet = sheetNames[0];
+        const parser = tabId === "keterhutangan" ? parseKewanganXlsxRow
+                     : tabId === "pool" ? parsePoolAkpXlsxRow
+                     : parsePrestasiSederhanaXlsxRow;
+        sheetsToImport.push({ tabId, sheetName: firstSheet, rows: data[firstSheet].map(r => parser(r)) });
+      }
+    } else {
+      const text = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = () => reject(new Error("Gagal baca fail CSV"));
+        reader.readAsText(file);
+      });
+      const lines = text.replace(/\r/g,"").split("\n").filter(l => l.trim());
+      if(lines.length < 2){ toast("Fail CSV kosong","err"); hideCoreLoading(); return; }
+      const sep = lines[0].split("\t").length > 3 ? "\t" : ",";
+      const rows = lines.slice(1).filter(l => l.trim()).map(line => {
+        const row = line.split(sep).map(v => v.replace(/^"|"$/g,"").trim());
+        return parseKewanganRow(row);
+      });
+      sheetsToImport.push({ tabId: "keterhutangan", sheetName: "CSV", rows });
+    }
+
+    // ── Diagnostic logging sebelum filter ──
+    sheetsToImport.forEach(s => {
+      console.log(`[IMPORT DIAGNOSTIC] Sheet "${s.sheetName}" → tab "${s.tabId}":`);
+      console.log(`  Total rows parsed: ${s.rows.length}`);
+      if(s.rows.length > 0){
+        const sample = s.rows[0];
+        const keys = Object.keys(sample).filter(k => sample[k] !== "" && sample[k] != null);
+        console.log(`  Sample row keys (first 10): ${keys.slice(0, 10).join(", ")}`);
+        console.log(`  Sample row nama: "${sample.nama || '(empty)'}"`);
+        console.log(`  Sample row kodKampus: "${sample.kodKampus || '(empty)'}"`);
+        // Count rejection reasons
+        const reasons = { noNama: 0, noKodKampus: 0, both: 0, valid: 0 };
+        s.rows.forEach(r => {
+          const hasNama = !!(r.nama && String(r.nama).trim());
+          const hasKod = !!(r.kodKampus && String(r.kodKampus).trim());
+          if(!hasNama && !hasKod) reasons.both++;
+          else if(!hasNama) reasons.noNama++;
+          else if(!hasKod) reasons.noKodKampus++;
+          else reasons.valid++;
+        });
+        console.log(`  Rejection summary: valid=${reasons.valid}, noNama=${reasons.noNama}, noKodKampus=${reasons.noKodKampus}, both=${reasons.both}`);
+      }
+    });
+
+    sheetsToImport = sheetsToImport.map(s => {
+      s.rows = s.rows.filter(r => r.nama && r.kodKampus);
+      return s;
+    }).filter(s => s.rows.length > 0);
+
+    if(sheetsToImport.length === 0){
+      hideCoreLoading();
+      // Build detailed error message
+      const errDetail = "Tiada rekod sah ditemui.\n\nKemungkinan puncanya:\n" +
+        "1. Excel ada TITLE ROW di atas (contoh: 'DATA ANGGOTA...') — sistem sepatutnya auto-skip tapi sila semak\n" +
+        "2. Header column tidak dikenali — sila semak nama column\n" +
+        "3. kodKampus tidak dapat di-resolve dari alamat/BuLevel\n\n" +
+        "Buka Console (F12) untuk lihat [IMPORT DIAGNOSTIC] logs.";
+      console.error("[IMPORT] Tiada rekod sah. Lihat diagnostic logs di atas untuk detail.");
+      toast(errDetail, "err");
+      input.value = "";
+      return;
+    }
+    const summary = sheetsToImport.map(s => `• ${s.tabId}: ${s.rows.length} rekod (sheet: "${s.sheetName}")`).join("\n");
+    const allKampus = [...new Set(sheetsToImport.flatMap(s => s.rows.map(r => r.kodKampus)))];
+    if(!confirm(`Ini akan MENYIMPAN data berikut ke Firestore:\n\n${summary}\n\nKampus terlibat: ${allKampus.join(", ")}\n\nRekod sedia ada untuk kampus tersebut akan DIGANTI. Teruskan?`)){
+      hideCoreLoading(); input.value = ""; return;
+    }
+
+    let totalSaved = 0;
+    for(const sheet of sheetsToImport){
+      const affectedKampus = [...new Set(sheet.rows.map(r => r.kodKampus))];
+      for(const kod of affectedKampus){
+        updateCoreLoading(`Memadam rekod lama untuk kampus ${kod} (${sheet.tabId})...`);
+        try {
+          if(sheet.tabId === "keterhutangan") await window.MYFB.clearKesKewanganByKampus(kod, SES.uid);
+          else if(sheet.tabId === "pool") await window.MYFB.clearKesKewanganPoolByKampus(kod, SES.uid);
+          else if(sheet.tabId === "prestasi") await window.MYFB.clearKesKewanganPrestasiByKampus(kod, SES.uid);
+        } catch(e){ console.warn(`Gagal clear ${sheet.tabId} kampus ${kod}:`, e); }
+      }
+      updateCoreLoading(`Menyimpan ${sheet.rows.length} rekod ${sheet.tabId}...`);
+      let saved = 0;
+      if(sheet.tabId === "keterhutangan") saved = await window.MYFB.saveKesKewanganBatch(sheet.rows, SES.uid, (w,t) => updateCoreLoading(`${sheet.tabId}: ${w}/${t}`));
+      else if(sheet.tabId === "pool") saved = await window.MYFB.saveKesKewanganPoolBatch(sheet.rows, SES.uid, (w,t) => updateCoreLoading(`${sheet.tabId}: ${w}/${t}`));
+      else if(sheet.tabId === "prestasi") saved = await window.MYFB.saveKesKewanganPrestasiBatch(sheet.rows, SES.uid, (w,t) => updateCoreLoading(`${sheet.tabId}: ${w}/${t}`));
+      totalSaved += saved;
+      localStorage.setItem(`csv_kewangan_${sheet.tabId}_date`, new Date().toLocaleString("ms-MY"));
+    }
+    hideCoreLoading();
+    toast(`${totalSaved} rekod berjaya disimpan ke Firestore!`, "ok");
+    input.value = "";
+    await loadKewanganTab(window.__KEWANGAN_ACTIVE_TAB);
+    updateKewanganTabCounts();
+  } catch(err){
+    hideCoreLoading();
+    console.error("[IMPORT KEWANGAN]", err);
+    toast("Gagal import: " + err.message, "err");
+    input.value = "";
+  }
+}
+
+// ── EXPORT ke XLSX (tab aktif) ──
+function exportKewanganXlsx(tabId){
+  const data = window.__KEWANGAN_CACHE[tabId] || [];
+  if(data.length === 0){ toast("Tiada data untuk dieksport.","err"); return; }
+  let headers = [], rows = [];
+  if(tabId === "keterhutangan"){
+    headers = ["BIL","KodKampus","NAMA PTJ","NO KAD PENGENALAN","NO GAJI","NAMA PEGAWAI","JAWATAN","GRED JAWATAN","JENIS SKIM","JANTINA","BANGSA","ALAMAT EMEL","TARIKH BERSARA","TARIKH LAHIR","JUMLAH PENDAPATAN","JUMLAH POTONGAN (RM)","% GAJI BERSIH","JUMLAH SIMPANAN","INTERVENSI_TARIKH","INTERVENSI_JENIS","INTERVENSI_STATUS","INTERVENSI_CATATAN","INTERVENSI_PEGAWAI"];
+    rows = data.map((d,i) => [
+      i+1, d.kodKampus||"", d.namaPtj||"", d.noKp||"", d.noGaji||"", d.nama||"",
+      d.jawatan||"", d.gredJawatan||"", d.jenisSkim||"", d.jantina||"", d.bangsa||"", d.emel||"",
+      d.tarikhBersara||"", d.tarikhLahir||"", d.jumlahPendapatan||0, d.jumlahPotongan||0,
+      d.peratusGajiBersih||0, d.jumlahSimpanan||0,
+      d.intervensiTarikh||"", d.intervensiJenis||"", d.intervensiStatus||"", d.intervensiCatatan||"", d.intervensiPegawai||""
+    ]);
+  } else if(tabId === "pool"){
+    headers = ["BIL","KodKampus","NAMA","NO KP","JAWATAN","ALAMAT ASAL","NEGERI 1","ALAMAT SEMASA","NEGERI 2","TARIKH MASUK","KATEGORI","INTERVENSI_TARIKH","INTERVENSI_JENIS","INTERVENSI_STATUS","INTERVENSI_CATATAN","INTERVENSI_PEGAWAI"];
+    rows = data.map((d,i) => [
+      i+1, d.kodKampus||"", d.nama||"", d.noKp||"", d.jawatan||"",
+      d.alamatAsal||"", d.negeri1||"", d.alamatSemasa||"", d.negeri2||"",
+      d.tarikhMasuk||"", d.kategori||"",
+      d.intervensiTarikh||"", d.intervensiJenis||"", d.intervensiStatus||"", d.intervensiCatatan||"", d.intervensiPegawai||""
+    ]);
+  } else if(tabId === "prestasi"){
+    headers = ["BIL","KodKampus","NAMA","NO KP","SKIM","JAWATAN","GRED","SKU_WAJARAN","PnS_WAJARAN","NS_WAJARAN","KTL_WAJARAN","KF_WAJARAN","MyPerformance_PMS","INTERVENSI_TARIKH","INTERVENSI_JENIS","INTERVENSI_STATUS","INTERVENSI_CATATAN","INTERVENSI_PEGAWAI"];
+    rows = data.map((d,i) => [
+      i+1, d.kodKampus||"", d.nama||"", d.noKp||"", d.skimPerkhidmatan||"",
+      d.namaJawatanSebenar||"", d.gredGaji||"",
+      d.skuWajaran||0, d.pnsWajaran||0, d.nsWajaran||0, d.ktlWajaran||0, d.kfWajaran||0,
+      d.myPerformancePms||0,
+      d.intervensiTarikh||"", d.intervensiJenis||"", d.intervensiStatus||"", d.intervensiCatatan||"", d.intervensiPegawai||""
+    ]);
+  }
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, tabId.slice(0,31));
+  const today = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `KesKewangan_${tabId}_${today}.xlsx`);
+  toast("Eksport berjaya!","ok");
+}
+
+// ── PADAM SEMUA rekod tab aktif (admin sahaja) ──
+async function clearKesKewanganData(tabId){
+  const skop = window.__KEWANGAN_SCOPE;
+  if(!skop || skop === "IPGM"){
+    toast("Untuk admin utama, padam per-kampus tidak disokong. Sila log masuk sebagai admin kampus.","err");
+    return;
+  }
+  if(!confirm(`PADAM SEMUA rekod "${tabId}" dari Firestore untuk kampus "${skop}"?\n\nTindakan ini TIDAK BOLEH diundur.`)) return;
+  showCoreLoading("Memadam rekod...", `Tab: ${tabId} · Kampus: ${skop}`);
+  try {
+    let deleted = 0;
+    if(tabId === "keterhutangan") deleted = await window.MYFB.clearKesKewanganByKampus(skop, SES.uid);
+    else if(tabId === "pool") deleted = await window.MYFB.clearKesKewanganPoolByKampus(skop, SES.uid);
+    else if(tabId === "prestasi") deleted = await window.MYFB.clearKesKewanganPrestasiByKampus(skop, SES.uid);
+    localStorage.removeItem(`csv_kewangan_${tabId}_date`);
+    hideCoreLoading();
+    toast(`${deleted} rekod berjaya dipadam`, "ok");
+    await loadKewanganTab(tabId);
+    updateKewanganTabCounts();
+  } catch(err){
+    hideCoreLoading();
+    toast("Gagal padam: " + err.message, "err");
+  }
+}
+
+
 // ── UPLOAD NOTICE helper ──
 function kaunsUploadNotice(jenis, label, color){
   const date = localStorage.getItem("csv_"+jenis+"_date")||"";
@@ -11588,10 +13092,10 @@ function renderPengurusanDataPage(c, tajuk, ikon, skop, jenis){
     <div class="card-body text-center py-10"><i class="fas fa-database text-3xl text-gray-300 mb-3"></i><div class="font-semibold text-navy-800">Tiada data tersedia</div><div class="text-sm text-gray-400 mt-1">Muat naik fail CSV untuk memaparkan analisis.</div></div></div>`;
 }
 function pgAKTesihatanMental(c){renderPengurusanDataPage(c,"Data Kesihatan Mental","fa-notes-medical",SES.kampus,"mental")}
-function pgAKTesKewangan(c){renderPengurusanDataPage(c,"Data Kes Kewangan","fa-hand-holding-dollar",SES.kampus,"kewangan")}
+function pgAKTesKewangan(c){renderKesKewanganPage(c, SES.kampus)}
 function pgAKBajetKampus(c){renderPeruntukanKewangan(c,"kampus")}
 function pgAUKesihatanMental(c){renderPengurusanDataPage(c,"Data Kesihatan Mental","fa-notes-medical",null,"mental")}
-function pgAUKesKewangan(c){renderPengurusanDataPage(c,"Data Kes Kewangan","fa-hand-holding-dollar",null,"kewangan")}
+function pgAUKesKewangan(c){renderKesKewanganPage(c, null)}
 function pgAUBajetKampus(c){renderPeruntukanKewangan(c,"utama")}
 
 // ══════════════════════════════════════════
