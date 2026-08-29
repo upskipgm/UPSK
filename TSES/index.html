@@ -1153,6 +1153,17 @@ function renderLikertSection(section, answeredCount){
         `).join("")}
       </div>
     `;
+    // Attach click handlers to each Likert button
+    itemCard.querySelectorAll(".likert-btn").forEach(btn => {
+      btn.onclick = function(){
+        const code = this.getAttribute("data-code");
+        const val = Number(this.getAttribute("data-value"));
+        state.answers[code] = val;
+        saveState();
+        // Re-render to update UI (active state, stepper count)
+        render();
+      };
+    });
     wrapper.appendChild(itemCard);
   });
 
