@@ -1385,7 +1385,7 @@ function renderResults(){
           <div class="progress progress-sm" style="margin-top: 0.5rem;"><div class="progress-fill" style="width: ${avgPct}%; background: ${interp.tone==="low"?"var(--danger)":interp.tone==="mid"?"var(--accent)":"var(--success)"};"></div></div>
         </div>
       </div>
-      ${state.result.sheetSynced ? `<div class="alert alert-success" style="margin-top: 1rem;"><div>✅ <strong>Data berjaya direkodkan ke Google Spreadsheet</strong><br><span style="font-size: 0.75rem;">Skor setiap item telah disimpan untuk analisis SEM.</span></div></div>` : `<div class="alert alert-warning" style="margin-top: 1rem;"><div>⚠️ <strong>Data disimpan secara setempat sahaja</strong><br><span style="font-size: 0.75rem;">${state.syncError || "Sync ke spreadsheet gagal. Sila hubungi penyelidik."}</span></div></div>`}
+      </div>
     </div>
   `;
   main.appendChild(headerCard);
