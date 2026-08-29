@@ -61,23 +61,22 @@ const SCALE_LABELS = {
 };
 
 const IPG_KAMPUS = [
-  "IPG Kampus Perlis","IPG Kampus Darulaman","IPG Kampus Sultan Abdul Halim","IPG Kampus Pulau Pinang",
-  "IPG Kampus Tuanku Bainun","IPG Kampus Bahasa Melayu","IPG Kampus Bahasa Antarabangsa","IPG Kampus Ilmu Khas",
-  "IPG Kampus Pendidikan Islam","IPG Kampus Ipoh","IPG Kampus Pendidikan Teknik","IPG Kampus Raja Melewar",
-  "IPG Kampus Perempuan Melayu Melaka (IPGKPM)","IPG Kampus Tun Hussein Onn","IPG Kampus Temenggong Ibrahim",
-  "IPG Kampus Kota Bharu","IPG Kampus Sultan Mizan","IPG Kampus Dato' Razali Ismail",
-  "IPG Kampus Tengku Ampuan Afzan","IPG Kampus Gaya","IPG Kampus Kent","IPG Kampus Keningau",
-  "IPG Kampus Tawau","IPG Kampus Batu Lintang","IPG Kampus Tun Abdul Razak","IPG Kampus Rajang",
-  "IPG Kampus Sarawak","Lain-lain (universiti awam)",
+  "IPGK TEMENGGONG IBRAHIM","IPGK TUN HUSSEIN ONN","IPGK PEREMPUAN MELAYU","IPGK RAJA MELEWAR",
+  "IPGK PENDIDIKAN TEKNIK","IPGK PENDIDIKAN ISLAM","IPGK ILMU KHAS","IPGK BAHASA MELAYU",
+  "IPGK BAHASA ANTARABANGSA","IPGK IPOH","IPGMK DARULAMAN","IPGK PERLIS",
+  "IPGK PULAU PINANG","IPGK TUANKU BAINUN","IPGK TENGKU AMPUAN AFZAN","IPGK DATO' RAZALI ISMAIL",
+  "IPGK SULTAN MIZAN","IPGK KOTA BHARU","IPGK RAJANG","IPGK KENT",
+  "IPGK BATU LINTANG","IPGK TAWAU","IPGK KENINGAU","IPGK TUN ABDUL RAZAK",
+  "IPGK SULTAN ABDUL HALIM","IPGK GAYA","IPGK SARAWAK",
 ];
 
 const DEMOGRAPHICS = [
   { code:"A1", q:"Jantina", type:"radio", opts:[{k:"Lelaki",l:"Lelaki"},{k:"Perempuan",l:"Perempuan"}] },
   { code:"A2", q:"Umur (tahun)", type:"radio", opts:[{k:"22-24",l:"22–24"},{k:"25-27",l:"25–27"},{k:"28-30",l:"28–30"},{k:"31+",l:"31 tahun ke atas"}] },
   { code:"A3", q:"Tempoh perkhidmatan sebagai guru (sejak tarikh lantikan)", type:"radio", opts:[{k:"1-6 bulan",l:"1–6 bulan"},{k:"7-12 bulan",l:"7–12 bulan"},{k:"13-18 bulan",l:"13–18 bulan"},{k:"19-24 bulan",l:"19–24 bulan"},{k:"24-36 bulan",l:"24–36 bulan"},{k:"36+ bulan",l:"36 bulan ke atas"}] },
-  { code:"A4", q:"Institusi latihan perguruan (IPG Kampus)", type:"select", opts:IPG_KAMPUS.map(k=>({k,l:k})) },
-  { code:"A5", q:"Program latihan perguruan", type:"radio", other:true, opts:[{k:"PISMP",l:"PISMP (Program Ijazah Sarjana Muda Perguruan)"},{k:"PDPP",l:"PDPP (Program Diploma Pascasiswazah Pendidikan)"},{k:"PISP",l:"PISP (Program Ijazah Sarjana Perguruan)"},{k:"Lain-lain",l:"Lain-lain (nyatakan)"}] },
-  { code:"A6", q:"Opsyen / major mata pelajaran utama", type:"text", ph:"nyatakan opsyen/major anda" },
+  { code:"A4", q:"PILIH INSTITUT PENDIDIKAN GURU KAMPUS", type:"select", opts:IPG_KAMPUS.map(k=>({k,l:k})) },
+  { code:"A5", q:"PROGRAM PENGAJIAN", type:"radio", opts:[{k:"PROGRAM PERSEDIAAN IJAZAH SARJANA MUDA PERGURUAN",l:"PROGRAM PERSEDIAAN IJAZAH SARJANA MUDA PERGURUAN"},{k:"PROGRAM IJAZAH SARJANA MUDA PERGURUAN",l:"PROGRAM IJAZAH SARJANA MUDA PERGURUAN"},{k:"PROGRAM IJAZAH SARJANA PERGURUAN (PISP)",l:"PROGRAM IJAZAH SARJANA PERGURUAN (PISP)"},{k:"PROGRAM DIPLOMA PENDIDIKAN PASCASISWAZAH (PDPP)",l:"PROGRAM DIPLOMA PENDIDIKAN PASCASISWAZAH (PDPP)"}] },
+  { code:"A6", q:"BIDANG PENGAJIAN", type:"select", opts:["BAHASA MELAYU","BAHASA INGGERIS (TESL)","SAINS","MATEMATIK","SEJARAH","PENDIDIKAN ISLAM","BAHASA CINA","BAHASA TAMIL","BIMBINGAN DAN KAUNSELING","REKA BENTUK DAN TEKNOLOGI (RBT)","PENDIDIKAN AWAL KANAK-KANAK","PENDIDIKAN KHAS","PENDIDIKAN MUZIK","PENDIDIKAN JASMANI","PENDIDIKAN SENI VISUAL","PEDAGOGI","LAIN-LAIN"].map(k=>({k,l:k})) },
   { code:"A7", q:"Status penempatan mengajar", type:"radio", opts:[{k:"Dalam opsyen sepenuhnya",l:"Dalam bidang opsyen sepenuhnya"},{k:"Sebahagian luar",l:"Sebahagian luar bidang opsyen"},{k:"Sepenuhnya luar",l:"Sepenuhnya luar bidang opsyen (out-of-field)"}] },
   { code:"A8", q:"Jenis sekolah bertugas", type:"radio", other:true, opts:[{k:"SK",l:"Sekolah Kebangsaan (SK)"},{k:"SJK(C)",l:"SJK(C)"},{k:"SJK(T)",l:"SJK(T)"},{k:"SMK",l:"Sekolah Menengah Kebangsaan (SMK)"},{k:"SBP",l:"Sekolah Berasrama Penuh (SBP)"},{k:"Lain-lain",l:"Lain-lain (nyatakan)"}] },
   { code:"A9", q:"Peringkat sekolah", type:"radio", opts:[{k:"Sekolah Rendah",l:"Sekolah Rendah"},{k:"Sekolah Menengah",l:"Sekolah Menengah"}] },
@@ -318,7 +317,7 @@ function levelFromMean(mean){
  * 3. STATE MANAGEMENT + PERSISTENCE
  * ================================================================ */
 
-const STORAGE_KEY = "soal-selidik-progress-v1";
+const STORAGE_KEY = "soal-selidik-progress-v2";
 const WEBHOOK_KEY = "soal-selidik-webhook-url";
 
 let state = {
