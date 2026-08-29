@@ -3,858 +3,1568 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Soal Selidik Kajian — Efikasi Kendiri Guru</title>
-<meta name="description" content="Soal selidik kajian akademik: Efikasi Kendiri Guru dalam kalangan Guru Baharu. Skala 7-mata.">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-  theme: {
-    extend: {
-      colors: {
-        emerald: { 50:'#ecfdf5',100:'#d1fae5',200:'#a7f3d0',300:'#6ee7b7',400:'#34d399',500:'#10b981',600:'#059669',700:'#047857',800:'#065f46',900:'#064e3b' },
-        teal: { 50:'#f0fdfa',100:'#ccfbf1',200:'#99f6e4',300:'#5eead4',400:'#2dd4bf',500:'#14b8a6',600:'#0d9488',700:'#0f766e',800:'#115e59',900:'#134e4a' },
-      },
-    },
-  },
-};
-</script>
+<title>Soal Selidik Efikasi Kendiri Guru — IPGKPM</title>
+<meta name="description" content="Soal selidik digital tentang efikasi kendiri guru dalam kalangan pelajar Institut Pendidikan Guru Kementerian Pendidikan (IPGKPM). Skala respons 7-mata diseragamkan; pengiraan skor automatik.">
 <style>
-  * { -webkit-tap-highlight-color: transparent; }
-  body { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-  .fade-in { animation: fadeIn .25s ease-out; }
-  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-  .slide-in { animation: slideIn .3s ease-out; }
-  @keyframes slideIn { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
-  .pop-in { animation: popIn .35s cubic-bezier(.34,1.56,.64,1); }
-  @keyframes popIn { from { opacity:0; transform:scale(.9); } to { opacity:1; transform:scale(1); } }
-  ::-webkit-scrollbar { width:8px; height:8px; }
-  ::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:4px; }
-  ::-webkit-scrollbar-thumb:hover { background:#9ca3af; }
-  .line-clamp-1 { display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; }
-  input[type=radio]{ accent-color:#10b981; }
+/* ============================================================================
+   TEMA — Teal/Emerald + Amber accent (bukan indigo/biru)
+   ============================================================================ */
+:root {
+  --primary: #0d9488;
+  --primary-dark: #0f766e;
+  --primary-light: #5eead4;
+  --primary-fg: #ffffff;
+  --bg: #fafaf7;
+  --card: #ffffff;
+  --fg: #1a2e2a;
+  --muted: #6b7280;
+  --muted-bg: #f5f5f0;
+  --border: #e5e7e0;
+  --accent: #f59e0b;
+  --accent-bg: #fef3c7;
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --success: #059669;
+  --success-bg: #d1fae5;
+  --radius: 0.75rem;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.04);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  background-image:
+    radial-gradient(circle at 15% 12%, rgba(13,148,136,0.06) 0, transparent 38%),
+    radial-gradient(circle at 88% 8%, rgba(245,158,11,0.09) 0, transparent 36%);
+  background-attachment: fixed;
+  color: var(--fg);
+  line-height: 1.6;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app { min-height: 100vh; display: flex; flex-direction: column; }
+
+/* Header */
+.header {
+  position: sticky; top: 0; z-index: 40;
+  background: rgba(250,250,247,0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  height: 56px; display: flex; align-items: center; padding: 0 1rem;
+}
+.header-inner { max-width: 1152px; margin: 0 auto; width: 100%; display: flex; align-items: center; justify-content: space-between; }
+.header-brand { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; background: none; border: none; }
+.header-logo { width: 32px; height: 32px; background: var(--primary); color: var(--primary-fg); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; }
+.header-title { font-size: 14px; font-weight: 700; line-height: 1.2; }
+.header-sub { font-size: 10px; color: var(--muted); line-height: 1.2; }
+
+/* Main */
+.main { flex: 1; max-width: 1024px; margin: 0 auto; width: 100%; padding: 1rem 1rem 2rem; }
+.main-wide { max-width: 1152px; }
+.main-narrow { max-width: 768px; }
+
+/* Footer */
+.footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  background: rgba(250,250,247,0.8);
+  padding: 1rem;
+  font-size: 11px; color: var(--muted); text-align: center;
+}
+.footer p { margin: 0.25rem 0; }
+
+/* Cards */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+.card-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+.card-title { font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+.card-desc { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; }
+.card-body { padding: 1.25rem; }
+.card-body.tight { padding: 0.5rem; }
+
+/* Hero card (intro) */
+.hero {
+  background: linear-gradient(135deg, rgba(13,148,136,0.1), rgba(245,158,11,0.15), transparent);
+  padding: 1.5rem;
+}
+.hero-badge { display: inline-block; background: rgba(13,148,136,0.1); color: var(--primary); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; border: 1px solid rgba(13,148,136,0.2); }
+.hero h1 { font-size: 1.75rem; font-weight: 800; margin-top: 0.75rem; color: var(--fg); line-height: 1.2; }
+.hero h2 { font-size: 1rem; font-weight: 600; margin-top: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+.hero p { margin-top: 0.5rem; color: var(--muted); font-size: 0.9rem; line-height: 1.6; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0.5rem 1rem; border-radius: 0.5rem;
+  font-size: 0.875rem; font-weight: 500;
+  border: 1px solid transparent; cursor: pointer;
+  transition: all 0.15s; text-decoration: none;
+  font-family: inherit;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary { background: var(--primary); color: var(--primary-fg); }
+.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+.btn-outline { background: transparent; border-color: var(--border); color: var(--fg); }
+.btn-outline:hover:not(:disabled) { border-color: var(--primary); background: rgba(13,148,136,0.05); }
+.btn-ghost { background: transparent; color: var(--muted); }
+.btn-ghost:hover { color: var(--fg); background: var(--muted-bg); }
+.btn-lg { padding: 0.75rem 1.5rem; font-size: 1rem; }
+.btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+.btn svg { width: 16px; height: 16px; }
+
+/* Stepper */
+.stepper { overflow-x: auto; padding: 0.5rem 0.25rem; }
+.stepper ol { list-style: none; display: flex; align-items: center; gap: 0.25rem; min-width: max-content; }
+.step-btn {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.4rem 0.75rem; border-radius: 0.5rem;
+  border: 1px solid var(--border); background: var(--card);
+  cursor: pointer; font-family: inherit; font-size: 0.8rem;
+  transition: all 0.15s;
+}
+.step-btn:hover:not(:disabled) { border-color: var(--primary); }
+.step-btn.current { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); }
+.step-btn.done { border-color: rgba(13,148,136,0.4); background: rgba(13,148,136,0.05); }
+.step-circle {
+  width: 24px; height: 24px; border-radius: 9999px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; font-weight: 700; flex-shrink: 0;
+}
+.step-btn.current .step-circle { background: rgba(255,255,255,0.2); color: var(--primary-fg); }
+.step-btn.done .step-circle { background: var(--primary); color: var(--primary-fg); }
+.step-btn:not(.current):not(.done) .step-circle { background: var(--muted-bg); color: var(--muted); }
+.step-title { font-weight: 500; }
+.step-count { font-size: 0.7rem; opacity: 0.8; }
+.step-sep { width: 16px; height: 1px; background: var(--border); margin: 0 0.25rem; }
+.step-progress { margin-top: 0.5rem; padding: 0 0.5rem; }
+.step-progress-bar { height: 6px; background: var(--muted-bg); border-radius: 9999px; overflow: hidden; }
+.step-progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #10b981); transition: width 0.3s; }
+.step-progress-text { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }
+
+/* Likert item */
+.likert-item {
+  border: 1px solid var(--border); border-radius: 0.75rem;
+  background: var(--card); padding: 1rem;
+  margin-bottom: 0.75rem; transition: all 0.15s;
+}
+.likert-item.answered { border-color: rgba(13,148,136,0.3); box-shadow: var(--shadow); }
+.likert-item:hover { border-color: rgba(13,148,136,0.4); box-shadow: var(--shadow-md); }
+.likert-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.75rem; }
+.likert-code {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 2.25rem; height: 1.75rem; padding: 0 0.5rem;
+  background: rgba(13,148,136,0.1); color: var(--primary);
+  border-radius: 0.375rem; font-size: 0.75rem; font-weight: 700;
+}
+.likert-statement { margin-top: 0.5rem; font-size: 0.9rem; line-height: 1.5; }
+.likert-status { font-size: 0.75rem; color: var(--muted); flex-shrink: 0; }
+.likert-status.answered { color: var(--primary); font-weight: 500; }
+.likert-anchors { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--muted); margin: 0.75rem 0 0.5rem; }
+.likert-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.375rem; }
+.likert-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 0.5rem 0.25rem; border-radius: 0.5rem;
+  border: 1px solid var(--border); background: var(--card);
+  cursor: pointer; font-family: inherit; transition: all 0.1s;
+  min-height: 48px;
+}
+.likert-btn:hover { border-color: var(--primary); background: rgba(13,148,136,0.05); }
+.likert-btn.active { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); box-shadow: var(--shadow-md); }
+.likert-num { font-size: 1.1rem; font-weight: 700; }
+.likert-label { font-size: 0.65rem; text-align: center; margin-top: 0.125rem; line-height: 1.1; display: none; }
+@media (min-width: 640px) { .likert-label { display: block; } }
+
+/* Demographics */
+.demo-item { border: 1px solid var(--border); border-radius: 0.75rem; background: var(--card); padding: 1rem; margin-bottom: 0.75rem; }
+.demo-item.answered { border-color: rgba(13,148,136,0.3); }
+.demo-head { display: flex; align-items: flex-start; gap: 0.75rem; }
+.demo-q { font-size: 0.9rem; font-weight: 500; flex: 1; }
+.demo-options { margin-top: 0.75rem; padding-left: 2.75rem; }
+.demo-radio-grid { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+@media (min-width: 640px) { .demo-radio-grid { grid-template-columns: 1fr 1fr; } }
+.demo-radio-label {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.625rem 0.75rem; border: 1px solid var(--border);
+  border-radius: 0.5rem; cursor: pointer; font-size: 0.85rem;
+  transition: all 0.1s;
+}
+.demo-radio-label:hover { border-color: var(--primary); background: rgba(13,148,136,0.05); }
+.demo-radio-label.checked { border-color: var(--primary); background: rgba(13,148,136,0.05); }
+.demo-radio-label input[type="radio"] { accent-color: var(--primary); }
+.demo-select { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.875rem; font-family: inherit; background: var(--card); }
+.demo-select:focus { outline: none; border-color: var(--primary); }
+.demo-input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.875rem; font-family: inherit; margin-top: 0.5rem; }
+
+/* Scale legend */
+.scale-legend { background: rgba(13,148,136,0.05); border: 1px solid rgba(13,148,136,0.2); border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 1rem; }
+.scale-legend-title { font-size: 0.8rem; font-weight: 600; color: var(--primary); }
+.scale-legend-grid { display: grid; grid-template-columns: 1fr; gap: 0.25rem; margin-top: 0.5rem; font-size: 0.7rem; }
+@media (min-width: 640px) { .scale-legend-grid { grid-template-columns: 1fr 1fr; } }
+.scale-legend-item { display: flex; gap: 0.25rem; }
+.scale-legend-num { font-family: monospace; font-weight: 700; color: var(--primary); }
+
+/* Vignette */
+.vignette { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); border-radius: 0.75rem; margin-bottom: 1rem; }
+.vignette-body { padding: 1rem 1.25rem; }
+.vignette-quote { border-left: 4px solid var(--accent); padding-left: 1rem; font-style: italic; font-size: 0.875rem; line-height: 1.6; color: var(--fg); }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+.badge-primary { background: rgba(13,148,136,0.1); color: var(--primary); border: 1px solid rgba(13,148,136,0.2); }
+.badge-success { background: var(--success-bg); color: var(--success); }
+.badge-warning { background: var(--accent-bg); color: #92400e; }
+.badge-danger { background: var(--danger-bg); color: var(--danger); }
+
+/* Progress bar */
+.progress { height: 8px; background: var(--muted-bg); border-radius: 9999px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #10b981); transition: width 0.3s; }
+.progress-sm { height: 6px; }
+
+/* Alerts */
+.alert { border-radius: 0.5rem; padding: 0.75rem 1rem; font-size: 0.85rem; display: flex; gap: 0.75rem; align-items: flex-start; }
+.alert-warning { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: #92400e; }
+.alert-danger { background: var(--danger-bg); border: 1px solid rgba(220,38,38,0.3); color: var(--danger); }
+.alert-success { background: var(--success-bg); border: 1px solid rgba(5,150,105,0.3); color: var(--success); }
+
+/* Consent checkbox */
+.consent-box { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1rem; border: 1px solid var(--border); background: var(--muted-bg); border-radius: 0.75rem; cursor: pointer; }
+.consent-box input[type="checkbox"] { margin-top: 0.125rem; width: 16px; height: 16px; accent-color: var(--primary); }
+
+/* Nav buttons */
+.nav-buttons { display: flex; align-items: center; justify-content: space-between; margin-top: 1.5rem; gap: 1rem; flex-wrap: wrap; }
+.nav-info { font-size: 0.75rem; color: var(--muted); text-align: center; flex: 1; }
+
+/* Results */
+.result-stat { background: var(--card); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; }
+.result-stat-label { font-size: 0.75rem; font-weight: 500; color: var(--muted); }
+.result-stat-value { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; }
+.result-stat-hint { font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }
+
+.result-construct { border: 1px solid var(--border); border-radius: 0.75rem; background: var(--card); margin-bottom: 1rem; overflow: hidden; }
+.result-construct-head { padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.result-construct-title { font-size: 1rem; font-weight: 700; margin-top: 0.5rem; }
+.result-construct-percent { font-size: 1.5rem; font-weight: 700; color: var(--primary); text-align: right; }
+.result-construct-range { font-size: 0.75rem; color: var(--muted); }
+.result-subscale { background: var(--muted-bg); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.75rem; }
+.result-subscale-label { font-size: 0.75rem; font-weight: 600; }
+.result-subscale-value { font-size: 1.1rem; font-weight: 700; }
+
+/* Bar chart (simple CSS bars) */
+.bar-chart { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; }
+.bar-row { display: flex; align-items: center; gap: 0.5rem; }
+.bar-label { width: 80px; font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
+.bar-track { flex: 1; height: 24px; background: var(--muted-bg); border-radius: 0.25rem; overflow: hidden; position: relative; }
+.bar-fill { height: 100%; border-radius: 0.25rem; transition: width 0.5s; display: flex; align-items: center; justify-content: flex-end; padding-right: 0.5rem; color: white; font-size: 0.7rem; font-weight: 700; }
+
+/* Loading overlay */
+.overlay { position: fixed; inset: 0; background: rgba(250,250,247,0.8); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.spinner { width: 32px; height: 32px; border: 3px solid var(--muted-bg); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Part cards (intro) */
+.part-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; margin-top: 0.75rem; }
+@media (min-width: 640px) { .part-grid { grid-template-columns: 1fr 1fr; } }
+.part-card { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--card); }
+.part-badge { width: 36px; height: 36px; border-radius: 0.5rem; background: rgba(13,148,136,0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+.part-title { font-size: 0.85rem; font-weight: 500; }
+.part-count { font-size: 0.7rem; color: var(--muted); }
+
+/* Instructions list */
+.instructions { list-style: none; margin-top: 0.75rem; }
+.instructions li { display: flex; gap: 0.5rem; padding: 0.25rem 0; font-size: 0.875rem; color: var(--muted); }
+.instructions li::before { content: "•"; color: var(--primary); font-weight: bold; }
+
+/* Separator */
+.separator { height: 1px; background: var(--border); margin: 1rem 0; }
+
+/* Hidden */
+.hidden { display: none !important; }
+
+/* Scrollbar */
+.nice-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.nice-scroll::-webkit-scrollbar-thumb { background: rgba(13,148,136,0.3); border-radius: 9999px; }
+.nice-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* Print */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; }
+  .header, .footer { display: none !important; }
+}
 </style>
 </head>
-<body class="bg-gradient-to-b from-emerald-50/40 via-white to-white text-gray-900 min-h-screen">
-
-<!-- App root -->
+<body>
 <div id="app"></div>
 
-<!-- Settings dialog -->
-<div id="settings-overlay" class="fixed inset-0 z-[60] hidden bg-black/40 backdrop-blur-sm" onclick="if(event.target===this)closeSettings()"></div>
-
 <script>
-"use strict";
+/* ============================================================================
+   KONFIGURASI
+   ============================================================================ */
+const CONFIG = {
+  // URL Web App Google Apps Script (untuk hantar data ke spreadsheet)
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbz6gMRnr_RKkNP0D6R5vw-Q0YbJCA2E2OZBshPh5LPi_kAtqov3Ah6oH_ixqSn9Bvzu/exec",
+  // URL spreadsheet (untuk butang "Buka Spreadsheet")
+  SPREADSHEET_URL: "https://docs.google.com/spreadsheets/d/1PI7PfcJuNdw1y6Qj3WURThAPELj-prKbzeIFZWA7Db4/edit",
+  // Storage key untuk simpan progress
+  STORAGE_KEY: "soal_selidik_ipgkpm",
+};
 
-/* ================================================================
- * 1. SURVEY DATA — All content embedded
- * ================================================================ */
+/* ============================================================================
+   DATA SOAL SELIDIK — 108 item (11 demografi + 97 Likert)
+   Berdasarkan manual: Soal Selidik BM Pelajar IPG Skala 7-mata
+   ============================================================================ */
 
-const SCALE_LABELS = {
-  setuju: { low:"Sangat Tidak Setuju", high:"Sangat Setuju",
-    points:["Sangat Tidak Setuju","Tidak Setuju","Agak Tidak Setuju","Tidak Pasti","Agak Setuju","Setuju","Sangat Setuju"] },
-  betul: { low:"Tidak Benar Langsung Bagi Saya", high:"Benar Sepenuhnya Bagi Saya",
-    points:["Tidak Benar Langsung Bagi Saya","Sedikit Benar","Agak Tidak Benar","Tidak Pasti","Agak Benar","Kebanyakannya Benar","Benar Sepenuhnya Bagi Saya"] },
-  kebarangkalian: { low:"Sangat Tidak Mungkin", high:"Sangat Mungkin",
-    points:["Sangat Tidak Mungkin","Tidak Mungkin","Agak Tidak Mungkin","Tidak Pasti","Agak Mungkin","Mungkin","Sangat Mungkin"] },
-  banyak: { low:"Tiada Langsung", high:"Sangat Banyak",
-    points:["Tiada Langsung","Sangat Sedikit","Sedikit","Agak Sedikit","Sederhana","Agak Banyak","Sangat Banyak"] },
+const SCALES = {
+  setuju: {
+    label: "Skala Persetujuan",
+    anchor1: "Sangat Tidak Setuju", anchor7: "Sangat Setuju",
+    points: [
+      {v:1,l:"Sangat Tidak Setuju"},{v:2,l:"Tidak Setuju"},{v:3,l:"Agak Tidak Setuju"},
+      {v:4,l:"Tidak Pasti"},{v:5,l:"Agak Setuju"},{v:6,l:"Setuju"},{v:7,l:"Sangat Setuju"}
+    ]
+  },
+  benar: {
+    label: "Skala Kebenaran",
+    anchor1: "Tidak Benar Langsung Bagi Saya", anchor7: "Benar Sepenuhnya Bagi Saya",
+    points: [
+      {v:1,l:"Tidak Benar Langsung Bagi Saya"},{v:2,l:"Sedikit Benar"},{v:3,l:"Agak Tidak Benar"},
+      {v:4,l:"Tidak Pasti"},{v:5,l:"Agak Benar"},{v:6,l:"Kebanyakannya Benar"},{v:7,l:"Benar Sepenuhnya Bagi Saya"}
+    ]
+  },
+  mungkin: {
+    label: "Skala Kemungkinan",
+    anchor1: "Sangat Tidak Mungkin", anchor7: "Sangat Mungkin",
+    points: [
+      {v:1,l:"Sangat Tidak Mungkin"},{v:2,l:"Tidak Mungkin"},{v:3,l:"Agak Tidak Mungkin"},
+      {v:4,l:"Tidak Pasti"},{v:5,l:"Agak Mungkin"},{v:6,l:"Mungkin"},{v:7,l:"Sangat Mungkin"}
+    ]
+  },
+  banyak: {
+    label: "Skala Kuantiti",
+    anchor1: "Tiada Langsung", anchor7: "Sangat Banyak",
+    points: [
+      {v:1,l:"Tiada Langsung"},{v:2,l:"Sangat Sedikit"},{v:3,l:"Sedikit"},{v:4,l:"Agak Sedikit"},
+      {v:5,l:"Sederhana"},{v:6,l:"Agak Banyak"},{v:7,l:"Sangat Banyak"}
+    ]
+  }
 };
 
 const IPG_KAMPUS = [
-  "IPGK TEMENGGONG IBRAHIM","IPGK TUN HUSSEIN ONN","IPGK PEREMPUAN MELAYU","IPGK RAJA MELEWAR",
-  "IPGK PENDIDIKAN TEKNIK","IPGK PENDIDIKAN ISLAM","IPGK ILMU KHAS","IPGK BAHASA MELAYU",
-  "IPGK BAHASA ANTARABANGSA","IPGK IPOH","IPGMK DARULAMAN","IPGK PERLIS",
-  "IPGK PULAU PINANG","IPGK TUANKU BAINUN","IPGK TENGKU AMPUAN AFZAN","IPGK DATO' RAZALI ISMAIL",
-  "IPGK SULTAN MIZAN","IPGK KOTA BHARU","IPGK RAJANG","IPGK KENT",
-  "IPGK BATU LINTANG","IPGK TAWAU","IPGK KENINGAU","IPGK TUN ABDUL RAZAK",
-  "IPGK SULTAN ABDUL HALIM","IPGK GAYA","IPGK SARAWAK",
+  "IPGK Temenggong Ibrahim","IPGK Tun Hussein Onn","IPGK Perempuan Melayu","IPGK Raja Melewar",
+  "IPGK Pendidikan Teknik","IPGK Pendidikan Islam","IPGK Ilmu Khas","IPGK Bahasa Melayu",
+  "IPGK Bahasa Antarabangsa","IPGK Ipoh","IPGK Darul Aman","IPGK Perlis","IPGK Pulau Pinang",
+  "IPGK Tuanku Bainun","IPGK Tengku Ampuan Afzan","IPGK Dato' Razali Ismail","IPGK Sultan Mizan",
+  "IPGK Kota Bharu","IPGK Rajang","IPGK Kent","IPGK Batu Lintang","IPGK Tawau","IPGK Keningau",
+  "IPGK Tun Abdul Razak","IPGK Sultan Abdul Halim","IPGK Gaya","IPGK Sarawak"
 ];
 
 const DEMOGRAPHICS = [
-  { code:"A1", q:"Jantina", type:"radio", opts:[{k:"Lelaki",l:"Lelaki"},{k:"Perempuan",l:"Perempuan"}] },
-  { code:"A2", q:"Umur (tahun)", type:"radio", opts:[{k:"22-24",l:"22–24"},{k:"25-27",l:"25–27"},{k:"28-30",l:"28–30"},{k:"31+",l:"31 tahun ke atas"}] },
-  { code:"A3", q:"Tempoh perkhidmatan sebagai guru (sejak tarikh lantikan)", type:"radio", opts:[{k:"1-6 bulan",l:"1–6 bulan"},{k:"7-12 bulan",l:"7–12 bulan"},{k:"13-18 bulan",l:"13–18 bulan"},{k:"19-24 bulan",l:"19–24 bulan"},{k:"24-36 bulan",l:"24–36 bulan"},{k:"36+ bulan",l:"36 bulan ke atas"}] },
-  { code:"A4", q:"PILIH INSTITUT PENDIDIKAN GURU KAMPUS", type:"select", opts:IPG_KAMPUS.map(k=>({k,l:k})) },
-  { code:"A5", q:"PROGRAM PENGAJIAN", type:"radio", opts:[{k:"PROGRAM PERSEDIAAN IJAZAH SARJANA MUDA PERGURUAN",l:"PROGRAM PERSEDIAAN IJAZAH SARJANA MUDA PERGURUAN"},{k:"PROGRAM IJAZAH SARJANA MUDA PERGURUAN",l:"PROGRAM IJAZAH SARJANA MUDA PERGURUAN"},{k:"PROGRAM IJAZAH SARJANA PERGURUAN (PISP)",l:"PROGRAM IJAZAH SARJANA PERGURUAN (PISP)"},{k:"PROGRAM DIPLOMA PENDIDIKAN PASCASISWAZAH (PDPP)",l:"PROGRAM DIPLOMA PENDIDIKAN PASCASISWAZAH (PDPP)"}] },
-  { code:"A6", q:"BIDANG PENGAJIAN", type:"select", opts:["BAHASA MELAYU","BAHASA INGGERIS (TESL)","SAINS","MATEMATIK","SEJARAH","PENDIDIKAN ISLAM","BAHASA CINA","BAHASA TAMIL","BIMBINGAN DAN KAUNSELING","REKA BENTUK DAN TEKNOLOGI (RBT)","PENDIDIKAN AWAL KANAK-KANAK","PENDIDIKAN KHAS","PENDIDIKAN MUZIK","PENDIDIKAN JASMANI","PENDIDIKAN SENI VISUAL","PEDAGOGI","LAIN-LAIN"].map(k=>({k,l:k})) },
-  { code:"A7", q:"Status penempatan mengajar", type:"radio", opts:[{k:"Dalam opsyen sepenuhnya",l:"Dalam bidang opsyen sepenuhnya"},{k:"Sebahagian luar",l:"Sebahagian luar bidang opsyen"},{k:"Sepenuhnya luar",l:"Sepenuhnya luar bidang opsyen (out-of-field)"}] },
-  { code:"A8", q:"Jenis sekolah bertugas", type:"radio", other:true, opts:[{k:"SK",l:"Sekolah Kebangsaan (SK)"},{k:"SJK(C)",l:"SJK(C)"},{k:"SJK(T)",l:"SJK(T)"},{k:"SMK",l:"Sekolah Menengah Kebangsaan (SMK)"},{k:"SBP",l:"Sekolah Berasrama Penuh (SBP)"},{k:"Lain-lain",l:"Lain-lain (nyatakan)"}] },
-  { code:"A9", q:"Peringkat sekolah", type:"radio", opts:[{k:"Sekolah Rendah",l:"Sekolah Rendah"},{k:"Sekolah Menengah",l:"Sekolah Menengah"}] },
-  { code:"A10", q:"Lokasi sekolah", type:"radio", opts:[{k:"Bandar",l:"Bandar"},{k:"Luar Bandar",l:"Luar Bandar"},{k:"Pedalaman",l:"Pedalaman"}] },
-  { code:"A11", q:"Jawatan / tugas tambahan (kokurikulum, pentadbiran, dsb.) selain mengajar", type:"radio", opts:[{k:"Tiada",l:"Tiada"},{k:"1 jawatan",l:"Ada, 1 jawatan"},{k:"2+ jawatan",l:"Ada, 2 jawatan atau lebih"}] },
-  { code:"A12", q:"Status mentor / program induksi guru baharu di sekolah", type:"radio", opts:[{k:"Ada mentor",l:"Ada mentor rasmi dilantik"},{k:"Tiada mentor",l:"Tiada mentor rasmi"},{k:"Tidak pasti",l:"Tidak pasti"}] },
+  {code:"A1",q:"Jantina",type:"radio",options:[{v:"Lelaki",l:"Lelaki"},{v:"Perempuan",l:"Perempuan"}]},
+  {code:"A2",q:"Umur (tahun)",type:"radio",options:[{v:"19-20",l:"19–20"},{v:"21-22",l:"21–22"},{v:"23-24",l:"23–24"},{v:"25+",l:"25 tahun ke atas"}]},
+  {code:"A3",q:"Program pengajian semasa",type:"select",options:[
+    {v:"PPISMP",l:"Program Persediaan Ijazah Sarjana Muda Perguruan"},
+    {v:"PISMP",l:"Program Ijazah Sarjana Muda Perguruan"},
+    {v:"PISP",l:"Program Ijazah Sarjana Perguruan (PISP)"},
+    {v:"PDPP",l:"Program Diploma Pendidikan Pascasiswazah (PDPP)"}
+  ]},
+  {code:"A4",q:"Institut Pendidikan Guru Kampus",type:"select",options:IPG_KAMPUS.map(k=>({v:k,l:k}))},
+  {code:"A5",q:"Semester/tahun pengajian semasa",type:"radio",options:[
+    {v:"Tahun 1",l:"Semester 1–2 (Tahun 1)"},{v:"Tahun 2",l:"Semester 3–4 (Tahun 2)"},
+    {v:"Tahun 3",l:"Semester 5–6 (Tahun 3)"},{v:"Tahun 4",l:"Semester 7–8 (Tahun 4)"}
+  ]},
+  {code:"A6",q:"Bidang pengajian",type:"select",allowOther:true,options:[
+    {v:"Bahasa Melayu",l:"Bahasa Melayu"},{v:"Bahasa Inggeris (TESL)",l:"Bahasa Inggeris (TESL)"},
+    {v:"Sains",l:"Sains"},{v:"Matematik",l:"Matematik"},{v:"Sejarah",l:"Sejarah"},
+    {v:"Pendidikan Islam",l:"Pendidikan Islam"},{v:"Bahasa Cina",l:"Bahasa Cina"},
+    {v:"Bahasa Tamil",l:"Bahasa Tamil"},{v:"Bimbingan dan Kaunseling",l:"Bimbingan dan Kaunseling"},
+    {v:"Reka Bentuk dan Teknologi (RBT)",l:"Reka Bentuk dan Teknologi (RBT)"},
+    {v:"Pendidikan Awal Kanak-Kanak",l:"Pendidikan Awal Kanak-Kanak"},
+    {v:"Pendidikan Khas",l:"Pendidikan Khas"},{v:"Pendidikan Muzik",l:"Pendidikan Muzik"},
+    {v:"Pendidikan Jasmani",l:"Pendidikan Jasmani"},{v:"Pendidikan Seni Visual",l:"Pendidikan Seni Visual"},
+    {v:"Pedagogi",l:"Pedagogi"}
+  ]},
+  {code:"A7",q:"Bilangan praktikum/amali mengajar yang telah dilalui",type:"radio",options:[
+    {v:"Belum pernah",l:"Belum pernah"},{v:"1 kali",l:"1 kali"},{v:"2 kali",l:"2 kali"},{v:"3 kali+",l:"3 kali atau lebih"}
+  ]},
+  {code:"A8",q:"Adakah keguruan pilihan pertama anda semasa memohon ke IPG?",type:"radio",options:[
+    {v:"Ya, pilihan pertama",l:"Ya, pilihan pertama"},{v:"Tidak, bukan pilihan pertama",l:"Tidak, bukan pilihan pertama"}
+  ]},
+  {code:"A9",q:"Adakah terdapat ahli keluarga terdekat (ibu bapa/adik-beradik) yang berkhidmat sebagai guru?",type:"radio",options:[
+    {v:"Ya",l:"Ya"},{v:"Tidak",l:"Tidak"}
+  ]},
+  {code:"A10",q:"Pencapaian akademik semasa (PNGK/CGPA terkini)",type:"radio",options:[
+    {v:"3.67-4.00",l:"3.67–4.00"},{v:"3.00-3.66",l:"3.00–3.66"},{v:"2.50-2.99",l:"2.50–2.99"},{v:"<2.50",l:"Bawah 2.50"}
+  ]},
+  {code:"A11",q:"Penglibatan dalam kepimpinan/jawatankuasa semasa pengajian",type:"radio",options:[
+    {v:"Aktif",l:"Aktif (memegang jawatan)"},{v:"Terlibat",l:"Terlibat (ahli biasa)"},{v:"Tidak terlibat",l:"Tidak terlibat"}
+  ]}
 ];
-
-const VIGNETTE_D = `“Anda baru menerima laporan pemerhatian pengajaran (PdP) terkini daripada Pengetua/Guru Besar anda, dan penilaiannya adalah ‘tidak memuaskan.’ Dua sesi pemerhatian pengajaran anda yang lain sebelum ini turut mendapat penilaian yang lebih rendah daripada yang anda harapkan, sedangkan anda amat berazam untuk cemerlang dalam kerjaya keguruan kerana anda mempunyai matlamat kerjaya yang jelas dan tidak mahu mengecewakan keluarga anda. Maklum balas daripada Pengetua/Guru Besar mengenai sesi pengajaran tersebut agak kritikal, termasuk sebutan tentang ‘penguasaan isi kandungan yang lemah’ dan ‘pengurusan bilik darjah yang kurang berkesan,’ tetapi ia turut menyertakan cara-cara bagaimana pengajaran anda boleh diperbaiki. Ulasan yang serupa turut dibuat oleh penyelia/mentor yang menilai dua sesi pengajaran anda yang lain.”`;
 
 const SECTIONS = [
-  { id:"B", bahagian:"BAHAGIAN B", title:"Identiti Profesional Guru",
-    source:"Zeng & Liu (2024) — PLoS ONE 19(3) e0293156. Skala asal 5-mata, diselaraskan kepada 7-mata.",
-    instruction:"Sila nyatakan tahap persetujuan anda terhadap setiap pernyataan di bawah. Tandakan satu jawapan yang paling menggambarkan pandangan anda.",
-    scaleKind:"setuju",
-    subscales:[
-      { title:"Efikasi Kendiri Profesional", items:[
-        {code:"PS1",text:"Saya percaya bahawa saya boleh bersikap profesional dalam kerjaya saya sebagai seorang guru."},
-        {code:"PS2",text:"Saya bersedia sepenuhnya untuk profesion keguruan."},
-        {code:"PS3",text:"Saya percaya bahawa saya dapat bergaul, bekerjasama, dan berkomunikasi dengan mudah bersama bakal rakan sekerja saya."},
-        {code:"PS4",text:"Saya percaya bahawa saya boleh berjaya dalam kerjaya keguruan saya."},
-        {code:"PS5",text:"Saya tidak ragu-ragu bahawa saya boleh menguasai semua kemahiran untuk profesion keguruan."},
-      ]},
-      { title:"Pengetahuan tentang Profesion", items:[
-        {code:"KPP1",text:"Saya memahami sifat profesion keguruan."},
-        {code:"KPP2",text:"Saya tahu jenis orang yang ingin saya bekerjasama pada masa hadapan."},
-        {code:"KPP3",text:"Saya mempunyai pemahaman yang baik tentang peranan dan tanggungjawab seorang guru."},
-        {code:"KPP4",text:"Saya tahu aplikasi, alat, dan peranti yang perlu digunakan sebagai seorang guru."},
-      ]},
-      { title:"Komitmen Profesional", items:[
-        {code:"PC1",text:"Saya dapat mengenal pasti diri saya secara positif dengan warga profesion keguruan."},
-        {code:"PC2",text:"Penting bagi saya untuk menjadi anggota profesion keguruan."},
-        {code:"PC3",text:"Saya berkongsi nilai-nilai profesion keguruan."},
-        {code:"PC4",text:"Saya berharap untuk menjadi seorang guru pada masa hadapan."},
-      ]},
+  {
+    key:"B",letter:"B",title:"Identiti Profesional Guru",
+    subtitle:"Mengukur identiti profesional guru pelatih dari tiga dimensi: efikasi kendiri profesional, pengetahuan profesion, dan komitmen profesional.",
+    scale:"setuju",
+    items:[
+      {code:"PS1",s:"Saya percaya bahawa saya boleh bersikap profesional dalam kerjaya saya sebagai seorang guru.",rev:false,sub:"PS"},
+      {code:"PS2",s:"Saya bersedia sepenuhnya untuk profesion keguruan.",rev:false,sub:"PS"},
+      {code:"PS3",s:"Saya percaya bahawa saya dapat bergaul, bekerjasama, dan berkomunikasi dengan mudah bersama bakal rakan sekerja saya.",rev:false,sub:"PS"},
+      {code:"PS4",s:"Saya percaya bahawa saya boleh berjaya dalam kerjaya keguruan saya.",rev:false,sub:"PS"},
+      {code:"PS5",s:"Saya tidak ragu-ragu bahawa saya boleh menguasai semua kemahiran untuk profesion keguruan.",rev:false,sub:"PS"},
+      {code:"KPP1",s:"Saya memahami sifat profesion keguruan.",rev:false,sub:"KPP"},
+      {code:"KPP2",s:"Saya tahu jenis orang yang ingin saya bekerjasama pada masa hadapan.",rev:false,sub:"KPP"},
+      {code:"KPP3",s:"Saya mempunyai pemahaman yang baik tentang peranan dan tanggungjawab seorang guru.",rev:false,sub:"KPP"},
+      {code:"KPP4",s:"Saya tahu aplikasi, alat, dan peranti yang perlu digunakan sebagai seorang guru.",rev:false,sub:"KPP"},
+      {code:"PC1",s:"Saya dapat mengenal pasti diri saya secara positif dengan warga profesion keguruan.",rev:false,sub:"PC"},
+      {code:"PC2",s:"Penting bagi saya untuk menjadi anggota profesion keguruan.",rev:false,sub:"PC"},
+      {code:"PC3",s:"Saya berkongsi nilai-nilai profesion keguruan.",rev:false,sub:"PC"},
+      {code:"PC4",s:"Saya berharap untuk menjadi seorang guru pada masa hadapan.",rev:false,sub:"PC"}
     ],
-  },
-  { id:"C", bahagian:"BAHAGIAN C", title:"Panggilan Kerjaya Guru",
-    source:"Dik, Eldridge, Steger & Duffy (2012) — CVQ. Skala asal 4-mata, diselaraskan kepada 7-mata.",
-    instruction:"Sila nyatakan sejauh mana setiap pernyataan di bawah adalah benar bagi diri anda. Tandakan satu jawapan yang paling menggambarkan pandangan anda.",
-    scaleKind:"betul",
     subscales:[
-      { title:"Komponen 1: Kehadiran Panggilan — Seruan Transenden", items:[
-        {code:"P1",text:"Saya percaya bahawa saya telah dipanggil untuk menceburi profesion keguruan ini."},
-        {code:"P2",text:"Saya tertarik untuk menceburi profesion keguruan ini oleh sesuatu yang lebih besar daripada diri saya sendiri."},
-        {code:"P3",text:"Saya tidak percaya bahawa ada kuasa di luar diri saya yang telah membimbing saya menceburi kerjaya ini.",neg:true},
-        {code:"P4",text:"Saya menceburi profesion keguruan ini kerana saya percaya bahawa saya terpanggil untuk berbuat demikian."},
-      ]},
-      { title:"Komponen 1: Kehadiran Panggilan — Kerja Bertujuan", items:[
-        {code:"P5",text:"Kerja saya sebagai guru membantu saya menghayati tujuan hidup saya."},
-        {code:"P6",text:"Saya melihat kerjaya keguruan saya sebagai satu jalan ke arah tujuan hidup."},
-        {code:"P7",text:"Kerjaya keguruan saya merupakan sebahagian penting daripada makna hidup saya."},
-        {code:"P8",text:"Saya cuba menghayati tujuan hidup saya semasa saya mengajar."},
-      ]},
-      { title:"Komponen 1: Kehadiran Panggilan — Orientasi Prososial", items:[
-        {code:"P9",text:"Aspek paling penting dalam kerjaya keguruan saya ialah peranannya membantu memenuhi keperluan orang lain."},
-        {code:"P10",text:"Membuat perbezaan kepada orang lain adalah motivasi utama dalam kerjaya keguruan saya."},
-        {code:"P11",text:"Kerja saya sebagai guru menyumbang kepada kebaikan bersama."},
-        {code:"P12",text:"Saya sentiasa cuba menilai sejauh mana kerja saya sebagai guru bermanfaat kepada orang lain."},
-      ]},
-      { title:"Komponen 2: Pencarian Panggilan — Seruan Transenden", items:[
-        {code:"S1",text:"Saya sedang mencari panggilan jiwa saya dalam kerjaya keguruan ini."},
-        {code:"S2",text:"Saya amat mendambakan penghayatan panggilan jiwa dalam kerjaya keguruan saya."},
-        {code:"S3",text:"Saya sedang berusaha untuk mengenal pasti apakah sebenarnya panggilan jiwa saya dalam konteks kerjaya keguruan ini."},
-        {code:"S4",text:"Saya sedang berusaha untuk mengenal pasti bidang kerja yang sememangnya ditakdirkan untuk saya ceburi."},
-      ]},
-      { title:"Komponen 2: Pencarian Panggilan — Kerja Bertujuan", items:[
-        {code:"S5",text:"Saya sedang meneliti sama ada kerjaya keguruan ini dapat membantu saya menghayati tujuan hidup saya."},
-        {code:"S6",text:"Saya berhasrat membina kerjaya keguruan yang akan memberi makna kepada hidup saya."},
-        {code:"S7",text:"Akhirnya, saya berharap kerjaya keguruan saya akan selari dengan tujuan hidup saya."},
-        {code:"S8",text:"Saya mahu menceburi kerjaya yang benar-benar selaras dengan tujuan kewujudan diri saya."},
-      ]},
-      { title:"Komponen 2: Pencarian Panggilan — Orientasi Prososial", items:[
-        {code:"S9",text:"Saya sedang berusaha mencari kerjaya yang pada akhirnya mampu menjadikan dunia ini lebih baik."},
-        {code:"S10",text:"Saya mahu memastikan kerjaya keguruan saya memenuhi sebahagian keperluan masyarakat."},
-        {code:"S11",text:"Saya sedang berusaha membina kerjaya keguruan yang memberi manfaat kepada masyarakat."},
-        {code:"S12",text:"Saya sedang menilai sama ada kerjaya keguruan saya jelas memberi manfaat kepada orang lain."},
-      ]},
+      {key:"PS",label:"Efikasi Kendiri Profesional (PS1–PS5)",codes:["PS1","PS2","PS3","PS4","PS5"],min:5,max:35},
+      {key:"KPP",label:"Pengetahuan Profesion (KPP1–KPP4)",codes:["KPP1","KPP2","KPP3","KPP4"],min:4,max:28},
+      {key:"PC",label:"Komitmen Profesional (PC1–PC4)",codes:["PC1","PC2","PC3","PC4"],min:4,max:28}
     ],
+    global:{label:"Skor Keseluruhan Identiti Profesional Guru",min:13,max:91}
   },
-  { id:"D", bahagian:"BAHAGIAN D", title:"Resiliensi",
-    source:"Cassidy (2016) — ARS-30, Frontiers in Psychology 7:1787. Skala asal 5-mata, diselaraskan kepada 7-mata.",
-    instruction:"Sila baca senario di bawah, kemudian bayangkan diri anda sebagai guru dalam situasi tersebut sebelum menjawab kesemua 30 item.",
-    vignette:VIGNETTE_D,
-    scaleKind:"kebarangkalian",
+  {
+    key:"C",letter:"C",title:"Panggilan Kerjaya Guru (CVQ)",
+    subtitle:"Mengukur panggilan kerjaya dalam dua dimensi: Presence (kehadiran panggilan) dan Search (pencarian panggilan).",
+    scale:"benar",
+    items:[
+      {code:"P1",s:"Saya percaya bahawa saya telah dipanggil untuk menceburi profesion keguruan ini.",rev:false,sub:"P_Transenden"},
+      {code:"P2",s:"Saya tertarik untuk menceburi profesion keguruan ini oleh sesuatu yang lebih besar daripada diri saya sendiri.",rev:false,sub:"P_Transenden"},
+      {code:"P3",s:"Saya tidak percaya bahawa ada kuasa di luar diri saya yang telah membimbing saya menceburi kerjaya ini.",rev:true,sub:"P_Transenden"},
+      {code:"P4",s:"Saya menceburi profesion keguruan ini kerana saya percaya bahawa saya terpanggil untuk berbuat demikian.",rev:false,sub:"P_Transenden"},
+      {code:"P5",s:"Kerja saya sebagai guru membantu saya menghayati tujuan hidup saya.",rev:false,sub:"P_Tujuan"},
+      {code:"P6",s:"Saya melihat kerjaya keguruan saya sebagai satu jalan ke arah tujuan hidup.",rev:false,sub:"P_Tujuan"},
+      {code:"P7",s:"Kerjaya keguruan saya merupakan sebahagian penting daripada makna hidup saya.",rev:false,sub:"P_Tujuan"},
+      {code:"P8",s:"Saya cuba menghayati tujuan hidup saya semasa saya mengajar.",rev:false,sub:"P_Tujuan"},
+      {code:"P9",s:"Aspek paling penting dalam kerjaya keguruan saya ialah peranannya membantu memenuhi keperluan orang lain.",rev:false,sub:"P_Prososial"},
+      {code:"P10",s:"Membuat perbezaan kepada orang lain adalah motivasi utama dalam kerjaya keguruan saya.",rev:false,sub:"P_Prososial"},
+      {code:"P11",s:"Kerja saya sebagai guru menyumbang kepada kebaikan bersama.",rev:false,sub:"P_Prososial"},
+      {code:"P12",s:"Saya sentiasa cuba menilai sejauh mana kerja saya sebagai guru bermanfaat kepada orang lain.",rev:false,sub:"P_Prososial"},
+      {code:"S1",s:"Saya sedang mencari panggilan jiwa saya dalam kerjaya keguruan ini.",rev:false,sub:"S_Transenden"},
+      {code:"S2",s:"Saya amat mendambakan penghayatan panggilan jiwa dalam kerjaya keguruan saya.",rev:false,sub:"S_Transenden"},
+      {code:"S3",s:"Saya sedang berusaha untuk mengenal pasti apakah sebenarnya panggilan jiwa saya dalam konteks kerjaya keguruan ini.",rev:false,sub:"S_Transenden"},
+      {code:"S4",s:"Saya sedang berusaha untuk mengenal pasti bidang kerja yang sememangnya ditakdirkan untuk saya ceburi.",rev:false,sub:"S_Transenden"},
+      {code:"S5",s:"Saya sedang meneliti sama ada kerjaya keguruan ini dapat membantu saya menghayati tujuan hidup saya.",rev:false,sub:"S_Tujuan"},
+      {code:"S6",s:"Saya berhasrat membina kerjaya keguruan yang akan memberi makna kepada hidup saya.",rev:false,sub:"S_Tujuan"},
+      {code:"S7",s:"Akhirnya, saya berharap kerjaya keguruan saya akan selari dengan tujuan hidup saya.",rev:false,sub:"S_Tujuan"},
+      {code:"S8",s:"Saya mahu menceburi kerjaya yang benar-benar selaras dengan tujuan kewujudan diri saya.",rev:false,sub:"S_Tujuan"},
+      {code:"S9",s:"Saya sedang berusaha mencari kerjaya yang pada akhirnya mampu menjadikan dunia ini lebih baik.",rev:false,sub:"S_Prososial"},
+      {code:"S10",s:"Saya mahu memastikan kerjaya keguruan saya memenuhi sebahagian keperluan masyarakat.",rev:false,sub:"S_Prososial"},
+      {code:"S11",s:"Saya sedang berusaha membina kerjaya keguruan yang memberi manfaat kepada masyarakat.",rev:false,sub:"S_Prososial"},
+      {code:"S12",s:"Saya sedang menilai sama ada kerjaya keguruan saya jelas memberi manfaat kepada orang lain.",rev:false,sub:"S_Prososial"}
+    ],
     subscales:[
-      { title:"Ketekunan / Perseverance (14 item)", items:[
-        {code:"D1",text:"Saya tidak akan menerima maklum balas Pengetua/Guru Besar.",neg:true},
-        {code:"D2",text:"Saya akan menggunakan maklum balas itu untuk memperbaiki kerja saya."},
-        {code:"D3",text:"Saya hanya akan berputus asa.",neg:true},
-        {code:"D4",text:"Saya akan menggunakan situasi ini untuk memotivasikan diri saya."},
-        {code:"D5",text:"Saya akan menukar rancangan kerjaya saya.",neg:true},
-        {code:"D8",text:"Saya akan melihat situasi ini sebagai satu cabaran."},
-        {code:"D9",text:"Saya akan berusaha sedaya upaya untuk berhenti berfikir secara negatif."},
-        {code:"D10",text:"Saya akan melihat situasi ini sebagai sementara."},
-        {code:"D11",text:"Saya akan berusaha lebih gigih."},
-        {code:"D13",text:"Saya akan cuba memikirkan penyelesaian baharu."},
-        {code:"D15",text:"Saya akan menyalahkan Pengetua/Guru Besar.",neg:true},
-        {code:"D16",text:"Saya akan terus berusaha."},
-        {code:"D17",text:"Saya tidak akan menukar matlamat dan cita-cita jangka panjang saya."},
-        {code:"D30",text:"Saya akan menantikan peluang untuk menunjukkan bahawa saya boleh memperbaiki prestasi pengajaran saya."},
-      ]},
-      { title:"Refleksi & Bantuan Adaptif / Reflecting and Adaptive Help-Seeking (9 item)", items:[
-        {code:"D18",text:"Saya akan menggunakan kejayaan lampau saya untuk membantu memotivasikan diri saya."},
-        {code:"D20",text:"Saya akan mula memantau dan menilai pencapaian serta usaha saya."},
-        {code:"D21",text:"Saya akan mendapatkan bantuan daripada Pengetua/Guru Besar atau mentor saya."},
-        {code:"D22",text:"Saya akan memberi semangat kepada diri saya sendiri."},
-        {code:"D24",text:"Saya akan mencuba pelbagai cara untuk mengajar."},
-        {code:"D25",text:"Saya akan menetapkan matlamat pencapaian saya sendiri."},
-        {code:"D26",text:"Saya akan mendapatkan sokongan semangat daripada keluarga dan rakan-rakan saya."},
-        {code:"D27",text:"Saya akan cuba memikirkan dengan lebih mendalam tentang kekuatan dan kelemahan saya untuk membantu saya bekerja dengan lebih baik."},
-        {code:"D29",text:"Saya akan mula memberi ganjaran atau hukuman kepada diri saya sendiri bergantung kepada prestasi saya."},
-      ]},
-      { title:"Afek Negatif / Negative Affect and Emotional Response (7 item)", items:[
-        {code:"D6",text:"Saya mungkin akan berasa jengkel (rasa terganggu atau kurang senang).",neg:true},
-        {code:"D7",text:"Saya akan mula berfikir bahawa peluang saya untuk berjaya dalam kerjaya keguruan adalah tipis.",neg:true},
-        {code:"D12",text:"Saya mungkin akan berasa tertekan.",neg:true},
-        {code:"D14",text:"Saya akan berasa sangat kecewa.",neg:true},
-        {code:"D19",text:"Saya akan mula berfikir bahawa peluang saya untuk disahkan dalam perkhidmatan/kekal dalam profesion keguruan adalah tipis.",neg:true},
-        {code:"D23",text:"Saya akan menahan diri daripada panik."},
-        {code:"D28",text:"Saya akan berasa seolah-olah semuanya musnah dan menjadi tidak menentu.",neg:true},
-      ]},
+      {key:"P_Transenden",label:"Seruan Transendente – Presence (P1–P4)",codes:["P1","P2","P3","P4"],min:4,max:28},
+      {key:"P_Tujuan",label:"Kerja Bertujuan – Presence (P5–P8)",codes:["P5","P6","P7","P8"],min:4,max:28},
+      {key:"P_Prososial",label:"Orientasi Prososial – Presence (P9–P12)",codes:["P9","P10","P11","P12"],min:4,max:28},
+      {key:"S_Transenden",label:"Seruan Transendente – Search (S1–S4)",codes:["S1","S2","S3","S4"],min:4,max:28},
+      {key:"S_Tujuan",label:"Kerja Bertujuan – Search (S5–S8)",codes:["S5","S6","S7","S8"],min:4,max:28},
+      {key:"S_Prososial",label:"Orientasi Prososial – Search (S9–S12)",codes:["S9","S10","S11","S12"],min:4,max:28}
     ],
+    global:{label:"Skor Panggilan Kerjaya (Presence + Search)",min:24,max:168}
   },
-  { id:"E", bahagian:"BAHAGIAN E", title:"Kesejahteraan Psikologi",
-    source:"Ryff & Keyes (1995) — Ryff 18-item (MIDUS II). Skala asal 7-mata, tiada perubahan skala.",
-    instruction:"Sila nyatakan tahap persetujuan anda terhadap setiap pernyataan di bawah yang menggambarkan perasaan dan pandangan anda tentang diri sendiri. Tandakan satu jawapan yang paling menggambarkan pandangan anda.",
-    scaleKind:"setuju",
+  {
+    key:"D",letter:"D",title:"Resiliensi Akademik (ARS-30)",
+    subtitle:"Mengukur resiliensi akademik berdasarkan respons anda terhadap senario kegagalan akademik. Sila bayangkan diri anda dalam situasi vignette di bawah sebelum menjawab.",
+    scale:"mungkin",
+    vignette:`“Anda baru menerima markah untuk satu tugasan terkini dan ia adalah ‘gagal.’ Markah bagi dua tugasan terkini yang lain turut lebih rendah daripada yang anda harapkan, sedangkan anda berazam untuk mendapat segulung ijazah sebaik mungkin kerana anda mempunyai matlamat kerjaya yang jelas dan tidak mahu mengecewakan keluarga anda. Maklum balas daripada pensyarah bagi tugasan tersebut agak kritikal, termasuk sebutan tentang ‘kekurangan pemahaman’ dan ‘penulisan dan ekspresi yang lemah,’ tetapi ia turut menyertakan cara-cara bagaimana kerja tersebut boleh diperbaiki. Ulasan yang serupa turut dibuat oleh pensyarah-pensyarah yang menilai dua tugasan anda yang lain.”`,
+    items:(function(){
+      const stmts=[
+        "Saya tidak akan menerima maklum balas pensyarah.","Saya akan menggunakan maklum balas itu untuk memperbaiki kerja saya.","Saya hanya akan berputus asa.","Saya akan menggunakan situasi ini untuk memotivasikan diri saya.","Saya akan menukar rancangan kerjaya saya.","Saya mungkin akan berasa jengkel.","Saya akan mula berfikir bahawa peluang saya untuk berjaya di universiti adalah tipis.","Saya akan melihat situasi ini sebagai satu cabaran.","Saya akan berusaha sedaya upaya untuk berhenti berfikir secara negatif.","Saya akan melihat situasi ini sebagai sementara.","Saya akan berusaha lebih gigih.","Saya mungkin akan berasa tertekan.","Saya akan cuba memikirkan penyelesaian baharu.","Saya akan berasa sangat kecewa.","Saya akan menyalahkan pensyarah.","Saya akan terus berusaha.","Saya tidak akan menukar matlamat dan cita-cita jangka panjang saya.","Saya akan menggunakan kejayaan lampau saya untuk membantu memotivasikan diri saya.","Saya akan mula berfikir bahawa peluang saya untuk mendapat pekerjaan yang saya inginkan adalah tipis.","Saya akan mula memantau dan menilai pencapaian serta usaha saya.","Saya akan mendapatkan bantuan daripada pensyarah saya.","Saya akan memberi semangat kepada diri saya sendiri.","Saya akan menahan diri daripada panik.","Saya akan mencuba pelbagai cara belajar yang berbeza.","Saya akan menetapkan matlamat pencapaian saya sendiri.","Saya akan mendapatkan sokongan semangat daripada keluarga dan rakan-rakan saya.","Saya akan cuba memikirkan dengan lebih mendalam tentang kekuatan dan kelemahan saya untuk membantu saya bekerja dengan lebih baik.","Saya akan berasa seolah-olah semuanya musnah dan menjadi tidak menentu.","Saya akan mula memberi ganjaran atau hukuman kepada diri saya sendiri bergantung kepada prestasi saya.","Saya akan menantikan peluang untuk menunjukkan bahawa saya boleh memperbaiki gred saya."
+      ];
+      const neg=new Set([1,3,5,6,7,12,14,15,19,28]);
+      const perc=["D1","D2","D3","D4","D5","D8","D9","D10","D11","D13","D15","D16","D17","D30"];
+      const refl=["D18","D20","D21","D22","D24","D25","D26","D27","D29"];
+      return stmts.map((st,i)=>{
+        const code="D"+(i+1);
+        const sub=perc.includes(code)?"perseverance":refl.includes(code)?"reflecting":"negative_affect";
+        return {code,s:st,rev:neg.has(i+1),sub};
+      });
+    })(),
     subscales:[
-      { title:"Penerimaan Kendiri (item 1, 2, 5)", items:[
-        {code:"E1",text:"Saya menyukai kebanyakan aspek personaliti saya."},
-        {code:"E2",text:"Apabila saya melihat kembali kisah hidup saya, saya berpuas hati dengan cara segalanya berlaku setakat ini."},
-        {code:"E5",text:"Dalam banyak hal, saya berasa kecewa dengan pencapaian saya dalam hidup.",neg:true},
-      ]},
-      { title:"Tujuan Hidup (item 3, 7, 10)", items:[
-        {code:"E3",text:"Sesetengah orang mengharungi hidup tanpa hala tuju, tetapi saya bukan salah seorang daripada mereka."},
-        {code:"E7",text:"Saya menjalani hidup sehari demi sehari dan tidak begitu memikirkan tentang masa depan.",neg:true},
-        {code:"E10",text:"Saya kadangkala berasa seolah-olah saya telah melakukan semua yang perlu dilakukan dalam hidup.",neg:true},
-      ]},
-      { title:"Penguasaan Persekitaran (item 4, 8, 9)", items:[
-        {code:"E4",text:"Tuntutan kehidupan seharian sering membuatkan saya rasa tertekan.",neg:true},
-        {code:"E8",text:"Secara umum, saya berasa saya mengawal situasi kehidupan saya."},
-        {code:"E9",text:"Saya pandai menguruskan tanggungjawab kehidupan seharian."},
-      ]},
-      { title:"Hubungan Positif dengan Orang Lain (item 6, 13, 16)", items:[
-        {code:"E6",text:"Mengekalkan hubungan rapat merupakan sesuatu yang sukar dan menekan bagi saya.",neg:true},
-        {code:"E13",text:"Orang lain akan menggambarkan saya sebagai seorang yang pemurah dan sanggup berkongsi masa dengan orang lain."},
-        {code:"E16",text:"Saya tidak banyak mengalami hubungan yang mesra dan saling mempercayai dengan orang lain.",neg:true},
-      ]},
-      { title:"Pertumbuhan Peribadi (item 11, 12, 14)", items:[
-        {code:"E11",text:"Bagi saya, hidup merupakan proses berterusan untuk belajar, berubah, dan berkembang."},
-        {code:"E12",text:"Saya rasa penting untuk mempunyai pengalaman baharu yang mencabar cara saya berfikir tentang diri saya dan dunia."},
-        {code:"E14",text:"Saya sudah lama berhenti berusaha membuat penambahbaikan atau perubahan besar dalam hidup saya.",neg:true},
-      ]},
-      { title:"Autonomi (item 15, 17, 18)", items:[
-        {code:"E15",text:"Saya cenderung dipengaruhi oleh orang yang mempunyai pendapat yang kuat.",neg:true},
-        {code:"E17",text:"Saya mempunyai keyakinan terhadap pendapat saya sendiri, walaupun ia berbeza daripada cara kebanyakan orang lain berfikir."},
-        {code:"E18",text:"Saya menilai diri saya berdasarkan apa yang saya anggap penting, bukan berdasarkan nilai yang dianggap penting oleh orang lain."},
-      ]},
+      {key:"perseverance",label:"Ketekunan / Perseverance (14 item)",codes:["D1","D2","D3","D4","D5","D8","D9","D10","D11","D13","D15","D16","D17","D30"],min:14,max:98},
+      {key:"reflecting",label:"Refleksi & Bantuan Adaptif (9 item)",codes:["D18","D20","D21","D22","D24","D25","D26","D27","D29"],min:9,max:63},
+      {key:"negative_affect",label:"Afek Negatif (7 item)",codes:["D6","D7","D12","D14","D19","D23","D28"],min:7,max:49}
     ],
+    global:{label:"Skor Global Resiliensi Akademik",min:30,max:210}
   },
-  { id:"F", bahagian:"BAHAGIAN F", title:"Efikasi Kendiri Guru",
-    source:"Tschannen-Moran & Woolfolk Hoy (2001) — TSES Short Form. Skala asal 9-mata, diselaraskan kepada 7-mata.",
-    instruction:"Sila nyatakan tahap keyakinan anda terhadap kebolehan melaksanakan perkara berikut sebagai seorang guru. Tandakan satu jawapan yang paling menggambarkan diri anda.",
-    scaleKind:"banyak",
+  {
+    key:"E",letter:"E",title:"Kesejahteraan Psikologi (Ryff 18-item)",
+    subtitle:"Mengukur kesejahteraan psikologi merentas enam dimensi: penerimaan kendiri, tujuan hidup, penguasaan persekitaran, hubungan positif, pertumbuhan peribadi, dan autonomi.",
+    scale:"setuju",
+    items:(function(){
+      const data=[
+        {code:"E1",s:"Saya menyukai kebanyakan aspek personaliti saya.",sub:"self_acceptance"},
+        {code:"E2",s:"Apabila saya melihat kembali kisah hidup saya, saya berpuas hati dengan cara segalanya berlaku setakat ini.",sub:"self_acceptance"},
+        {code:"E3",s:"Sesetengah orang mengharungi hidup tanpa hala tuju, tetapi saya bukan salah seorang daripada mereka.",sub:"purpose"},
+        {code:"E4",s:"Tuntutan kehidupan seharian sering membuatkan saya rasa tertekan.",sub:"mastery",rev:true},
+        {code:"E5",s:"Dalam banyak hal, saya berasa kecewa dengan pencapaian saya dalam hidup.",sub:"self_acceptance",rev:true},
+        {code:"E6",s:"Mengekalkan hubungan rapat merupakan sesuatu yang sukar dan menekan bagi saya.",sub:"relations",rev:true},
+        {code:"E7",s:"Saya menjalani hidup sehari demi sehari dan tidak begitu memikirkan tentang masa depan.",sub:"purpose",rev:true},
+        {code:"E8",s:"Secara umum, saya berasa saya mengawal situasi kehidupan saya.",sub:"mastery"},
+        {code:"E9",s:"Saya pandai menguruskan tanggungjawab kehidupan seharian.",sub:"mastery"},
+        {code:"E10",s:"Saya kadangkala berasa seolah-olah saya telah melakukan semua yang perlu dilakukan dalam hidup.",sub:"purpose",rev:true},
+        {code:"E11",s:"Bagi saya, hidup merupakan proses berterusan untuk belajar, berubah, dan berkembang.",sub:"growth"},
+        {code:"E12",s:"Saya rasa penting untuk mempunyai pengalaman baharu yang mencabar cara saya berfikir tentang diri saya dan dunia.",sub:"growth"},
+        {code:"E13",s:"Orang lain akan menggambarkan saya sebagai seorang yang pemurah dan sanggup berkongsi masa dengan orang lain.",sub:"relations"},
+        {code:"E14",s:"Saya sudah lama berhenti berusaha membuat penambahbaikan atau perubahan besar dalam hidup saya.",sub:"growth",rev:true},
+        {code:"E15",s:"Saya cenderung dipengaruhi oleh orang yang mempunyai pendapat yang kuat.",sub:"autonomy",rev:true},
+        {code:"E16",s:"Saya tidak banyak mengalami hubungan yang mesra dan saling mempercayai dengan orang lain.",sub:"relations",rev:true},
+        {code:"E17",s:"Saya mempunyai keyakinan terhadap pendapat saya sendiri, walaupun ia berbeza daripada cara kebanyakan orang lain berfikir.",sub:"autonomy"},
+        {code:"E18",s:"Saya menilai diri saya berdasarkan apa yang saya anggap penting, bukan berdasarkan nilai yang dianggap penting oleh orang lain.",sub:"autonomy"}
+      ];
+      return data;
+    })(),
     subscales:[
-      { title:"Efikasi Penglibatan Pelajar (item 2, 3, 4, 11)", items:[
-        {code:"F2",text:"Anda berupaya untuk memotivasikan pelajar yang kurang minat dalam pembelajaran."},
-        {code:"F3",text:"Anda mampu membantu pelajar percaya bahawa mereka boleh berjaya dalam tugasan sekolah."},
-        {code:"F4",text:"Anda dapat membantu pelajar menghargai kepentingan pembelajaran."},
-        {code:"F11",text:"Anda mampu membantu ibu bapa/penjaga dalam usaha mereka membantu anak mereka berjaya di sekolah."},
-      ]},
-      { title:"Efikasi Strategi Pengajaran (item 5, 9, 10, 12)", items:[
-        {code:"F5",text:"Anda mampu membina soalan yang baik untuk pelajar anda."},
-        {code:"F9",text:"Anda mampu menggunakan pelbagai strategi penilaian dalam pengajaran."},
-        {code:"F10",text:"Anda mampu memberikan penjelasan alternatif atau contoh apabila pelajar mengalami kekeliruan."},
-        {code:"F12",text:"Anda mampu melaksanakan strategi alternatif di dalam bilik darjah anda."},
-      ]},
-      { title:"Efikasi Pengurusan Bilik Darjah (item 1, 6, 7, 8)", items:[
-        {code:"F1",text:"Anda berupaya mengawal tingkah laku yang mengganggu di dalam bilik darjah."},
-        {code:"F6",text:"Anda mampu memastikan pelajar mematuhi peraturan bilik darjah."},
-        {code:"F7",text:"Anda mampu menenangkan pelajar yang mengganggu atau bising."},
-        {code:"F8",text:"Anda mampu mewujudkan satu sistem pengurusan bilik darjah untuk setiap kumpulan pelajar."},
-      ]},
+      {key:"self_acceptance",label:"Penerimaan Kendiri (1, 2, 5)",codes:["E1","E2","E5"],min:3,max:21},
+      {key:"purpose",label:"Tujuan Hidup (3, 7, 10)",codes:["E3","E7","E10"],min:3,max:21},
+      {key:"mastery",label:"Penguasaan Persekitaran (4, 8, 9)",codes:["E4","E8","E9"],min:3,max:21},
+      {key:"relations",label:"Hubungan Positif dengan Orang Lain (6, 13, 16)",codes:["E6","E13","E16"],min:3,max:21},
+      {key:"growth",label:"Pertumbuhan Peribadi (11, 12, 14)",codes:["E11","E12","E14"],min:3,max:21},
+      {key:"autonomy",label:"Autonomi (15, 17, 18)",codes:["E15","E17","E18"],min:3,max:21}
     ],
+    global:{label:"Skor Global Kesejahteraan Psikologi",min:18,max:126}
   },
+  {
+    key:"F",letter:"F",title:"Efikasi Kendiri Guru (TSES)",
+    subtitle:"Mengukur efikasi kendiri guru dalam tiga dimensi: penglibatan pelajar, strategi pengajaran, dan pengurusan bilik darjah.",
+    scale:"banyak",
+    items:[
+      {code:"F1",s:"Anda berupaya mengawal tingkah laku yang mengganggu di dalam bilik darjah.",rev:false,sub:"management"},
+      {code:"F2",s:"Anda berupaya untuk memotivasikan pelajar yang kurang minat dalam pembelajaran.",rev:false,sub:"engagement"},
+      {code:"F3",s:"Anda mampu membantu pelajar percaya bahawa mereka boleh berjaya dalam tugasan sekolah.",rev:false,sub:"engagement"},
+      {code:"F4",s:"Anda dapat membantu pelajar menghargai kepentingan pembelajaran.",rev:false,sub:"engagement"},
+      {code:"F5",s:"Anda mampu membina soalan yang baik untuk pelajar anda.",rev:false,sub:"instruction"},
+      {code:"F6",s:"Anda mampu memastikan pelajar mematuhi peraturan bilik darjah.",rev:false,sub:"management"},
+      {code:"F7",s:"Anda mampu menenangkan pelajar yang mengganggu atau bising.",rev:false,sub:"management"},
+      {code:"F8",s:"Anda mampu mewujudkan satu sistem pengurusan bilik darjah untuk setiap kumpulan pelajar.",rev:false,sub:"management"},
+      {code:"F9",s:"Anda mampu menggunakan pelbagai strategi penilaian dalam pengajaran.",rev:false,sub:"instruction"},
+      {code:"F10",s:"Anda mampu memberikan penjelasan alternatif atau contoh apabila pelajar mengalami kekeliruan.",rev:false,sub:"instruction"},
+      {code:"F11",s:"Anda mampu membantu ibu bapa/penjaga dalam usaha mereka membantu anak mereka berjaya di sekolah.",rev:false,sub:"engagement"},
+      {code:"F12",s:"Anda mampu melaksanakan strategi alternatif di dalam bilik darjah anda.",rev:false,sub:"instruction"}
+    ],
+    subscales:[
+      {key:"engagement",label:"Efikasi Penglibatan Pelajar (2, 3, 4, 11)",codes:["F2","F3","F4","F11"],min:4,max:28},
+      {key:"instruction",label:"Efikasi Strategi Pengajaran (5, 9, 10, 12)",codes:["F5","F9","F10","F12"],min:4,max:28},
+      {key:"management",label:"Efikasi Pengurusan Bilik Darjah (1, 6, 7, 8)",codes:["F1","F6","F7","F8"],min:4,max:28}
+    ],
+    global:{label:"Skor Efikasi Kendiri Guru Keseluruhan",min:12,max:84}
+  }
 ];
 
-// Flatten all Likert items for counting/validation
-const ALL_ITEMS = SECTIONS.flatMap(s => s.subscales.flatMap(sub => sub.items.map(it => ({code:it.code, sectionId:s.id, neg:!!it.neg}))));
-const STEP_IDS = ["intro","A",...SECTIONS.map(s=>s.id)];
-
-function countSectionItems(sid){
-  const s = SECTIONS.find(x=>x.id===sid);
-  if(!s) return 0;
-  return s.subscales.reduce((a,sub)=>a+sub.items.length,0);
-}
-
-/* ================================================================
- * 2. SCORING LOGIC
- * ================================================================ */
-
-function reverseScore(raw){ return 8 - raw; }
-
-function computeScores(responses){
-  const sections = [];
-  for(const section of SECTIONS){
-    const subscaleResults = [];
-    let secTotal=0, secCount=0;
-    for(const sub of section.subscales){
-      let st=0, sc=0;
-      for(const item of sub.items){
-        const raw = responses[item.code];
-        if(raw==null || isNaN(raw)) continue;
-        const scored = item.neg ? reverseScore(raw) : raw;
-        st += scored; sc++;
-      }
-      subscaleResults.push({title:sub.title, total:st, itemCount:sc, range:[sub.items.length, sub.items.length*7], mean:sc>0?st/sc:0});
-      secTotal += st; secCount += sc;
-    }
-    const total = section.subscales.reduce((a,sub)=>a+sub.items.length,0);
-    sections.push({sectionId:section.id, title:section.title, total:secTotal, itemCount:secCount, range:[total,total*7], mean:secCount>0?secTotal/secCount:0, subscales:subscaleResults});
-  }
-  const grandTotal = sections.reduce((a,s)=>a+s.total,0);
-  const grandItemCount = sections.reduce((a,s)=>a+s.itemCount,0);
-  return {sections, grandTotal, grandItemCount};
-}
-
-function levelFromMean(mean){
-  if(mean>=5.5) return {label:"Tinggi", color:"text-emerald-700", bg:"bg-emerald-100"};
-  if(mean>=4.5) return {label:"Sederhana Tinggi", color:"text-teal-700", bg:"bg-teal-100"};
-  if(mean>=3.5) return {label:"Sederhana", color:"text-amber-700", bg:"bg-amber-100"};
-  if(mean>=2.5) return {label:"Sederhana Rendah", color:"text-orange-700", bg:"bg-orange-100"};
-  return {label:"Rendah", color:"text-rose-700", bg:"bg-rose-100"};
-}
-
-/* ================================================================
- * 3. STATE MANAGEMENT + PERSISTENCE
- * ================================================================ */
-
-const STORAGE_KEY = "soal-selidik-progress-v3";
-const WEBHOOK_KEY = "soal-selidik-webhook-url";
-
-let state = {
-  currentStep: "intro",
-  demographics: {},
-  responses: {},
-  submitted: false,
-  submittedId: null,
-  maxReachedIndex: 0,
-  submitting: false,
-  sheetSynced: false,
-  sheetError: null,
+const STUDY_INFO = {
+  title: "Soal Selidik Efikasi Kendiri Guru",
+  subtitle: "Institut Pendidikan Guru Kementerian Pendidikan (IPGKPM)",
+  description: "Kajian akademik tentang efikasi kendiri guru dalam kalangan pelajar Institut Pendidikan Guru Kementerian Pendidikan (IPGKPM). Soal selidik ini menggunakan skala respons 7-mata yang diseragamkan bagi semua konstruk (Bahagian B–F).",
+  totalItems: 108,
+  parts: [
+    {code:"A",title:"Maklumat Demografi",count:11},
+    {code:"B",title:"Identiti Profesional Guru",count:13},
+    {code:"C",title:"Panggilan Kerjaya Guru (CVQ)",count:24},
+    {code:"D",title:"Resiliensi Akademik (ARS-30)",count:30},
+    {code:"E",title:"Kesejahteraan Psikologi (Ryff-18)",count:18},
+    {code:"F",title:"Efikasi Kendiri Guru (TSES)",count:12}
+  ]
 };
 
-function loadState(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      const saved = JSON.parse(raw);
-      state = Object.assign(state, saved);
+/* ============================================================================
+   LOGIK PENGIRAAN SKOR
+   Item negatif: nilai_baharu = 8 − nilai_asal (skala 7-mata)
+   ============================================================================ */
+
+function scoreItem(item, raw){
+  const v = Number(raw);
+  if(!isFinite(v)) return 0;
+  return item.rev ? (8 - v) : v;
+}
+
+function percentInRange(value, min, max){
+  if(max === min) return 0;
+  return Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+}
+
+function findItem(code){
+  for(const sec of SECTIONS){
+    const f = sec.items.find(i => i.code === code);
+    if(f) return f;
+  }
+  return null;
+}
+
+function interpretPercent(pct){
+  if(pct < 33) return {label:"Rendah",tone:"low"};
+  if(pct < 67) return {label:"Sederhana",tone:"mid"};
+  return {label:"Tinggi",tone:"high"};
+}
+
+function scoreSection(section, answers){
+  const subscales = section.subscales.map(sub => {
+    const items = sub.codes.map(c => findItem(c)).filter(Boolean);
+    const answered = items.filter(it => answers[it.code] !== undefined && answers[it.code] !== "");
+    const sum = answered.reduce((a,it) => a + scoreItem(it, Number(answers[it.code])), 0);
+    const mean = answered.length > 0 ? sum / answered.length : 0;
+    return {key:sub.key,label:sub.label,sum,mean,min:sub.min,max:sub.max,itemCount:items.length,answeredCount:answered.length,percent:percentInRange(sum,sub.min,sub.max)};
+  });
+  const allItems = section.items;
+  const answeredAll = allItems.filter(it => answers[it.code] !== undefined && answers[it.code] !== "");
+  const globalSum = answeredAll.reduce((a,it) => a + scoreItem(it, Number(answers[it.code])), 0);
+  const globalMean = answeredAll.length > 0 ? globalSum / answeredAll.length : 0;
+  return {
+    sectionKey:section.key,sectionLetter:section.letter,sectionTitle:section.title,
+    subscales,
+    global:{label:section.global.label,sum:globalSum,mean:globalMean,min:section.global.min,max:section.global.max,itemCount:allItems.length,percent:percentInRange(globalSum,section.global.min,section.global.max),answeredCount:answeredAll.length}
+  };
+}
+
+function computeFullReport(answers){
+  const sectionScores = SECTIONS.map(s => scoreSection(s, answers));
+  const totalAnswered = sectionScores.reduce((a,s) => a + s.global.answeredCount, 0);
+  const totalItems = SECTIONS.reduce((a,s) => a + s.items.length, 0);
+  const averagePercent = sectionScores.length > 0 ? sectionScores.reduce((a,s) => a + s.global.percent, 0) / sectionScores.length : 0;
+  return {sectionScores, overall:{totalAnswered,totalItems,completionRate: totalItems>0?(totalAnswered/totalItems)*100:0, averagePercent}};
+}
+
+function countAnsweredDemographics(answers){
+  return DEMOGRAPHICS.filter(d => answers[d.code] !== undefined && answers[d.code] !== "").length;
+}
+
+function countAnsweredInSection(section, answers){
+  return section.items.filter(it => answers[it.code] !== undefined && answers[it.code] !== "").length;
+}
+
+/* ============================================================================
+   BINA BARIS SPREADSHEET (158 lajur)
+   ============================================================================ */
+
+function buildSheetRow(answers, participant, timestamp, report){
+  const headers = [], values = [];
+  const rep = report || computeFullReport(answers);
+  const ts = typeof timestamp === "string" ? timestamp : new Date(timestamp).toISOString();
+
+  // Meta
+  headers.push("Timestamp","Kod Peserta","Jumlah Item Dijawab");
+  values.push(ts, participant, rep.overall.totalAnswered);
+
+  // Demografi
+  for(const d of DEMOGRAPHICS){
+    headers.push(d.code);
+    const v = answers[d.code];
+    values.push(v !== undefined && v !== "" ? String(v) : "");
+  }
+
+  // Skor mentah setiap item (97)
+  for(const sec of SECTIONS){
+    for(const item of sec.items){
+      headers.push(item.code);
+      const raw = answers[item.code];
+      values.push(raw !== undefined && raw !== "" ? Number(raw) : "");
     }
-  }catch(e){}
+  }
+
+  // Skor songsang untuk item negatif (19)
+  for(const sec of SECTIONS){
+    for(const item of sec.items){
+      if(item.rev){
+        headers.push(item.code + "_R");
+        const raw = answers[item.code];
+        values.push(raw !== undefined && raw !== "" ? scoreItem(item, Number(raw)) : "");
+      }
+    }
+  }
+
+  // Jumlah subskala (21)
+  for(const sec of SECTIONS){
+    const secReport = rep.sectionScores.find(s => s.sectionKey === sec.key);
+    for(const sub of sec.subscales){
+      const subReport = secReport?.subscales.find(s => s.key === sub.key);
+      headers.push(sec.key + "_" + sub.key + "_sum");
+      values.push(subReport ? subReport.sum : "");
+    }
+  }
+
+  // Jumlah global (7)
+  const bRep = rep.sectionScores.find(s => s.sectionKey === "B");
+  const cRep = rep.sectionScores.find(s => s.sectionKey === "C");
+  const dRep = rep.sectionScores.find(s => s.sectionKey === "D");
+  const eRep = rep.sectionScores.find(s => s.sectionKey === "E");
+  const fRep = rep.sectionScores.find(s => s.sectionKey === "F");
+
+  headers.push("B_global_sum");
+  values.push(bRep ? bRep.global.sum : "");
+
+  const cPresence = cRep?.subscales.filter(s => s.key.startsWith("P_")).reduce((a,s) => a + s.sum, 0);
+  const cSearch = cRep?.subscales.filter(s => s.key.startsWith("S_")).reduce((a,s) => a + s.sum, 0);
+  headers.push("C_presence_sum"); values.push(cPresence ?? "");
+  headers.push("C_search_sum"); values.push(cSearch ?? "");
+  headers.push("C_global_sum"); values.push(cRep ? cRep.global.sum : "");
+  headers.push("D_global_sum"); values.push(dRep ? dRep.global.sum : "");
+  headers.push("E_global_sum"); values.push(eRep ? eRep.global.sum : "");
+  headers.push("F_global_sum"); values.push(fRep ? fRep.global.sum : "");
+
+  return {headers, values};
+}
+
+/* ============================================================================
+   STATE MANAGEMENT
+   ============================================================================ */
+
+const state = {
+  stage: "intro",        // intro | survey | review | submitting | results | stats
+  consented: false,
+  answers: {},
+  stepIndex: 0,          // 0 = demografi, 1..5 = B..F
+  result: null,          // {participant, createdAt, scores, sheetSynced}
+  syncError: null,
+};
+
+// Load from localStorage
+function loadState(){
+  try {
+    const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
+    if(saved){
+      const parsed = JSON.parse(saved);
+      if(parsed.answers && typeof parsed.answers === "object"){
+        state.answers = parsed.answers;
+        state.stepIndex = parsed.stepIndex || 0;
+        state.consented = parsed.consented || false;
+        // Don't restore stage — always start at intro
+      }
+    }
+  } catch(e){ console.warn("Failed to load state:", e); }
 }
 
 function saveState(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+  try {
+    localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify({
+      answers: state.answers,
+      stepIndex: state.stepIndex,
+      consented: state.consented,
+    }));
+  } catch(e){ console.warn("Failed to save state:", e); }
 }
 
-function getWebhookUrl(){ return (localStorage.getItem(WEBHOOK_KEY)||"").trim(); }
-function setWebhookUrl(url){ localStorage.setItem(WEBHOOK_KEY, url.trim()); }
-
-/* ================================================================
- * 4. SVG ICONS
- * ================================================================ */
-
-const ICON = {
-  bookOpen: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>',
-  shieldCheck: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>',
-  clock: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
-  fileText: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
-  arrowRight: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
-  arrowLeft: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>',
-  check: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
-  send: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.105 1.105z"/><path d="m21.854 2.147-10.94 10.939"/></svg>',
-  checkCircle: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
-  award: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg>',
-  trendingUp: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>',
-  settings: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
-  alertTriangle: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
-  sparkles: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"/></svg>',
-  rotateCcw: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>',
-  externalLink: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
-  xCircle: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>',
-  save: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>',
-  trash: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
-  x: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
-};
-
-/* ================================================================
- * 5. TOAST NOTIFICATIONS
- * ================================================================ */
-
-let toastTimer = null;
-function toast(msg, type){
-  type = type || "info";
-  const colors = {success:"bg-emerald-600",error:"bg-rose-600",warning:"bg-amber-600",info:"bg-gray-800"};
-  const el = document.getElementById("toast");
-  if(!el) return;
-  el.className = "fixed top-4 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-lg text-white text-sm font-medium shadow-lg transition-all duration-300 " + (colors[type]||colors.info);
-  el.textContent = msg;
-  el.style.opacity = "1";
-  el.style.transform = "translate(-50%,0)";
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>{ el.style.opacity="0"; el.style.transform="translate(-50%,-12px)"; }, 4000);
+function clearState(){
+  try { localStorage.removeItem(CONFIG.STORAGE_KEY); } catch(e){}
 }
 
-/* ================================================================
- * 6. RENDER FUNCTIONS
- * ================================================================ */
+function generateParticipantCode(){
+  return "IPG-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+}
 
-function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+/* ============================================================================
+   RENDER FUNCTIONS
+   ============================================================================ */
+
+const app = document.getElementById("app");
 
 function render(){
-  const app = document.getElementById("app");
-  if(state.submitted){
-    app.innerHTML = renderThankYou() + renderGearButton();
-    renderSettingsIntoOverlay();
-    attachThankYouEvents();
-    return;
-  }
-  const step = state.currentStep;
-  if(step === "intro"){
-    app.innerHTML = renderIntro() + renderGearButton();
-    renderSettingsIntoOverlay();
-    attachIntroEvents();
-    return;
-  }
-  // Survey step (A..F)
-  const headerHTML = renderHeader();
-  const mainHTML = step === "A" ? renderDemographics() : renderLikertSection(step);
-  const footerHTML = renderFooter();
-  app.innerHTML = `<div class="flex min-h-screen flex-col">${renderGearButton()}${headerHTML}<main class="mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-6 sm:pb-32 sm:pt-8">${mainHTML}</main>${footerHTML}</div>`;
-  renderSettingsIntoOverlay();
-  attachSurveyEvents();
+  app.innerHTML = "";
+  if(state.stage === "submitting") renderSubmitting();
+  else if(state.stage === "intro") renderIntro();
+  else if(state.stage === "stats") renderStats();
+  else if(state.stage === "results" && state.result) renderResults();
+  else if(state.stage === "review") renderReview();
+  else renderSurvey(); // survey
+  saveState();
 }
 
-function renderGearButton(){
-  return `<button onclick="openSettings()" class="fixed right-3 top-3 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white/80 shadow-sm backdrop-blur hover:bg-emerald-50" title="Tetapan sambungan Google Sheet" aria-label="Tetapan">${ICON.settings}</button>`;
+function scrollToTop(){
+  window.scrollTo({top: 0, behavior: "smooth"});
 }
 
-function renderIntro(){
-  const hasProgress = state.maxReachedIndex > 0 || Object.keys(state.demographics).length > 0 || Object.keys(state.responses).length > 0;
-  const features = [
-    {icon:"shieldCheck",title:"Sulit & Jujur",desc:"Semua maklumat adalah SULIT dan hanya digunakan untuk tujuan penyelidikan akademik. Tiada jawapan betul atau salah."},
-    {icon:"bookOpen",title:"6 Bahagian",desc:"Demografi (A) + Identiti Profesional (B) + Panggilan Kerjaya (C) + Resiliensi (D) + Kesejahteraan (E) + Efikasi (F)."},
-    {icon:"clock",title:"±15 Minit",desc:"Anggaran masa menjawab 97 item. Kemajuan disimpan automatik — anda boleh kembali semula."},
-    {icon:"fileText",title:"Skala 7-Mata Seragam",desc:"Setiap item menggunakan skala respons 7-mata yang diselaraskan (1 hingga 7) bagi tujuan analisis CB-SEM/AMOS."},
-  ];
-  return `<div class="mx-auto flex max-w-3xl flex-col gap-6 fade-in">
-    <div class="rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-6 text-center shadow-sm sm:p-10">
-      <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30">${ICON.bookOpen}</div>
-      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Soal Selidik Kajian Akademik</p>
-      <h1 class="mt-3 text-2xl font-bold leading-tight text-gray-900 sm:text-3xl md:text-4xl">Efikasi Kendiri Guru dalam kalangan Guru Baharu</h1>
-      <p class="mx-auto mt-2 text-sm font-medium text-gray-500 sm:text-base">Sasaran: guru berkhidmat kurang daripada 2 tahun</p>
-      <p class="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-gray-600 sm:text-[15px]">Soal selidik ini mengukur lima konstruk utama: Identiti Profesional Guru, Panggilan Kerjaya Guru, Resiliensi Akademik (ARS-30), Kesejahteraan Psikologi (Ryff), dan Efikasi Kendiri Guru (TSES).</p>
+/* ---------- Site chrome ---------- */
+function renderHeader(onHome, onViewStats){
+  const header = document.createElement("header");
+  header.className = "header no-print";
+  header.innerHTML = `
+    <div class="header-inner">
+      <button class="header-brand" id="headerHome">
+        <div class="header-logo">🎓</div>
+        <div>
+          <div class="header-title">Soal Selidik Efikasi Guru</div>
+          <div class="header-sub">IPGKPM · Skala 7-mata</div>
+        </div>
+      </button>
+      ${onViewStats ? `<button class="btn btn-ghost btn-sm" id="headerStats">📊 Penyelidik</button>` : ""}
     </div>
-    <div class="rounded-2xl border border-gray-200 bg-emerald-50/50 p-4 text-sm leading-relaxed text-gray-700 sm:p-5">
-      Terima kasih kerana sudi meluangkan masa untuk menjawab soal selidik ini. Soal selidik ini bertujuan akademik semata-mata dan semua maklumat yang diberikan adalah <strong class="font-semibold text-emerald-700">SULIT</strong>. Sila jawab SEMUA soalan dengan jujur berdasarkan pendapat dan pengalaman sebenar anda.
-    </div>
-    <div class="grid gap-3 sm:grid-cols-2">
-      ${features.map(f=>`<div class="flex items-start gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">${ICON[f.icon]}</div><div><h3 class="text-sm font-semibold text-gray-900">${f.title}</h3><p class="mt-0.5 text-xs leading-relaxed text-gray-500">${f.desc}</p></div></div>`).join("")}
-    </div>
-    <div class="flex flex-col items-center gap-3 py-2">
-      <button onclick="goToStep('A')" class="flex h-12 w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-base font-semibold text-white shadow-md shadow-emerald-500/30 hover:from-emerald-600 hover:to-teal-700 transition-all">${hasProgress?"Teruskan Soal Selidik":"Mula Soal Selidik"}${ICON.arrowRight}</button>
-      ${hasProgress?`<p class="text-xs text-gray-500">Terdapat kemajuan tersimpan. Klik "Teruskan" untuk sambung, atau padam untuk mula baharu.</p><button onclick="resetSurvey()" class="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-rose-600 underline hover:text-rose-700">${ICON.rotateCcw}Padam kemajuan & mula baharu</button>`:""}
-    </div>
-  </div>`;
-}
-
-function renderHeader(){
-  const step = state.currentStep;
-  const sec = SECTIONS.find(s=>s.id===step);
-  const bahagian = step==="A" ? "BAHAGIAN A" : (sec?sec.bahagian:"");
-  const title = step==="A" ? "Maklumat Demografi" : (sec?sec.title:"");
-  const idx = STEP_IDS.indexOf(step);
-  // Progress
-  const demoAns = DEMOGRAPHICS.filter(q=>(state.demographics[q.code]||"").trim()!=="").length;
-  const likertAns = ALL_ITEMS.filter(i=>state.responses[i.code]!=null).length;
-  const total = DEMOGRAPHICS.length + ALL_ITEMS.length;
-  const answered = demoAns + likertAns;
-  const pct = Math.round((answered/total)*100);
-  // Stepper
-  const stepperHTML = SECTIONS.map(s=>{
-    const codes = s.subscales.flatMap(sub=>sub.items.map(i=>i.code));
-    const ans = codes.filter(c=>state.responses[c]!=null).length;
-    const total2 = codes.length;
-    const complete = ans===total2;
-    const active = step===s.id;
-    const sIdx = STEP_IDS.indexOf(s.id);
-    const reachable = sIdx <= state.maxReachedIndex || sIdx <= idx+1;
-    return `<button onclick="${reachable?`goToStep('${s.id}')`:''}" ${reachable?"":"disabled"} class="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${active?"border-emerald-500 bg-emerald-500 text-white shadow-sm":complete?"border-emerald-200 bg-emerald-50 text-emerald-700":"border-gray-200 bg-white text-gray-500"} ${reachable?"cursor-pointer hover:border-emerald-400":"cursor-not-allowed opacity-50"}"><span class="flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${complete&&!active?"bg-emerald-500 text-white":""}">${complete&&!active?ICON.check.replace('width="16"','width="10"'):s.id}</span><span class="hidden sm:inline">${s.title}</span><span class="text-[10px] opacity-70">${ans}/${total2}</span></button>`;
-  }).join("");
-  return `<header class="sticky top-0 z-40 border-b border-gray-200 bg-white/85 backdrop-blur-md">
-    <div class="mx-auto w-full max-w-5xl px-4 py-3">
-      <div class="mb-2 flex items-center justify-between gap-3">
-        <div class="min-w-0"><p class="truncate text-xs font-semibold uppercase tracking-wide text-emerald-600">${bahagian}</p><h2 class="truncate text-sm font-bold text-gray-900 sm:text-base">${title}</h2></div>
-        <div class="flex shrink-0 items-center gap-2"><div class="hidden rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500 sm:block">Langkah ${idx}/${STEP_IDS.length-1}</div><button onclick="handleReset()" title="Kosongkan semua jawapan & mula semula" class="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-600">${ICON.rotateCcw.replace('width="16"','width="14"')}</button></div>
-      </div>
-      <div class="flex items-center gap-3"><div class="relative h-2 flex-1 overflow-hidden rounded-full bg-gray-200"><div class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300" style="width:${pct}%"></div></div><span class="shrink-0 text-xs font-semibold tabular-nums text-gray-500">${pct}%</span></div>
-      <div class="mt-2"><div class="flex items-center gap-1.5 overflow-x-auto pb-1">${stepperHTML}</div></div>
-    </div>
-  </header>`;
-}
-
-function renderDemographics(){
-  return `<div class="flex flex-col gap-5 slide-in">${DEMOGRAPHICS.map((q,idx)=>{
-    const val = state.demographics[q.code]||"";
-    const isOther = q.other && (val==="Lain-lain" || val.startsWith("Lain-lain: "));
-    const otherText = val.startsWith("Lain-lain: ") ? val.slice(12) : "";
-    let body = "";
-    if(q.type==="radio" && q.opts){
-      body = `<div class="grid gap-2 ${q.opts.length<=4?"grid-cols-2 sm:grid-cols-4":"grid-cols-2 sm:grid-cols-3"}">${q.opts.map(o=>`<button onclick="setDemo('${q.code}','${esc(o.k)}')" class="relative flex items-center justify-center rounded-xl border px-4 py-3 text-center text-sm font-medium transition-all ${val===o.k||(o.k==="Lain-lain"&&isOther)?"border-transparent bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm":"border-gray-200 bg-white text-gray-700 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700"}">${o.l}</button>`).join("")}</div>`;
-    } else if(q.type==="select" && q.opts){
-      body = `<select onchange="setDemo('${q.code}',this.value)" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"><option value="">Sila pilih…</option>${q.opts.map(o=>`<option value="${esc(o.k)}" ${val===o.k?"selected":""}>${esc(o.l)}</option>`).join("")}</select>`;
-    } else {
-      body = `<input type="text" value="${esc(val)}" oninput="setDemo('${q.code}',this.value)" placeholder="${esc(q.ph||'')}" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500">`;
-    }
-    const otherInput = (q.other && isOther) ? `<div class="mt-3"><label class="mb-1.5 block text-xs font-medium text-gray-500">Sila nyatakan:</label><input type="text" value="${esc(otherText)}" oninput="setDemoOther('${q.code}',this.value)" placeholder="nyatakan di sini" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"></div>` : "";
-    return `<div class="rounded-2xl border border-gray-200 bg-white/60 p-4 shadow-sm sm:p-5 fade-in" style="animation-delay:${idx*0.04}s"><div class="mb-3 flex items-baseline gap-2"><span class="inline-flex items-center rounded-md bg-emerald-100 px-1.5 py-0.5 font-mono text-[11px] font-bold text-emerald-700">${q.code}</span><h4 class="text-base font-semibold text-gray-900 sm:text-lg">${q.q}</h4></div>${body}${otherInput}</div>`;
-  }).join("")}</div>`;
-}
-
-function renderLikertSection(step){
-  const section = SECTIONS.find(s=>s.id===step);
-  if(!section) return "";
-  const labels = SCALE_LABELS[section.scaleKind];
-  const fullLegend = `<div class="mb-4 overflow-x-auto rounded-xl border border-gray-200 bg-gray-50 p-3"><div class="flex min-w-max items-stretch gap-1">${[1,2,3,4,5,6,7].map((p,idx)=>`<div class="flex min-w-[88px] flex-1 flex-col items-center gap-0.5 rounded-lg bg-white px-2 py-1.5 text-center"><span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">${p}</span><span class="text-[10px] font-medium leading-tight text-gray-700 sm:text-[11px]">${labels.points[idx]}</span></div>`).join("")}</div></div>`;
-  const vignetteHTML = section.vignette ? `<div class="rounded-2xl border border-amber-300 bg-amber-50/70 p-4 sm:p-5 fade-in"><div class="mb-2 flex items-center gap-2"><div class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-white">${ICON.alertTriangle.replace('width="14"','width="16"')}</div><h3 class="text-sm font-bold text-amber-900 sm:text-base">Senario</h3></div><p class="whitespace-pre-line text-sm italic leading-relaxed text-gray-700 sm:text-[15px]">${esc(section.vignette)}</p><div class="mt-3 flex items-start gap-2 rounded-lg bg-amber-100/70 p-2.5 text-xs text-amber-900">${ICON.alertTriangle}<span>Sila bayangkan diri anda sebagai guru dalam situasi di atas sebelum menjawab kesemua item di bawah.</span></div></div>` : "";
-  const sourceHTML = section.source ? `<p class="rounded-lg bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-500"><span class="font-semibold">Sumber instrumen: </span>${esc(section.source)}</p>` : "";
-  const subscalesHTML = section.subscales.map((sub,sidx)=>{
-    const itemsHTML = sub.items.map(item=>{
-      const val = state.responses[item.code];
-      return `<div class="group rounded-xl border border-gray-200/60 bg-white/40 p-3 transition-colors hover:border-emerald-300/60 hover:bg-emerald-50/40 sm:p-4"><div class="flex flex-col gap-3 md:flex-row md:items-center md:gap-4"><div class="md:w-[52%] md:shrink-0"><div class="flex items-start gap-2"><span class="mt-0.5 inline-flex shrink-0 items-center rounded-md bg-emerald-100 px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wide text-emerald-700">${item.code}</span><p class="text-sm leading-relaxed text-gray-900 sm:text-[15px]">${item.text}</p></div></div><div role="radiogroup" aria-label="${item.code}" class="grid grid-cols-7 gap-1.5 md:flex md:flex-1 md:justify-end md:pr-1">${[1,2,3,4,5,6,7].map(p=>`<button onclick="setResp('${item.code}',${p})" class="relative flex h-9 w-full items-center justify-center rounded-lg border text-sm font-semibold transition-all md:w-9 ${val===p?"border-transparent bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm":"border-gray-200 bg-white text-gray-600 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700"}">${val===p?ICON.check:p}</button>`).join("")}</div></div></div>`;
-    }).join("");
-    return `<section class="rounded-2xl border border-gray-200 bg-white/60 p-4 shadow-sm sm:p-5 fade-in" style="animation-delay:${0.05+sidx*0.05}s"><div class="mb-4 flex flex-wrap items-center justify-between gap-2"><h4 class="text-base font-semibold text-gray-900 sm:text-lg">${sub.title}</h4><span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500">${sub.items.length} item</span></div><div class="hidden gap-1.5 md:flex md:justify-end md:pr-1">${[1,2,3,4,5,6,7].map(p=>`<div class="flex h-7 w-9 items-center justify-center text-xs font-semibold text-gray-400">${p}</div>`).join("")}</div><div class="flex flex-col gap-2.5">${itemsHTML}</div></section>`;
-  }).join("");
-  return `<div class="flex flex-col gap-5 slide-in"><div class="rounded-2xl border border-emerald-200/70 bg-emerald-50/60 p-4 sm:p-5 fade-in"><p class="text-sm leading-relaxed text-gray-700 sm:text-[15px]">${section.instruction}</p></div>${vignetteHTML}${fullLegend}${sourceHTML}${subscalesHTML}</div>`;
+  `;
+  app.appendChild(header);
+  document.getElementById("headerHome").onclick = onHome;
+  if(onViewStats) document.getElementById("headerStats").onclick = onViewStats;
 }
 
 function renderFooter(){
-  const step = state.currentStep;
-  const idx = STEP_IDS.indexOf(step);
-  const isFirst = idx===0;
-  const isLast = step==="F";
-  const sec = SECTIONS.find(s=>s.id===step);
-  const meta = step==="A"?"Demografi":sec?`${countSectionItems(step)} item`:"";
-  const submitBtn = isLast ? `<button onclick="handleSubmit()" ${state.submitting?"disabled":""} class="flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-emerald-500/30 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-60">${state.submitting?'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>':ICON.send}<span class="hidden sm:inline">${state.submitting?"Menghantar…":"Hantar"}</span><span class="sm:hidden">${state.submitting?"…":"Hantar"}</span></button>` : `<button onclick="handleNext()" class="flex items-center gap-1.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-emerald-500/30 hover:from-emerald-600 hover:to-teal-700"><span class="hidden sm:inline">Seterusnya</span><span class="sm:hidden">Seterus</span>${ICON.arrowRight}</button>`;
-  return `<footer class="sticky bottom-0 z-40 border-t border-gray-200 bg-white/90 backdrop-blur-md"><div class="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3"><button onclick="prevStep()" ${isFirst?"disabled":""} class="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40">${ICON.arrowLeft}<span class="hidden sm:inline">Sebelum</span></button><span class="text-[10px] uppercase tracking-wide text-gray-400">${meta}</span>${submitBtn}</div></footer>`;
+  const footer = document.createElement("footer");
+  footer.className = "footer no-print";
+  footer.innerHTML = `
+    <p>Kajian: Efikasi Kendiri Guru dalam kalangan Pelajar IPG · Skala respons 7-mata diseragamkan (Bahagian B–F).</p>
+    <p>Instrumen: Zeng &amp; Liu (2024) · Dik et al. (2012) · Cassidy (2016) · Ryff &amp; Keyes (1995) · Tschannen-Moran &amp; Woolfolk Hoy (2001).</p>
+  `;
+  app.appendChild(footer);
 }
 
-function renderThankYou(){
-  const {sections, grandTotal, grandItemCount} = computeScores(state.responses);
-  const grandMax = sections.reduce((a,s)=>a+s.range[1],0);
-  const grandMean = grandItemCount>0 ? grandTotal/grandItemCount : 0;
-  const gl = levelFromMean(grandMean);
-  const refId = state.submittedId ? state.submittedId.slice(-8).toUpperCase() : "";
-  const syncBadge = state.sheetSynced ? `<span class="mt-1 flex items-center justify-center gap-1 text-[11px] font-medium text-emerald-600">${ICON.check} Disegerakkan ke Google Sheet</span>` : (state.sheetError?`<span class="mt-1 flex items-center justify-center gap-1 text-[11px] font-medium text-amber-600">${ICON.alertTriangle} Disimpan tempatan (Google Sheet tidak disambung)</span>`:"");
-  const sectionCards = sections.map((s,idx)=>{
-    const sl = levelFromMean(s.mean);
-    return `<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm fade-in" style="animation-delay:${0.1+idx*0.08}s"><button onclick="toggleSection(${idx})" class="flex w-full items-center justify-between gap-3 bg-gradient-to-r from-emerald-50/80 to-teal-50/40 p-4 text-left hover:from-emerald-50 hover:to-teal-50 sm:p-5"><div class="flex items-center gap-3"><div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500 font-bold text-white">${s.sectionId}</div><div><h3 class="text-sm font-bold text-gray-900 sm:text-base">${s.title}</h3><p class="text-[11px] text-gray-500">${s.itemCount} item · skor global ${s.total}/${s.range[1]}</p></div></div><div class="flex items-center gap-2"><span class="rounded-full px-2.5 py-1 text-xs font-bold ${sl.bg} ${sl.color}">${sl.label}</span><span class="text-lg font-bold text-gray-900">${s.mean.toFixed(2)}</span></div></button><div id="sec-${idx}" class="${idx===0?"":"hidden"} border-t border-gray-200 p-4 sm:p-5"><div class="mb-3"><div class="relative h-2.5 w-full overflow-hidden rounded-full bg-gray-200"><div class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" style="width:${Math.round((s.total-s.range[0])/(s.range[1]-s.range[0])*100)}%"></div></div><div class="mt-1.5 flex justify-between text-[11px] text-gray-500"><span>Min: ${s.range[0]}</span><span>Skor anda: <strong class="text-gray-900">${s.total}</strong></span><span>Max: ${s.range[1]}</span></div></div><div class="flex flex-col gap-2">${s.subscales.map((sub,i)=>{const subl=levelFromMean(sub.mean);return `<div class="rounded-xl border border-gray-200/70 bg-white/60 p-3"><div class="mb-1.5 flex items-center justify-between gap-2"><span class="text-xs font-medium text-gray-700 sm:text-sm">${sub.title}</span><span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${subl.bg} ${subl.color}">${subl.label}</span></div><div class="relative h-2.5 w-full overflow-hidden rounded-full bg-gray-200"><div class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" style="width:${Math.round((sub.total-sub.range[0])/(sub.range[1]-sub.range[0])*100)}%"></div></div><div class="mt-1.5 flex items-center justify-between text-[11px] text-gray-500"><span>Jumlah: <strong class="font-semibold text-gray-900">${sub.total}</strong> / ${sub.range[1]}</span><span>Purata: <strong class="font-semibold text-gray-900">${sub.mean.toFixed(2)}</strong> / 7</span></div></div>`}).join("")}</div></div></div>`;
-  }).join("");
-  return `<div class="mx-auto flex max-w-2xl flex-col gap-6 py-4 pop-in"><div class="flex flex-col items-center gap-3 text-center"><div class="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-xl shadow-emerald-500/40 pop-in">${ICON.checkCircle}</div><div><h2 class="text-2xl font-bold text-gray-900 sm:text-3xl">Terima Kasih!</h2><p class="mt-2 text-sm leading-relaxed text-gray-600 sm:text-[15px]">Jawapan anda telah berjaya dihantar dan direkodkan. Sumbangan anda amat bermakna bagi kajian ini.</p></div>${refId?`<div class="flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-medium text-emerald-700">${ICON.sparkles}Rujukan: <span class="font-mono">${refId}</span></div>`:""}${syncBadge}</div><div class="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 text-center shadow-sm sm:p-6 fade-in"><div class="mb-2 flex items-center justify-center gap-2 text-emerald-700">${ICON.award}<span class="text-xs font-bold uppercase tracking-wide">Skor Keseluruhan</span></div><div class="flex items-end justify-center gap-2"><span class="text-4xl font-bold text-gray-900 sm:text-5xl">${grandTotal}</span><span class="mb-1 text-lg font-medium text-gray-400">/ ${grandMax}</span></div><div class="mt-2 flex items-center justify-center gap-2"><span class="text-sm text-gray-500">Purata item:</span><span class="text-lg font-bold text-emerald-700">${grandMean.toFixed(2)} / 7</span><span class="ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${gl.bg} ${gl.color}">${gl.label}</span></div><div class="mt-4"><div class="relative h-2.5 w-full overflow-hidden rounded-full bg-gray-200"><div class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" style="width:${Math.round((grandTotal/grandMax)*100)}%"></div></div></div><p class="mt-3 text-[11px] leading-relaxed text-gray-500">Berdasarkan ${grandItemCount} item. Skor lebih tinggi menunjukkan tahap konstruk yang lebih positif.</p></div><div><div class="mb-3 flex items-center gap-2 px-1">${ICON.trendingUp}<h3 class="text-sm font-bold text-gray-900">Ringkasan Skor per Bahagian</h3></div><div class="flex flex-col gap-3">${sectionCards}</div></div><div class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-center text-[11px] leading-relaxed text-gray-500">Skor dikira mengikut manual pengiraan rasmi instrumen.</div><div class="flex justify-center"><button onclick="resetSurvey()" class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">${ICON.rotateCcw}Mula Soal Selidik Baharu</button></div></div>`;
-}
+/* ---------- Intro view ---------- */
+function renderIntro(){
+  renderHeader(() => {}, () => state.stage = "stats" || render());
+  renderStatsLink();
+  const main = document.createElement("main");
+  main.className = "main main-narrow";
+  main.style.paddingTop = "2rem";
 
-/* ================================================================
- * 7. SETTINGS DIALOG
- * ================================================================ */
-
-function renderSettingsIntoOverlay(){
-  const overlay = document.getElementById("settings-overlay");
-  if(!overlay) return;
-  const url = getWebhookUrl();
-  const configured = !!url;
-  const preview = url ? url.slice(0,40)+"…" : null;
-  overlay.innerHTML = `<div class="fixed left-1/2 top-1/2 w-[92vw] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 shadow-2xl pop-in" style="max-height:90vh;overflow-y:auto">
-    <div class="mb-4 flex items-start justify-between">
+  const partsHTML = STUDY_INFO.parts.map(p => `
+    <div class="part-card">
+      <div class="part-badge">${p.code}</div>
       <div>
-        <h2 class="flex items-center gap-2 text-lg font-bold text-gray-900">${ICON.settings}Sambungan Google Sheet</h2>
-        <p class="mt-1 text-sm text-gray-500">Sambungkan soal selidik ke Google Sheet. Setiap penghantaran akan merekodkan skor setiap item (1–7) sebagai satu baris.</p>
+        <div class="part-title">${p.title}</div>
+        <div class="part-count">${p.count} item</div>
       </div>
-      <button onclick="closeSettings()" class="rounded-lg p-1 text-gray-400 hover:bg-gray-100">${ICON.x}</button>
     </div>
-    <div class="mb-3 flex items-center gap-2"><span class="text-sm font-medium text-gray-500">Status:</span>${configured?`<span class="flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-700">${ICON.checkCircle.replace('width="24"','width="12"')}Berhubung</span>`:`<span class="flex items-center gap-1 rounded-full border border-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-400">Belum disambung</span>`}<span class="text-xs text-gray-400">(118 lajur)</span></div>
-    ${preview?`<div class="mb-3 rounded-lg border border-gray-200 bg-gray-50 p-2.5"><p class="text-xs font-medium text-gray-500">URL semasa:</p><p class="mt-0.5 break-all font-mono text-[11px] text-gray-600">${esc(preview)}</p></div>`:""}
-    <div class="mb-3 space-y-1.5"><label class="text-sm font-semibold text-gray-900">URL Web App (Apps Script)</label><input id="sheet-url-input" type="url" placeholder="https://script.google.com/macros/s/AKfyc.../exec" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-mono text-xs shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"><p class="text-[11px] text-gray-400">Biarkan kosong jika anda hanya ingin menguji URL yang telah disimpan.</p></div>
-    <div class="mb-3 flex flex-wrap gap-2">
-      <button onclick="saveSettingsUrl()" class="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-600">${ICON.save}Simpan URL</button>
-      <button onclick="testSettingsUrl()" class="flex items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">Uji Sambungan</button>
-      ${configured?`<button onclick="deleteSettingsUrl()" class="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50">${ICON.trash}Padam</button>`:""}
+  `).join("");
+
+  main.innerHTML = `
+    <div class="card" style="border-color: rgba(13,148,136,0.2); box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+      <div class="hero">
+        <span class="hero-badge">Kajian Akademik · IPGKPM</span>
+        <h1>${STUDY_INFO.title}</h1>
+        <p style="font-size: 1.1rem; color: var(--fg); margin-top: 0.5rem;">${STUDY_INFO.subtitle}</p>
+        <h2>ℹ️ Pengenalan Kajian</h2>
+        <p>${STUDY_INFO.description}</p>
+      </div>
+      <div class="card-body">
+        <h2 style="font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">📋 Struktur Soal Selidik</h2>
+        <div class="part-grid">${partsHTML}</div>
+        <p style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--muted);">
+          Jumlah: <strong style="color: var(--fg);">${STUDY_INFO.totalItems} item</strong> · Anggaran masa: 15–20 minit
+        </p>
+
+        <div class="separator"></div>
+
+        <h2 style="font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">🛡️ Arahan &amp; Persetujuan</h2>
+        <ul class="instructions">
+          <li>Sila jawab semua pernyataan dalam soal selidik ini dengan jujur berdasarkan pandangan dan keadaan diri anda. Tiada jawapan yang betul atau salah.</li>
+          <li>Segala maklumat yang diberikan adalah <strong>SULIT</strong> dan hanya akan digunakan bagi tujuan penyelidikan akademik.</li>
+          <li>Identiti anda tidak akan direkodkan atau didedahkan. Kod peserta akan dijana secara rawak bagi memastikan kerahsiaan responden.</li>
+          <li>Sila baca setiap pernyataan dengan teliti dan pilih satu jawapan yang paling menggambarkan diri anda.</li>
+        </ul>
+
+        <label class="consent-box" style="margin-top: 1rem;">
+          <input type="checkbox" id="consentCheck" ${state.consented ? "checked" : ""}>
+          <span style="font-size: 0.875rem;">Saya telah membaca dan memahami arahan di atas, serta bersetuju untuk menyertai kajian ini secara sukarela.</span>
+        </label>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+          <button class="btn btn-ghost btn-sm" id="viewStatsBtn">📊 Lihat statistik kajian</button>
+          <button class="btn btn-primary btn-lg" id="startBtn" ${!state.consented ? "disabled" : ""}>Mula Soal Selidik →</button>
+        </div>
+      </div>
     </div>
-    <div id="settings-test-result"></div>
-    <details class="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs"><summary class="cursor-pointer font-semibold text-gray-900">Arahan pemasangan (klik untuk kembang)</summary><ol class="mt-2 list-decimal space-y-1 pl-4 text-gray-600"><li>Buka <a href="https://sheets.new" target="_blank" rel="noreferrer" class="inline-flex items-center gap-0.5 font-medium text-emerald-600 underline">Google Sheet baharu ${ICON.externalLink}</a> dan namakan fail.</li><li>Menu: <strong>Extensions → Apps Script</strong>.</li><li>Padam kod lalai, salin &amp; tampal kod Apps Script (Code.gs).</li><li>Klik <strong>Save</strong>, kemudian <strong>Deploy → New deployment → Web app</strong>.</li><li>Tetapkan: <em>Execute as:</em> <strong>Me</strong>, <em>Who has access:</em> <strong>Anyone</strong>.</li><li>Klik <strong>Deploy</strong> → otorisasi akses → salin <strong>URL Web app</strong>.</li><li>Tampal URL di atas → <strong>Simpan URL</strong> → <strong>Uji Sambungan</strong>.</li></ol></details>
+  `;
+  app.appendChild(main);
+  renderFooter();
+
+  document.getElementById("consentCheck").onchange = (e) => {
+    state.consented = e.target.checked;
+    document.getElementById("startBtn").disabled = !state.consented;
+    saveState();
+  };
+  document.getElementById("startBtn").onclick = () => {
+    state.stage = "survey";
+    state.stepIndex = 0;
+    render();
+  };
+  document.getElementById("viewStatsBtn").onclick = () => { state.stage = "stats"; render(); };
+}
+
+function renderStatsLink(){
+  // Already handled in intro
+}
+
+/* ---------- Survey view (stepper + section content) ---------- */
+function renderSurvey(){
+  renderHeader(() => resetAll(), () => { state.stage = "stats"; render(); });
+
+  const steps = [
+    {key:"A",letter:"A",title:"Demografi",count:DEMOGRAPHICS.length},
+    ...SECTIONS.map(s => ({key:s.key,letter:s.letter,title:s.title.split(" ")[0] + (s.title.split(" ")[1] ? " " + s.title.split(" ")[1] : ""),count:s.items.length}))
+  ];
+
+  const answeredCounts = [
+    countAnsweredDemographics(state.answers),
+    ...SECTIONS.map(s => countAnsweredInSection(s, state.answers))
+  ];
+
+  const main = document.createElement("main");
+  main.className = "main";
+
+  // Stepper card
+  const stepperCard = document.createElement("div");
+  stepperCard.className = "card";
+  stepperCard.innerHTML = `<div class="card-body tight">
+    <div class="stepper nice-scroll">
+      <ol>${steps.map((s,i) => `
+        <li>
+          <button class="step-btn ${i===state.stepIndex?"current":""} ${i<state.stepIndex || (answeredCounts[i]===s.count && s.count>0)?"done":""}" data-step="${i}">
+            <span class="step-circle">${i < state.stepIndex || (answeredCounts[i]===s.count && s.count>0) ? "✓" : s.letter}</span>
+            <span>
+              <div class="step-title">${s.title}</div>
+              <div class="step-count">${answeredCounts[i]}/${s.count} item</div>
+            </span>
+          </button>
+          ${i < steps.length - 1 ? '<div class="step-sep"></div>' : ""}
+        </li>
+      `).join("")}</ol>
+    </div>
+    <div class="step-progress">
+      <div class="step-progress-bar">
+        <div class="step-progress-fill" style="width: ${(answeredCounts.reduce((a,b)=>a+b,0) / steps.reduce((a,s)=>a+s.count,0) * 100)}%"></div>
+      </div>
+      <div class="step-progress-text">
+        <span>Kemajuan keseluruhan</span>
+        <span>${answeredCounts.reduce((a,b)=>a+b,0)} / ${steps.reduce((a,s)=>a+s.count,0)} item</span>
+      </div>
+    </div>
   </div>`;
-}
+  main.appendChild(stepperCard);
 
-function openSettings(){
-  document.getElementById("settings-overlay").classList.remove("hidden");
-  renderSettingsIntoOverlay();
-}
-function closeSettings(){
-  document.getElementById("settings-overlay").classList.add("hidden");
-}
-function saveSettingsUrl(){
-  const url = (document.getElementById("sheet-url-input").value||"").trim();
-  if(!url){ toast("Sila tampal URL Web App dahulu.","error"); return; }
-  if(!/^https:\/\/script\.google\.com\/macros\/s\//.test(url)){ toast("URL mesti bermula dengan https://script.google.com/macros/s/","error"); return; }
-  setWebhookUrl(url);
-  toast("URL Web App berjaya disimpan.","success");
-  renderSettingsIntoOverlay();
-}
-function deleteSettingsUrl(){
-  if(!confirm("Padam URL Web App? Penghantaran baharu tidak akan dihantar ke Google Sheet.")) return;
-  localStorage.removeItem(WEBHOOK_KEY);
-  toast("URL Web App telah dipadam.","success");
-  renderSettingsIntoOverlay();
-}
-async function testSettingsUrl(){
-  const inputUrl = (document.getElementById("sheet-url-input").value||"").trim();
-  const url = inputUrl || getWebhookUrl();
-  if(!url){ toast("Tiada URL untuk diuji. Sila tampal URL Web App dahulu.","error"); return; }
-  const resultEl = document.getElementById("settings-test-result");
-  if(resultEl) resultEl.innerHTML = `<div class="rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-xs text-gray-500">Menguji sambungan…</div>`;
-  try{
-    // Use no-cors for browser→Apps Script (avoids preflight); can't read response but request goes through.
-    const headers = buildSheetColumns();
-    await fetch(url, {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({type:"init", headers})});
-    if(resultEl) resultEl.innerHTML = `<div class="rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-700">Sambungan berjaya! Header lajur telah ditulis ke baris 1 Google Sheet anda.</div>`;
-    toast("Sambungan berjaya!","success");
-  }catch(e){
-    if(resultEl) resultEl.innerHTML = `<div class="rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700">Sambungan gagal: ${esc(e.message||e)}. Pastikan URL betul dan deployment "Anyone".</div>`;
-    toast("Sambungan gagal.","error");
-  }
-}
-
-/* ================================================================
- * 8. GOOGLE SHEET SYNC
- * ================================================================ */
-
-function buildSheetColumns(){
-  return ["Timestamp","SubmissionID", ...DEMOGRAPHICS.map(q=>q.code), ...ALL_ITEMS.map(i=>i.code), ...SECTIONS.map(s=>"Total_"+s.id), "GrandTotal","GrandMean"];
-}
-
-function buildSheetRow(submissionId, demographics, responses){
-  const {sections, grandTotal, grandItemCount} = computeScores(responses);
-  const grandMean = grandItemCount>0 ? grandTotal/grandItemCount : 0;
-  const demoVals = DEMOGRAPHICS.map(q=>demographics[q.code]||"");
-  const itemVals = ALL_ITEMS.map(i=>responses[i.code]||"");
-  const secTotals = SECTIONS.map(s=>{const sec=sections.find(x=>x.sectionId===s.id);return sec?sec.total:"";});
-  return [new Date().toISOString(), submissionId, ...demoVals, ...itemVals, ...secTotals, grandTotal, Number(grandMean.toFixed(3))];
-}
-
-async function pushToGoogleSheet(submissionId, demographics, responses){
-  const url = getWebhookUrl();
-  if(!url) return {synced:false, skipped:true};
-  const headers = buildSheetColumns();
-  const row = buildSheetRow(submissionId, demographics, responses);
-  try{
-    // no-cors: request goes through, response is opaque. Data reaches Apps Script.
-    await fetch(url, {method:"POST", mode:"no-cors", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({headers, row})});
-    return {synced:true};
-  }catch(e){
-    return {synced:false, error:e.message||"sync error"};
-  }
-}
-
-/* ================================================================
- * 9. STATE ACTIONS + EVENT HANDLERS
- * ================================================================ */
-
-/* ---- Targeted DOM updates (avoid full re-render, preserve scroll) ---- */
-
-function updateItemPills(code){
-  const group = document.querySelector('[role="radiogroup"][aria-label="' + CSS.escape(code) + '"]');
-  if(!group) return;
-  const buttons = group.querySelectorAll("button");
-  const val = state.responses[code];
-  buttons.forEach((btn, i) => {
-    const p = i + 1;
-    const selected = (p === val);
-    btn.className = selected
-      ? "relative flex h-9 w-full items-center justify-center rounded-lg border text-sm font-semibold transition-all md:w-9 border-transparent bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm"
-      : "relative flex h-9 w-full items-center justify-center rounded-lg border text-sm font-semibold transition-all md:w-9 border-gray-200 bg-white text-gray-600 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700";
-    btn.innerHTML = selected ? ICON.check : String(p);
-  });
-}
-
-function updateRadioCards(code, val){
-  // Find all radio buttons for this demographic question.
-  // Radio cards are rendered as <button onclick="setDemo('CODE',...)">
-  // within the question card. We match by the onclick attribute.
-  const cards = document.querySelectorAll('button[onclick^="setDemo(\'' + code + "'");
-  cards.forEach(btn => {
-    // Extract the key from onclick="setDemo('CODE','KEY')"
-    const m = btn.getAttribute("onclick").match(/setDemo\('([^']+)',\s*'([^']*)'\)/);
-    if(!m) return;
-    const key = m[2];
-    const active = (key === val) || (key === "Lain-lain" && (val === "Lain-lain" || val.startsWith("Lain-lain: ")));
-    btn.className = active
-      ? "relative flex items-center justify-center rounded-xl border px-4 py-3 text-center text-sm font-medium transition-all border-transparent bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm"
-      : "relative flex items-center justify-center rounded-xl border px-4 py-3 text-center text-sm font-medium transition-all border-gray-200 bg-white text-gray-700 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700";
-  });
-}
-
-function updateHeaderProgress(){
-  const demoAns = DEMOGRAPHICS.filter(q => (state.demographics[q.code] || "").trim() !== "").length;
-  const likertAns = ALL_ITEMS.filter(i => state.responses[i.code] != null).length;
-  const total = DEMOGRAPHICS.length + ALL_ITEMS.length;
-  const answered = demoAns + likertAns;
-  const pct = Math.round((answered / total) * 100);
-  // Progress bar width
-  const bar = document.querySelector("header .absolute.inset-y-0.left-0.rounded-full");
-  if(bar) bar.style.width = pct + "%";
-  // Percentage text
-  const pctEl = document.querySelector("header .shrink-0.text-xs.font-semibold.tabular-nums");
-  if(pctEl) pctEl.textContent = pct + "%";
-}
-
-function updateStepperCounts(){
-  // Update X/Y count on each section stepper button
-  SECTIONS.forEach(s => {
-    const codes = s.subscales.flatMap(sub => sub.items.map(i => i.code));
-    const ans = codes.filter(c => state.responses[c] != null).length;
-    const total = codes.length;
-    // Each stepper button contains a span with text "X/Y" at the end
-    const stepperBtn = document.querySelector('header button[onclick^="goToStep(\'' + s.id + "'");
-    if(!stepperBtn) return;
-    const countSpan = stepperBtn.querySelector(".text-\\[10px\\].opacity-70");
-    if(countSpan) countSpan.textContent = ans + "/" + total;
-  });
-}
-
-function setDemo(code, val){
-  state.demographics[code] = val;
-  saveState();
-  // Targeted update — no full re-render, preserves scroll position
-  updateRadioCards(code, val);
-  updateHeaderProgress();
-  updateStepperCounts();
-}
-function setDemoOther(code, text){ state.demographics[code] = "Lain-lain: " + text; saveState(); /* don't full re-render to keep focus */ }
-function setResp(code, val){
-  state.responses[code] = val;
-  saveState();
-  // Targeted update — only change this item's pills + header, preserves scroll
-  updateItemPills(code);
-  updateHeaderProgress();
-  updateStepperCounts();
-}
-function goToStep(step){
-  const idx = STEP_IDS.indexOf(step);
-  state.currentStep = step;
-  state.maxReachedIndex = Math.max(state.maxReachedIndex, idx);
-  saveState();
-  render();
-  // Only scroll to top when changing steps — NOT on individual item clicks
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-function nextStep(){
-  const idx = STEP_IDS.indexOf(state.currentStep);
-  if(idx < STEP_IDS.length-1) goToStep(STEP_IDS[idx+1]);
-}
-function prevStep(){
-  const idx = STEP_IDS.indexOf(state.currentStep);
-  if(idx > 0) goToStep(STEP_IDS[idx-1]);
-}
-function toggleSection(idx){
-  const el = document.getElementById("sec-"+idx);
-  if(el) el.classList.toggle("hidden");
-}
-function resetSurvey(){
-  state = {currentStep:"intro", demographics:{}, responses:{}, submitted:false, submittedId:null, maxReachedIndex:0, submitting:false, sheetSynced:false, sheetError:null};
-  saveState();
-  render();
-  window.scrollTo({top:0, behavior:"smooth"});
-}
-function handleReset(){
-  if(confirm("Padam semua jawapan? Anda akan mula semula dari awal.")){
-    resetSurvey();
-    toast("Soal selidik telah dikosongkan.","success");
-  }
-}
-
-function validateStep(step){
-  if(step==="intro") return {ok:true};
-  if(step==="A"){
-    const missing = DEMOGRAPHICS.filter(q=>!(state.demographics[q.code]||"").trim()).length;
-    return missing===0 ? {ok:true} : {ok:false, missing};
-  }
-  const section = SECTIONS.find(s=>s.id===step);
-  if(!section) return {ok:true};
-  const codes = section.subscales.flatMap(sub=>sub.items.map(i=>i.code));
-  const missing = codes.filter(c=>state.responses[c]==null).length;
-  return missing===0 ? {ok:true} : {ok:false, missing};
-}
-
-function handleNext(){
-  const r = validateStep(state.currentStep);
-  if(!r.ok){
-    toast(r.missing===1?"Masih ada 1 soalan yang belum dijawab di bahagian ini.":`Masih ada ${r.missing} soalan yang belum dijawab di bahagian ini.`,"error");
-    return;
-  }
-  nextStep();
-}
-
-async function handleSubmit(){
-  const r = validateStep(state.currentStep);
-  if(!r.ok){
-    toast(r.missing===1?"Masih ada 1 soalan yang belum dijawab.":`Masih ada ${r.missing} soalan yang belum dijawab.`,"error");
-    return;
-  }
-  state.submitting = true;
-  render();
-  // Generate submission ID
-  const submissionId = "sub-" + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
-  // Push to Google Sheet if configured
-  const syncResult = await pushToGoogleSheet(submissionId, state.demographics, state.responses);
-  state.sheetSynced = syncResult.synced;
-  state.sheetError = syncResult.error || null;
-  state.submitted = true;
-  state.submittedId = submissionId;
-  state.submitting = false;
-  saveState();
-  render();
-  if(syncResult.synced){
-    toast("Soal selidik dihantar & direkod ke Google Sheet.","success");
-  } else if(syncResult.skipped){
-    toast("Soal selidik berjaya dihantar (disimpan tempatan).","success");
+  // Section content
+  let contentCard;
+  if(state.stepIndex === 0){
+    contentCard = renderDemographicsSection(answeredCounts[0]);
   } else {
-    toast("Disimpan tempatan. Google Sheet tidak berjaya disegerakkan.","warning");
+    contentCard = renderLikertSection(SECTIONS[state.stepIndex - 1], answeredCounts[state.stepIndex]);
+  }
+  main.appendChild(contentCard);
+
+  // Navigation
+  const nav = document.createElement("div");
+  nav.className = "nav-buttons";
+  nav.innerHTML = `
+    <button class="btn btn-outline" id="prevBtn" ${state.stepIndex===0?"disabled":""}>← Sebelumnya</button>
+    <div class="nav-info">Bahagian ${steps[state.stepIndex].letter} · ${answeredCounts[state.stepIndex]}/${steps[state.stepIndex].count} item dijawab</div>
+    ${state.stepIndex < steps.length - 1
+      ? `<button class="btn btn-primary" id="nextBtn">Seterusnya →</button>`
+      : `<button class="btn btn-primary" id="reviewBtn">📋 Semak &amp; Serah</button>`}
+  `;
+  main.appendChild(nav);
+
+  app.appendChild(main);
+  renderFooter();
+
+  // Bind events
+  document.querySelectorAll(".step-btn").forEach(btn => {
+    btn.onclick = () => { state.stepIndex = parseInt(btn.dataset.step); scrollToTop(); render(); };
+  });
+  document.getElementById("prevBtn").onclick = () => { if(state.stepIndex > 0){ state.stepIndex--; scrollToTop(); render(); } };
+  if(state.stepIndex < steps.length - 1){
+    document.getElementById("nextBtn").onclick = () => { state.stepIndex++; scrollToTop(); render(); };
+  } else {
+    document.getElementById("reviewBtn").onclick = () => { state.stage = "review"; scrollToTop(); render(); };
   }
 }
 
-/* ================================================================
- * 10. EVENT ATTACHMENT (after innerHTML)
- * ================================================================ */
+/* ---------- Demographics section ---------- */
+function renderDemographicsSection(answeredCount){
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML = `
+    <div class="card-header">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span class="badge badge-primary">Bahagian A</span>
+        <div class="card-title">Maklumat Demografi</div>
+      </div>
+      <div class="card-desc">Sila tandakan atau nyatakan jawapan anda. ${answeredCount}/${DEMOGRAPHICS.length} item dijawab.</div>
+    </div>
+    <div class="card-body" id="demoBody"></div>
+  `;
+  const body = card.querySelector("#demoBody");
 
-function attachIntroEvents(){}
-function attachSurveyEvents(){}
-function attachThankYouEvents(){}
+  DEMOGRAPHICS.forEach(d => {
+    const item = document.createElement("div");
+    item.className = "demo-item" + (state.answers[d.code] !== undefined ? " answered" : "");
+    item.id = "demo-" + d.code;
 
-/* ================================================================
- * 11. INIT
- * ================================================================ */
+    let optionsHTML = "";
+    if(d.type === "radio" && d.options){
+      optionsHTML = `<div class="demo-radio-grid">${d.options.map(o => `
+        <label class="demo-radio-label ${state.answers[d.code]===o.v?"checked":""}">
+          <input type="radio" name="${d.code}" value="${o.v}" ${state.answers[d.code]===o.v?"checked":""}>
+          <span>${o.l}</span>
+        </label>
+      `).join("")}</div>`;
+    } else if(d.type === "select" && d.options){
+      const isOther = String(state.answers[d.code] ?? "").startsWith("__other__:");
+      const otherText = isOther ? String(state.answers[d.code]).replace("__other__:","") : "";
+      optionsHTML = `
+        <select class="demo-select" id="sel_${d.code}">
+          <option value="">Sila pilih…</option>
+          ${d.options.map(o => `<option value="${o.v}" ${state.answers[d.code]===o.v?"selected":""}>${o.l}</option>`).join("")}
+          ${d.allowOther ? `<option value="__other__" ${isOther?"selected":""}>Lain-lain (nyatakan)…</option>` : ""}
+        </select>
+        ${isOther ? `<input type="text" class="demo-input" id="other_${d.code}" placeholder="Sila nyatakan…" value="${otherText}">` : ""}
+      `;
+    }
 
-loadState();
-render();
+    item.innerHTML = `
+      <div class="demo-head">
+        <span class="likert-code">${d.code}</span>
+        <div class="demo-q">${d.q}</div>
+      </div>
+      <div class="demo-options">${optionsHTML}</div>
+    `;
+    body.appendChild(item);
 
-// Expose for inline onclick handlers
-window.setDemo = setDemo;
-window.setDemoOther = setDemoOther;
-window.setResp = setResp;
-window.goToStep = goToStep;
-window.handleNext = handleNext;
-window.prevStep = prevStep;
-window.handleSubmit = handleSubmit;
-window.toggleSection = toggleSection;
-window.resetSurvey = resetSurvey;
-window.handleReset = handleReset;
-window.openSettings = openSettings;
-window.closeSettings = closeSettings;
-window.saveSettingsUrl = saveSettingsUrl;
-window.testSettingsUrl = testSettingsUrl;
-window.deleteSettingsUrl = deleteSettingsUrl;
+    // Bind events
+    if(d.type === "radio"){
+      item.querySelectorAll(`input[name="${d.code}"]`).forEach(input => {
+        input.onchange = (e) => {
+          state.answers[d.code] = e.target.value;
+          item.classList.add("answered");
+          item.querySelectorAll(".demo-radio-label").forEach(l => l.classList.remove("checked"));
+          e.target.closest(".demo-radio-label").classList.add("checked");
+          saveState();
+          render();
+        };
+      });
+    } else if(d.type === "select"){
+      const sel = item.querySelector(`#sel_${d.code}`);
+      sel.onchange = (e) => {
+        if(e.target.value === "__other__"){
+          state.answers[d.code] = "__other__:";
+          item.classList.add("answered");
+          // Add text input
+          const input = document.createElement("input");
+          input.type = "text";
+          input.className = "demo-input";
+          input.id = "other_" + d.code;
+          input.placeholder = "Sila nyatakan…";
+          input.oninput = (ev) => { state.answers[d.code] = "__other__:" + ev.target.value; saveState(); };
+          item.querySelector(".demo-options").appendChild(input);
+          input.focus();
+        } else {
+          state.answers[d.code] = e.target.value;
+          item.classList.add("answered");
+          const existingInput = item.querySelector(`#other_${d.code}`);
+          if(existingInput) existingInput.remove();
+        }
+        saveState();
+        render();
+      };
+      const otherInput = item.querySelector(`#other_${d.code}`);
+      if(otherInput){
+        otherInput.oninput = (e) => {
+          state.answers[d.code] = "__other__:" + e.target.value;
+          saveState();
+        };
+      }
+    }
+  });
+
+  return card;
+}
+
+/* ---------- Likert section ---------- */
+function renderLikertSection(section, answeredCount){
+  const wrapper = document.createElement("div");
+  wrapper.className = "space-y-4";
+  wrapper.style.display = "flex";
+  wrapper.style.flexDirection = "column";
+  wrapper.style.gap = "1rem";
+
+  const scale = SCALES[section.scale];
+
+  // Section header
+  const headerCard = document.createElement("div");
+  headerCard.className = "card";
+  headerCard.innerHTML = `
+    <div class="card-header">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;">
+        <span class="badge badge-primary">Bahagian ${section.letter}</span>
+        <div class="card-title">${section.title}</div>
+      </div>
+      <div class="card-desc" style="margin-top: 0.5rem;">${section.subtitle}</div>
+    </div>
+    <div class="card-body">
+      <div class="scale-legend">
+        <div class="scale-legend-title">Skala Respons 7-mata: ${scale.label}</div>
+        <div class="scale-legend-grid">
+          ${scale.points.map(p => `<div class="scale-legend-item"><span class="scale-legend-num">${p.v}</span><span style="color: var(--muted);">= ${p.l}</span></div>`).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+  wrapper.appendChild(headerCard);
+
+  // Vignette (Section D)
+  if(section.vignette){
+    const vigCard = document.createElement("div");
+    vigCard.className = "vignette";
+    vigCard.innerHTML = `
+      <div class="card-header">
+        <div class="card-title" style="font-size: 1rem;">⚠️ Senario (Vignette)</div>
+        <div class="card-desc">Sila baca senario di bawah, kemudian bayangkan diri anda sebagai pelajar dalam situasi tersebut sebelum menjawab kesemua 30 item.</div>
+      </div>
+      <div class="vignette-body">
+        <blockquote class="vignette-quote">${section.vignette}</blockquote>
+      </div>
+    `;
+    wrapper.appendChild(vigCard);
+  }
+
+  // Items
+  section.items.forEach(item => {
+    const value = state.answers[item.code] !== undefined ? Number(state.answers[item.code]) : undefined;
+    const answered = value !== undefined;
+    const itemCard = document.createElement("div");
+    itemCard.className = "likert-item" + (answered ? " answered" : "");
+    itemCard.id = "item-" + item.code;
+    itemCard.innerHTML = `
+      <div class="likert-head">
+        <div>
+          <span class="likert-code">${item.code}</span>
+          <div class="likert-statement">${item.s}</div>
+        </div>
+        <div class="likert-status ${answered?"answered":""}">${answered ? "✓ Dijawab" : "Belum dijawab"}</div>
+      </div>
+      <div class="likert-anchors">
+        <span>1 — ${scale.anchor1}</span>
+        <span>${scale.label}</span>
+        <span>${scale.anchor7} — 7</span>
+      </div>
+      <div class="likert-grid">
+        ${scale.points.map(p => `
+          <button class="likert-btn ${value===p.v?"active":""}" data-code="${item.code}" data-value="${p.v}" title="${p.v} — ${p.l}">
+            <span class="likert-num">${p.v}</span>
+            <span class="likert-label">${p.l}</span>
+          </button>
+        `).join("")}
+      </div>
+    `;
+    wrapper.appendChild(itemCard);
+  });
+
+  // Count
+  const count = document.createElement("p");
+  count.style.cssText = "padding: 0 0.25rem; font-size: 0.75rem; color: var(--muted);";
+  count.textContent = `${answeredCount}/${section.items.length} item dijawab dalam bahagian ini.`;
+  wrapper.appendChild(count);
+
+  return wrapper;
+}
+
+/* ---------- Review view ---------- */
+function renderReview(){
+  renderHeader(() => resetAll(), () => { state.stage = "stats"; render(); });
+
+  const steps = [
+    {key:"A",letter:"A",title:"Demografi",count:DEMOGRAPHICS.length},
+    ...SECTIONS.map(s => ({key:s.key,letter:s.letter,title:s.title,count:s.items.length}))
+  ];
+  const answeredCounts = [
+    countAnsweredDemographics(state.answers),
+    ...SECTIONS.map(s => countAnsweredInSection(s, state.answers))
+  ];
+  const totalAnswered = answeredCounts.reduce((a,b)=>a+b,0);
+  const totalItems = steps.reduce((a,s)=>a+s.count,0);
+  const completion = Math.round((totalAnswered/totalItems)*100);
+  const incomplete = totalAnswered < totalItems;
+
+  const main = document.createElement("main");
+  main.className = "main main-narrow";
+  main.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📋 Semakan Sebelum Penyerahan</div>
+        <div class="card-desc">Pastikan semua item telah dijawab. Anda boleh kembali ke mana-mana bahagian untuk menyunting.</div>
+      </div>
+      <div class="card-body">
+        <div style="background: var(--muted-bg); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.875rem; font-weight: 500;">Kemajuan keseluruhan</span>
+            <span style="font-size: 0.875rem; font-weight: 700; color: var(--primary);">${totalAnswered} / ${totalItems} (${completion}%)</span>
+          </div>
+          <div class="progress" style="margin-top: 0.5rem;">
+            <div class="progress-fill" style="width: ${completion}%"></div>
+          </div>
+          ${incomplete ? `<div class="alert alert-warning" style="margin-top: 0.75rem;"><div>⚠️ <strong>Terdapat item yang belum dijawab</strong><br><span style="font-size: 0.75rem;">Anda masih boleh menyerah, tetapi disyorkan menjawab semua item untuk ketepatan pengiraan skor.</span></div></div>` : ""}
+        </div>
+
+        <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+          ${steps.map((s,i) => {
+            const c = answeredCounts[i];
+            const pct = s.count > 0 ? Math.round((c/s.count)*100) : 0;
+            const complete = c === s.count;
+            return `<button class="step-btn ${complete?"done":""}" data-step="${i}" style="width: 100%; justify-content: flex-start; text-align: left;">
+              <span class="step-circle">${complete?"✓":s.letter}</span>
+              <span style="flex: 1;">
+                <div class="step-title">${s.title}</div>
+                <div class="step-count">${c}/${s.count} item (${pct}%)</div>
+              </span>
+              <div style="width: 96px;"><div class="progress progress-sm"><div class="progress-fill" style="width: ${pct}%; background: ${complete?"var(--success)":pct>0?"var(--primary)":"var(--muted)"};"></div></div></div>
+              <span style="color: var(--muted);">→</span>
+            </button>`;
+          }).join("")}
+        </div>
+
+        ${state.syncError ? `<div class="alert alert-danger" style="margin-top: 1rem;"><div>⚠️ <strong>Penyerahan gagal</strong><br><span style="font-size: 0.75rem;">${state.syncError}</span></div></div>` : ""}
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-outline" id="backBtn">← Kembali ke Soalan</button>
+      <button class="btn btn-primary btn-lg" id="submitBtn">📤 Serahkan Soal Selidik</button>
+    </div>
+  `;
+  app.appendChild(main);
+  renderFooter();
+
+  document.querySelectorAll(".step-btn[data-step]").forEach(btn => {
+    btn.onclick = () => {
+      state.stepIndex = parseInt(btn.dataset.step);
+      state.stage = "survey";
+      scrollToTop();
+      render();
+    };
+  });
+  document.getElementById("backBtn").onclick = () => {
+    state.stepIndex = steps.length - 1;
+    state.stage = "survey";
+    scrollToTop();
+    render();
+  };
+  document.getElementById("submitBtn").onclick = handleSubmit;
+}
+
+/* ---------- Submit handler ---------- */
+async function handleSubmit(){
+  state.stage = "submitting";
+  render();
+
+  try {
+    const participant = generateParticipantCode();
+    const report = computeFullReport(state.answers);
+    const timestamp = new Date().toISOString();
+    const row = buildSheetRow(state.answers, participant, timestamp, report);
+
+    let sheetSynced = false;
+    let syncError = null;
+
+    if(CONFIG.APPS_SCRIPT_URL){
+      try {
+        const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+          method: "POST",
+          headers: {"Content-Type": "text/plain;charset=utf-8"},
+          body: JSON.stringify({headers: row.headers, values: row.values}),
+        });
+        const text = await res.text();
+        try {
+          const result = JSON.parse(text);
+          sheetSynced = result.success === true;
+          if(!sheetSynced) syncError = result.error || "Sync gagal";
+        } catch {
+          sheetSynced = false;
+          syncError = "Apps Script mengembalikan respons bukan JSON (deployment mungkin versi lama)";
+        }
+      } catch(e){
+        sheetSynced = false;
+        syncError = e.message;
+      }
+    } else {
+      syncError = "APPS_SCRIPT_URL tidak dikonfigurasi";
+    }
+
+    state.result = {participant, createdAt: timestamp, scores: report, sheetSynced};
+    state.syncError = syncError;
+    state.stage = "results";
+    clearState(); // Clear localStorage after successful submit
+    scrollToTop();
+    render();
+  } catch(e){
+    state.syncError = e.message;
+    state.stage = "review";
+    render();
+  }
+}
+
+/* ---------- Submitting overlay ---------- */
+function renderSubmitting(){
+  renderHeader(() => {}, () => {});
+  const main = document.createElement("main");
+  main.className = "main main-narrow";
+  app.appendChild(main);
+  renderFooter();
+
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  overlay.innerHTML = `
+    <div class="card" style="max-width: 24rem;">
+      <div class="card-body" style="display: flex; flex-direction: column; align-items: center; gap: 0.75rem; padding: 2rem; text-align: center;">
+        <div class="spinner"></div>
+        <p style="font-size: 0.875rem; font-weight: 500;">Menyerahkan soal selidik…</p>
+        <p style="font-size: 0.75rem; color: var(--muted);">Mengira skor mengikut manual</p>
+      </div>
+    </div>
+  `;
+  app.appendChild(overlay);
+}
+
+/* ---------- Results view ---------- */
+function renderResults(){
+  const report = state.result.scores;
+  const completion = Math.round(report.overall.completionRate);
+  const avgPct = Math.round(report.overall.averagePercent);
+  const interp = interpretPercent(avgPct);
+
+  renderHeader(() => resetAll(), () => { state.stage = "stats"; render(); });
+
+  const main = document.createElement("main");
+  main.className = "main";
+
+  // Header card
+  const headerCard = document.createElement("div");
+  headerCard.className = "card";
+  headerCard.innerHTML = `
+    <div class="hero">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.5rem;">🏆</span>
+            <h2 style="font-size: 1.5rem; font-weight: 800; margin: 0;">Keputusan Soal Selidik</h2>
+          </div>
+          <p style="font-size: 0.875rem; color: var(--muted); margin-top: 0.25rem;">
+            Kod Peserta: <span style="font-family: monospace; font-weight: 600; color: var(--fg);">${state.result.participant}</span>
+          </p>
+          <p style="font-size: 0.7rem; color: var(--muted);">Diserah: ${new Date(state.result.createdAt).toLocaleString("ms-MY",{dateStyle:"long",timeStyle:"short"})}</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn btn-outline btn-sm" id="statsBtn">📊 Statistik Kajian</button>
+          <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Cetak / PDF</button>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 1.5rem;" class="stats-grid">
+        <div class="result-stat">
+          <div class="result-stat-label">Item Dijawab</div>
+          <div class="result-stat-value">${report.overall.totalAnswered} / ${report.overall.totalItems}</div>
+          <div class="result-stat-hint">${completion}% lengkap</div>
+          <div class="progress progress-sm" style="margin-top: 0.5rem;"><div class="progress-fill" style="width: ${completion}%"></div></div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-label">Purata Skor Konstruk</div>
+          <div class="result-stat-value">${avgPct}%</div>
+          <div class="result-stat-hint">Min merentas 5 konstruk</div>
+          <div class="progress progress-sm" style="margin-top: 0.5rem;"><div class="progress-fill" style="width: ${avgPct}%"></div></div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-label">Tafsiran Umum</div>
+          <div class="result-stat-value">${interp.label}</div>
+          <div class="result-stat-hint">Berdasarkan purata</div>
+          <div class="progress progress-sm" style="margin-top: 0.5rem;"><div class="progress-fill" style="width: ${avgPct}%; background: ${interp.tone==="low"?"var(--danger)":interp.tone==="mid"?"var(--accent)":"var(--success)"};"></div></div>
+        </div>
+      </div>
+      ${state.result.sheetSynced ? `<div class="alert alert-success" style="margin-top: 1rem;"><div>✅ <strong>Data berjaya direkodkan ke Google Spreadsheet</strong><br><span style="font-size: 0.75rem;">Skor setiap item telah disimpan untuk analisis SEM.</span></div></div>` : `<div class="alert alert-warning" style="margin-top: 1rem;"><div>⚠️ <strong>Data disimpan secara setempat sahaja</strong><br><span style="font-size: 0.75rem;">${state.syncError || "Sync ke spreadsheet gagal. Sila hubungi penyelidik."}</span></div></div>`}
+    </div>
+  `;
+  main.appendChild(headerCard);
+
+  // Bar chart card
+  const chartCard = document.createElement("div");
+  chartCard.className = "card";
+  const chartData = report.sectionScores.map(s => ({
+    label: "Bhg " + s.sectionLetter,
+    name: s.sectionTitle,
+    pct: Math.round(s.global.percent),
+  }));
+  const colors = ["#0d9488","#059669","#d97706","#ea580c","#0891b2"];
+  chartCard.innerHTML = `
+    <div class="card-header">
+      <div class="card-title" style="font-size: 1rem;">📊 Profil Skor Konstruk</div>
+      <div class="card-desc">Peratus skor global setiap konstruk (0–100% daripada julat skor maksimum).</div>
+    </div>
+    <div class="card-body">
+      <div class="bar-chart">
+        ${chartData.map((d,i) => `
+          <div class="bar-row">
+            <div class="bar-label" title="${d.name}">${d.label}</div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width: ${d.pct}%; background: ${colors[i]};">${d.pct}%</div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+      <p style="margin-top: 0.5rem; font-size: 0.7rem; color: var(--muted);">Nota: Skor lebih tinggi menunjukkan tahap konstruk lebih tinggi. Untuk Resiliensi Akademik (Bahagian D), item negatif telah disongsang supaya skor tinggi konsisten menunjukkan resiliensi tinggi.</p>
+    </div>
+  `;
+  main.appendChild(chartCard);
+
+  // Per-construct breakdown
+  report.sectionScores.forEach(sec => {
+    const secInterp = interpretPercent(sec.global.percent);
+    const toneColor = secInterp.tone === "low" ? "var(--danger)" : secInterp.tone === "mid" ? "var(--accent)" : "var(--success)";
+    const toneBadge = secInterp.tone === "low" ? "badge-danger" : secInterp.tone === "mid" ? "badge-warning" : "badge-success";
+
+    const card = document.createElement("div");
+    card.className = "result-construct";
+    card.innerHTML = `
+      <div class="result-construct-head">
+        <div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span class="badge badge-primary">Bahagian ${sec.sectionLetter}</span>
+            <span class="badge ${toneBadge}">${secInterp.label}</span>
+          </div>
+          <div class="result-construct-title">${sec.sectionTitle}</div>
+        </div>
+        <div>
+          <div class="result-construct-percent">${Math.round(sec.global.percent)}%</div>
+          <div class="result-construct-range">${sec.global.sum} / ${sec.global.max}</div>
+        </div>
+      </div>
+      <div class="card-body" style="padding-top: 0;">
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--muted); margin-bottom: 0.25rem;">
+            <span>${sec.global.label}</span>
+            <span>Min item: ${sec.global.mean.toFixed(2)} / 7 · ${sec.global.answeredCount}/${sec.global.itemCount} item</span>
+          </div>
+          <div class="progress progress-sm"><div class="progress-fill" style="width: ${sec.global.percent}%"></div></div>
+        </div>
+        <div class="separator"></div>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 0.5rem;" class="subscale-grid">
+          ${sec.subscales.map(sub => {
+            const subInterp = interpretPercent(sub.percent);
+            const subColor = subInterp.tone === "low" ? "var(--danger)" : subInterp.tone === "mid" ? "var(--accent)" : "var(--success)";
+            return `<div class="result-subscale">
+              <div style="display: flex; justify-content: space-between; gap: 0.5rem;">
+                <span class="result-subscale-label">${sub.label}</span>
+                <span style="width: 8px; height: 8px; border-radius: 9999px; background: ${subColor}; flex-shrink: 0; margin-top: 4px;"></span>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-top: 0.25rem;">
+                <span class="result-subscale-value">${sub.sum}</span>
+                <span style="font-size: 0.7rem; color: var(--muted);">/ ${sub.max} (min ${sub.mean.toFixed(2)})</span>
+              </div>
+              <div class="progress progress-sm" style="margin-top: 0.375rem;"><div class="progress-fill" style="width: ${sub.percent}%; background: ${subColor};"></div></div>
+              <div style="font-size: 0.65rem; color: var(--muted); margin-top: 0.25rem;">${sub.answeredCount}/${sub.itemCount} item dijawab</div>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>
+    `;
+    main.appendChild(card);
+  });
+
+  // Actions
+  const actionsCard = document.createElement("div");
+  actionsCard.className = "card";
+  actionsCard.innerHTML = `
+    <div class="card-body" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+      <div>
+        <h3 style="font-size: 0.875rem; font-weight: 600;">Terima kasih atas penyertaan anda.</h3>
+        <p style="font-size: 0.7rem; color: var(--muted);">Simpan kod peserta (<span style="font-family: monospace;">${state.result.participant}</span>) untuk rujukan penyelidik.</p>
+      </div>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button class="btn btn-outline" id="homeBtn">🏠 Halaman Utama</button>
+        <button class="btn btn-outline" id="newBtn">↻ Mula Baharu</button>
+      </div>
+    </div>
+  `;
+  main.appendChild(actionsCard);
+
+  app.appendChild(main);
+  renderFooter();
+
+  document.getElementById("statsBtn").onclick = () => { state.stage = "stats"; render(); };
+  document.getElementById("homeBtn").onclick = resetAll;
+  document.getElementById("newBtn").onclick = resetAll;
+}
+
+/* ---------- Stats view ---------- */
+function renderStats(){
+  renderHeader(() => resetAll(), () => { state.stage = state.result ? "results" : "intro"; render(); });
+
+  const main = document.createElement("main");
+  main.className = "main main-wide";
+  main.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <div class="card-title">📊 Paparan Penyelidik</div>
+            <div class="card-desc" style="margin-top: 0.25rem;">Akses langsung ke Google Spreadsheet untuk analisis data.</div>
+          </div>
+          <button class="btn btn-outline btn-sm" id="backBtn">← Kembali</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-success">
+          <div>
+            <strong>📋 Google Spreadsheet Sedia</strong><br>
+            <span style="font-size: 0.8rem;">Semua data soal selidik direkodkan terus ke Google Spreadsheet dengan 158 lajur (skor mentah setiap item + skor songsang + subskala + global) untuk analisis SEM.</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 1rem;">
+          <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Struktur 158 Lajur Spreadsheet:</h3>
+          <div style="display: grid; grid-template-columns: 1fr; gap: 0.5rem; font-size: 0.8rem;">
+            <div style="padding: 0.5rem; background: var(--muted-bg); border-radius: 0.375rem;"><strong>Meta (3):</strong> Timestamp, Kod Peserta, Jumlah Item</div>
+            <div style="padding: 0.5rem; background: var(--muted-bg); border-radius: 0.375rem;"><strong>Demografi (11):</strong> A1–A11</div>
+            <div style="padding: 0.5rem; background: rgba(13,148,136,0.08); border-radius: 0.375rem;"><strong>Skor Mentah Item (97):</strong> PS1–F12 — <em>gunakan untuk SEM</em></div>
+            <div style="padding: 0.5rem; background: var(--muted-bg); border-radius: 0.375rem;"><strong>Skor Songsang (19):</strong> P3_R, D1_R, ... E16_R</div>
+            <div style="padding: 0.5rem; background: var(--muted-bg); border-radius: 0.375rem;"><strong>Subskala (21):</strong> Jumlah setiap subskala</div>
+            <div style="padding: 0.5rem; background: var(--muted-bg); border-radius: 0.375rem;"><strong>Global (7):</strong> Jumlah skor global setiap konstruk</div>
+          </div>
+        </div>
+
+        <div class="separator"></div>
+
+        <a href="${CONFIG.SPREADSHEET_URL}" target="_blank" rel="noopener" class="btn btn-primary btn-lg" style="width: 100%; text-decoration: none;">
+          🔗 Buka Google Spreadsheet
+        </a>
+        <p style="text-align: center; font-size: 0.7rem; color: var(--muted); margin-top: 0.5rem;">
+          Setiap penyerahan soal selidik automatik direkodkan ke spreadsheet ini.
+        </p>
+      </div>
+    </div>
+  `;
+  app.appendChild(main);
+  renderFooter();
+
+  document.getElementById("backBtn").onclick = () => {
+    state.stage = state.result ? "results" : "intro";
+    render();
+  };
+}
+
+/* ---------- Reset ---------- */
+function resetAll(){
+  state.stage = "intro";
+  state.answers = {};
+  state.stepIndex = 0;
+  state.result = null;
+  state.syncError = null;
+  clearState();
+  scrollToTop();
+  render();
+}
+
+/* ---------- Init ---------- */
+function init(){
+  loadState();
+  if(state.stage === "submitting") state.stage = "review";
+  render();
+}
+
+init();
 </script>
-
-<!-- Toast container -->
-<div id="toast" style="opacity:0;transform:translate(-50%,-12px)" class="fixed top-4 left-1/2 z-[70] rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-lg transition-all duration-300"></div>
-
 </body>
 </html>
