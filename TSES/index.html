@@ -317,7 +317,7 @@ function levelFromMean(mean){
  * 3. STATE MANAGEMENT + PERSISTENCE
  * ================================================================ */
 
-const STORAGE_KEY = "soal-selidik-progress-v2";
+const STORAGE_KEY = "soal-selidik-progress-v3";
 const WEBHOOK_KEY = "soal-selidik-webhook-url";
 
 let state = {
@@ -429,7 +429,7 @@ function renderGearButton(){
 }
 
 function renderIntro(){
-  const hasProgress = state.maxReachedIndex > 0;
+  const hasProgress = state.maxReachedIndex > 0 || Object.keys(state.demographics).length > 0 || Object.keys(state.responses).length > 0;
   const features = [
     {icon:"shieldCheck",title:"Sulit & Jujur",desc:"Semua maklumat adalah SULIT dan hanya digunakan untuk tujuan penyelidikan akademik. Tiada jawapan betul atau salah."},
     {icon:"bookOpen",title:"6 Bahagian",desc:"Demografi (A) + Identiti Profesional (B) + Panggilan Kerjaya (C) + Resiliensi (D) + Kesejahteraan (E) + Efikasi (F)."},
@@ -452,7 +452,7 @@ function renderIntro(){
     </div>
     <div class="flex flex-col items-center gap-3 py-2">
       <button onclick="goToStep('A')" class="flex h-12 w-full max-w-xs items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-base font-semibold text-white shadow-md shadow-emerald-500/30 hover:from-emerald-600 hover:to-teal-700 transition-all">${hasProgress?"Teruskan Soal Selidik":"Mula Soal Selidik"}${ICON.arrowRight}</button>
-      ${hasProgress?`<p class="text-xs text-gray-400">Kemajuan anda disimpan secara automatik.</p>`:""}
+      ${hasProgress?`<p class="text-xs text-gray-500">Terdapat kemajuan tersimpan. Klik "Teruskan" untuk sambung, atau padam untuk mula baharu.</p><button onclick="resetSurvey()" class="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-rose-600 underline hover:text-rose-700">${ICON.rotateCcw}Padam kemajuan & mula baharu</button>`:""}
     </div>
   </div>`;
 }
@@ -484,7 +484,7 @@ function renderHeader(){
     <div class="mx-auto w-full max-w-5xl px-4 py-3">
       <div class="mb-2 flex items-center justify-between gap-3">
         <div class="min-w-0"><p class="truncate text-xs font-semibold uppercase tracking-wide text-emerald-600">${bahagian}</p><h2 class="truncate text-sm font-bold text-gray-900 sm:text-base">${title}</h2></div>
-        <div class="hidden shrink-0 rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500 sm:block">Langkah ${idx}/${STEP_IDS.length-1}</div>
+        <div class="flex shrink-0 items-center gap-2"><div class="hidden rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500 sm:block">Langkah ${idx}/${STEP_IDS.length-1}</div><button onclick="handleReset()" title="Kosongkan semua jawapan & mula semula" class="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-600">${ICON.rotateCcw.replace('width="16"','width="14"')}</button></div>
       </div>
       <div class="flex items-center gap-3"><div class="relative h-2 flex-1 overflow-hidden rounded-full bg-gray-200"><div class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300" style="width:${pct}%"></div></div><span class="shrink-0 text-xs font-semibold tabular-nums text-gray-500">${pct}%</span></div>
       <div class="mt-2"><div class="flex items-center gap-1.5 overflow-x-auto pb-1">${stepperHTML}</div></div>
@@ -761,6 +761,13 @@ function resetSurvey(){
   state = {currentStep:"intro", demographics:{}, responses:{}, submitted:false, submittedId:null, maxReachedIndex:0, submitting:false, sheetSynced:false, sheetError:null};
   saveState();
   render();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+function handleReset(){
+  if(confirm("Padam semua jawapan? Anda akan mula semula dari awal.")){
+    resetSurvey();
+    toast("Soal selidik telah dikosongkan.","success");
+  }
 }
 
 function validateStep(step){
@@ -838,6 +845,7 @@ window.prevStep = prevStep;
 window.handleSubmit = handleSubmit;
 window.toggleSection = toggleSection;
 window.resetSurvey = resetSurvey;
+window.handleReset = handleReset;
 window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.saveSettingsUrl = saveSettingsUrl;
