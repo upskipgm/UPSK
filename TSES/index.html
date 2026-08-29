@@ -731,10 +731,10 @@ const state = {
   syncError: null,
 };
 
-// Load from localStorage
+// Load from sessionStorage (cleared when browser/tab is closed — each visit starts fresh)
 function loadState(){
   try {
-    const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
+    const saved = sessionStorage.getItem(CONFIG.STORAGE_KEY);
     if(saved){
       const parsed = JSON.parse(saved);
       if(parsed.answers && typeof parsed.answers === "object"){
@@ -749,7 +749,7 @@ function loadState(){
 
 function saveState(){
   try {
-    localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify({
+    sessionStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify({
       answers: state.answers,
       stepIndex: state.stepIndex,
       consented: state.consented,
@@ -758,7 +758,7 @@ function saveState(){
 }
 
 function clearState(){
-  try { localStorage.removeItem(CONFIG.STORAGE_KEY); } catch(e){}
+  try { sessionStorage.removeItem(CONFIG.STORAGE_KEY); } catch(e){}
 }
 
 function generateParticipantCode(){
@@ -867,8 +867,11 @@ function renderIntro(){
         </label>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-          <button class="btn btn-ghost btn-sm" id="viewStatsBtn">📊 Lihat statistik kajian</button>
-          <button class="btn btn-primary btn-lg" id="startBtn" ${!state.consented ? "disabled" : ""}>Mula Soal Selidik →</button>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button class="btn btn-ghost btn-sm" id="viewStatsBtn">📊 Lihat statistik kajian</button>
+            ${Object.keys(state.answers).length > 0 ? `<button class="btn btn-ghost btn-sm" id="resetBtn" style="color: var(--danger);">↻ Mula Baharu</button>` : ""}
+          </div>
+          <button class="btn btn-primary btn-lg" id="startBtn" ${!state.consented ? "disabled" : ""}>${Object.keys(state.answers).length > 0 ? "Sambung Soal Selidik →" : "Mula Soal Selidik →"}</button>
         </div>
       </div>
     </div>
@@ -887,6 +890,18 @@ function renderIntro(){
     render();
   };
   document.getElementById("viewStatsBtn").onclick = () => { state.stage = "stats"; render(); };
+  const resetBtn = document.getElementById("resetBtn");
+  if(resetBtn){
+    resetBtn.onclick = () => {
+      if(confirm("Adakah anda pasti mahu memulakan baharu? Semua jawapan yang telah disimpan akan dipadam.")){
+        clearState();
+        state.answers = {};
+        state.stepIndex = 0;
+        state.consented = false;
+        render();
+      }
+    };
+  }
 }
 
 function renderStatsLink(){
@@ -895,7 +910,7 @@ function renderStatsLink(){
 
 /* ---------- Survey view (stepper + section content) ---------- */
 function renderSurvey(){
-  renderHeader(() => resetAll(), () => { state.stage = "stats"; render(); });
+  renderHeader(() => { state.stage = "intro"; render(); }, () => { state.stage = "stats"; render(); });
 
   const steps = [
     {key:"A",letter:"A",title:"Demografi",count:DEMOGRAPHICS.length},
@@ -1178,7 +1193,7 @@ function renderLikertSection(section, answeredCount){
 
 /* ---------- Review view ---------- */
 function renderReview(){
-  renderHeader(() => resetAll(), () => { state.stage = "stats"; render(); });
+  renderHeader(() => { state.stage = "intro"; render(); }, () => { state.stage = "stats"; render(); });
 
   const steps = [
     {key:"A",letter:"A",title:"Demografi",count:DEMOGRAPHICS.length},
@@ -1339,7 +1354,7 @@ function renderResults(){
   const avgPct = Math.round(report.overall.averagePercent);
   const interp = interpretPercent(avgPct);
 
-  renderHeader(() => resetAll(), () => { state.stage = "stats"; render(); });
+  renderHeader(() => { state.stage = "intro"; render(); }, () => { state.stage = "stats"; render(); });
 
   const main = document.createElement("main");
   main.className = "main";
