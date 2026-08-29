@@ -313,8 +313,6 @@ body {
 const CONFIG = {
   // URL Web App Google Apps Script (untuk hantar data ke spreadsheet)
   APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbz6gMRnr_RKkNP0D6R5vw-Q0YbJCA2E2OZBshPh5LPi_kAtqov3Ah6oH_ixqSn9Bvzu/exec",
-  // URL spreadsheet (untuk butang "Buka Spreadsheet")
-  SPREADSHEET_URL: "https://docs.google.com/spreadsheets/d/1PI7PfcJuNdw1y6Qj3WURThAPELj-prKbzeIFZWA7Db4/edit",
   // Storage key untuk simpan progress
   STORAGE_KEY: "soal_selidik_ipgkpm",
 };
@@ -775,7 +773,6 @@ function render(){
   app.innerHTML = "";
   if(state.stage === "submitting") renderSubmitting();
   else if(state.stage === "intro") renderIntro();
-  else if(state.stage === "stats") renderStats();
   else if(state.stage === "results" && state.result) renderResults();
   else if(state.stage === "review") renderReview();
   else renderSurvey(); // survey
@@ -787,7 +784,7 @@ function scrollToTop(){
 }
 
 /* ---------- Site chrome ---------- */
-function renderHeader(onHome, onViewStats){
+function renderHeader(onHome){
   const header = document.createElement("header");
   header.className = "header no-print";
   header.innerHTML = `
@@ -799,12 +796,10 @@ function renderHeader(onHome, onViewStats){
           <div class="header-sub">IPGKPM · Skala 7-mata</div>
         </div>
       </button>
-      ${onViewStats ? `<button class="btn btn-ghost btn-sm" id="headerStats">📊 Penyelidik</button>` : ""}
     </div>
   `;
   app.appendChild(header);
   document.getElementById("headerHome").onclick = onHome;
-  if(onViewStats) document.getElementById("headerStats").onclick = onViewStats;
 }
 
 function renderFooter(){
@@ -819,8 +814,7 @@ function renderFooter(){
 
 /* ---------- Intro view ---------- */
 function renderIntro(){
-  renderHeader(() => {}, () => state.stage = "stats" || render());
-  renderStatsLink();
+  renderHeader(() => {});
   const main = document.createElement("main");
   main.className = "main main-narrow";
   main.style.paddingTop = "2rem";
@@ -868,7 +862,6 @@ function renderIntro(){
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; flex-wrap: wrap; gap: 0.5rem;">
           <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button class="btn btn-ghost btn-sm" id="viewStatsBtn">📊 Lihat statistik kajian</button>
             ${Object.keys(state.answers).length > 0 ? `<button class="btn btn-ghost btn-sm" id="resetBtn" style="color: var(--danger);">↻ Mula Baharu</button>` : ""}
           </div>
           <button class="btn btn-primary btn-lg" id="startBtn" ${!state.consented ? "disabled" : ""}>${Object.keys(state.answers).length > 0 ? "Sambung Soal Selidik →" : "Mula Soal Selidik →"}</button>
@@ -889,7 +882,6 @@ function renderIntro(){
     state.stepIndex = 0;
     render();
   };
-  document.getElementById("viewStatsBtn").onclick = () => { state.stage = "stats"; render(); };
   const resetBtn = document.getElementById("resetBtn");
   if(resetBtn){
     resetBtn.onclick = () => {
@@ -904,13 +896,9 @@ function renderIntro(){
   }
 }
 
-function renderStatsLink(){
-  // Already handled in intro
-}
-
 /* ---------- Survey view (stepper + section content) ---------- */
 function renderSurvey(){
-  renderHeader(() => { state.stage = "intro"; render(); }, () => { state.stage = "stats"; render(); });
+  renderHeader(() => { state.stage = "intro"; render(); });
 
   const steps = [
     {key:"A",letter:"A",title:"Demografi",count:DEMOGRAPHICS.length},
@@ -1193,7 +1181,7 @@ function renderLikertSection(section, answeredCount){
 
 /* ---------- Review view ---------- */
 function renderReview(){
-  renderHeader(() => { state.stage = "intro"; render(); }, () => { state.stage = "stats"; render(); });
+  renderHeader(() => { state.stage = "intro"; render(); });
 
   const steps = [
     {key:"A",letter:"A",title:"Demografi",count:DEMOGRAPHICS.length},
@@ -1354,7 +1342,7 @@ function renderResults(){
   const avgPct = Math.round(report.overall.averagePercent);
   const interp = interpretPercent(avgPct);
 
-  renderHeader(() => { state.stage = "intro"; render(); }, () => { state.stage = "stats"; render(); });
+  renderHeader(() => { state.stage = "intro"; render(); });
 
   const main = document.createElement("main");
   main.className = "main";
@@ -1376,7 +1364,6 @@ function renderResults(){
           <p style="font-size: 0.7rem; color: var(--muted);">Diserah: ${new Date(state.result.createdAt).toLocaleString("ms-MY",{dateStyle:"long",timeStyle:"short"})}</p>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <button class="btn btn-outline btn-sm" id="statsBtn">📊 Statistik Kajian</button>
           <button class="btn btn-outline btn-sm" onclick="window.print()">🖨️ Cetak / PDF</button>
         </div>
       </div>
@@ -1509,66 +1496,8 @@ function renderResults(){
   app.appendChild(main);
   renderFooter();
 
-  document.getElementById("statsBtn").onclick = () => { state.stage = "stats"; render(); };
   document.getElementById("homeBtn").onclick = resetAll;
   document.getElementById("newBtn").onclick = resetAll;
-}
-
-/* ---------- Stats view ---------- */
-function renderStats(){
-  renderHeader(() => resetAll(), () => { state.stage = state.result ? "results" : "intro"; render(); });
-
-  const main = document.createElement("main");
-  main.className = "main main-wide";
-  main.innerHTML = `
-    <div class="card">
-      <div class="card-header">
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-          <div>
-            <div class="card-title">📊 Paparan Penyelidik</div>
-            <div class="card-desc" style="margin-top: 0.25rem;">Akses langsung ke Google Spreadsheet untuk analisis data.</div>
-          </div>
-          <button class="btn btn-outline btn-sm" id="backBtn">← Kembali</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <div class="alert alert-success">
-          <div>
-            <strong>📋 Google Spreadsheet Sedia</strong><br>
-            <span style="font-size: 0.8rem;">Semua data soal selidik direkodkan terus ke Google Spreadsheet dengan 158 lajur (skor mentah setiap item + skor songsang + subskala + global) untuk analisis SEM.</span>
-          </div>
-        </div>
-
-        <div style="margin-top: 1rem;">
-          <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem;">Struktur 158 Lajur Spreadsheet:</h3>
-          <div style="display: grid; grid-template-columns: 1fr; gap: 0.5rem; font-size: 0.8rem;">
-            <div style="padding: 0.5rem; background: var(--muted-bg); border-radius: 0.375rem;"><strong>Meta (3):</strong> Timestamp, Kod Peserta, Jumlah Item</div>
-            <div style="padding: 0.5rem; background: var(--muted-bg); border-radius: 0.375rem;"><strong>Demografi (11):</strong> A1–A11</div>
-            <div style="padding: 0.5rem; background: rgba(13,148,136,0.08); border-radius: 0.375rem;"><strong>Skor Mentah Item (97):</strong> PS1–F12 — <em>gunakan untuk SEM</em></div>
-            <div style="padding: 0.5rem; background: var(--muted-bg); border-radius: 0.375rem;"><strong>Skor Songsang (19):</strong> P3_R, D1_R, ... E16_R</div>
-            <div style="padding: 0.5rem; background: var(--muted-bg); border-radius: 0.375rem;"><strong>Subskala (21):</strong> Jumlah setiap subskala</div>
-            <div style="padding: 0.5rem; background: var(--muted-bg); border-radius: 0.375rem;"><strong>Global (7):</strong> Jumlah skor global setiap konstruk</div>
-          </div>
-        </div>
-
-        <div class="separator"></div>
-
-        <a href="${CONFIG.SPREADSHEET_URL}" target="_blank" rel="noopener" class="btn btn-primary btn-lg" style="width: 100%; text-decoration: none;">
-          🔗 Buka Google Spreadsheet
-        </a>
-        <p style="text-align: center; font-size: 0.7rem; color: var(--muted); margin-top: 0.5rem;">
-          Setiap penyerahan soal selidik automatik direkodkan ke spreadsheet ini.
-        </p>
-      </div>
-    </div>
-  `;
-  app.appendChild(main);
-  renderFooter();
-
-  document.getElementById("backBtn").onclick = () => {
-    state.stage = state.result ? "results" : "intro";
-    render();
-  };
 }
 
 /* ---------- Reset ---------- */
