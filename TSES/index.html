@@ -422,7 +422,6 @@ function render(){
   app.innerHTML = `<div class="flex min-h-screen flex-col">${renderGearButton()}${headerHTML}<main class="mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-6 sm:pb-32 sm:pt-8">${mainHTML}</main>${footerHTML}</div>`;
   renderSettingsIntoOverlay();
   attachSurveyEvents();
-  window.scrollTo(0,0);
 }
 
 function renderGearButton(){
@@ -658,15 +657,93 @@ async function pushToGoogleSheet(submissionId, demographics, responses){
  * 9. STATE ACTIONS + EVENT HANDLERS
  * ================================================================ */
 
-function setDemo(code, val){ state.demographics[code] = val; saveState(); render(); }
+/* ---- Targeted DOM updates (avoid full re-render, preserve scroll) ---- */
+
+function updateItemPills(code){
+  const group = document.querySelector('[role="radiogroup"][aria-label="' + CSS.escape(code) + '"]');
+  if(!group) return;
+  const buttons = group.querySelectorAll("button");
+  const val = state.responses[code];
+  buttons.forEach((btn, i) => {
+    const p = i + 1;
+    const selected = (p === val);
+    btn.className = selected
+      ? "relative flex h-9 w-full items-center justify-center rounded-lg border text-sm font-semibold transition-all md:w-9 border-transparent bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm"
+      : "relative flex h-9 w-full items-center justify-center rounded-lg border text-sm font-semibold transition-all md:w-9 border-gray-200 bg-white text-gray-600 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700";
+    btn.innerHTML = selected ? ICON.check : String(p);
+  });
+}
+
+function updateRadioCards(code, val){
+  // Find all radio buttons for this demographic question.
+  // Radio cards are rendered as <button onclick="setDemo('CODE',...)">
+  // within the question card. We match by the onclick attribute.
+  const cards = document.querySelectorAll('button[onclick^="setDemo(\'' + code + "'");
+  cards.forEach(btn => {
+    // Extract the key from onclick="setDemo('CODE','KEY')"
+    const m = btn.getAttribute("onclick").match(/setDemo\('([^']+)',\s*'([^']*)'\)/);
+    if(!m) return;
+    const key = m[2];
+    const active = (key === val) || (key === "Lain-lain" && (val === "Lain-lain" || val.startsWith("Lain-lain: ")));
+    btn.className = active
+      ? "relative flex items-center justify-center rounded-xl border px-4 py-3 text-center text-sm font-medium transition-all border-transparent bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm"
+      : "relative flex items-center justify-center rounded-xl border px-4 py-3 text-center text-sm font-medium transition-all border-gray-200 bg-white text-gray-700 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700";
+  });
+}
+
+function updateHeaderProgress(){
+  const demoAns = DEMOGRAPHICS.filter(q => (state.demographics[q.code] || "").trim() !== "").length;
+  const likertAns = ALL_ITEMS.filter(i => state.responses[i.code] != null).length;
+  const total = DEMOGRAPHICS.length + ALL_ITEMS.length;
+  const answered = demoAns + likertAns;
+  const pct = Math.round((answered / total) * 100);
+  // Progress bar width
+  const bar = document.querySelector("header .absolute.inset-y-0.left-0.rounded-full");
+  if(bar) bar.style.width = pct + "%";
+  // Percentage text
+  const pctEl = document.querySelector("header .shrink-0.text-xs.font-semibold.tabular-nums");
+  if(pctEl) pctEl.textContent = pct + "%";
+}
+
+function updateStepperCounts(){
+  // Update X/Y count on each section stepper button
+  SECTIONS.forEach(s => {
+    const codes = s.subscales.flatMap(sub => sub.items.map(i => i.code));
+    const ans = codes.filter(c => state.responses[c] != null).length;
+    const total = codes.length;
+    // Each stepper button contains a span with text "X/Y" at the end
+    const stepperBtn = document.querySelector('header button[onclick^="goToStep(\'' + s.id + "'");
+    if(!stepperBtn) return;
+    const countSpan = stepperBtn.querySelector(".text-\\[10px\\].opacity-70");
+    if(countSpan) countSpan.textContent = ans + "/" + total;
+  });
+}
+
+function setDemo(code, val){
+  state.demographics[code] = val;
+  saveState();
+  // Targeted update — no full re-render, preserves scroll position
+  updateRadioCards(code, val);
+  updateHeaderProgress();
+  updateStepperCounts();
+}
 function setDemoOther(code, text){ state.demographics[code] = "Lain-lain: " + text; saveState(); /* don't full re-render to keep focus */ }
-function setResp(code, val){ state.responses[code] = val; saveState(); render(); }
+function setResp(code, val){
+  state.responses[code] = val;
+  saveState();
+  // Targeted update — only change this item's pills + header, preserves scroll
+  updateItemPills(code);
+  updateHeaderProgress();
+  updateStepperCounts();
+}
 function goToStep(step){
   const idx = STEP_IDS.indexOf(step);
   state.currentStep = step;
   state.maxReachedIndex = Math.max(state.maxReachedIndex, idx);
   saveState();
   render();
+  // Only scroll to top when changing steps — NOT on individual item clicks
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function nextStep(){
   const idx = STEP_IDS.indexOf(state.currentStep);
