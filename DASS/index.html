@@ -8,6 +8,75 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Pautan PDF telah ditukar kepada versi yang lebih selamat -->
     <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+
+    <!-- ═════════════════════════════════════════════════════════════
+         FIREBASE SDK — Sambungan terus ke Firestore
+         (Tanpa Google Apps Script, Tanpa Google Sheet)
+    ══════════════════════════════════════════════════════════════ -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script>
+        // ═════════════════════════════════════════════════════════════
+        //  FIREBASE CONFIGURATION
+        //  Gantikan nilai-nilai di bawah dengan Firebase Web Config anda.
+        //  Dari: Firebase Console → Project Settings → General →
+        //        scroll ke "Your apps" → Web app (</> icon).
+        // ═════════════════════════════════════════════════════════════
+        const firebaseConfig = {
+            apiKey: "AIzaSyCuNFzt-y97Cp6_Aew58RskBzkXOOCOFgc",
+            authDomain: "mykaunseling-ipgkpm.firebaseapp.com",
+            projectId: "mykaunseling-ipgkpm",
+            storageBucket: "mykaunseling-ipgkpm.firebasestorage.app",
+            messagingSenderId: "211425668379",
+            appId: "1:211425668379:web:9013dac51de5b2777737be",
+            measurementId: "G-7VS1GVXQJH"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // ═════════════════════════════════════════════════════════════
+        //  MAPPING IPGK → kodKampus
+        //  Mapping ini menukar nama penuh IPGK kepada kod kampus pendek
+        //  yang sepadan dengan kodKampus pada profil pengguna.
+        //  Pastikan kod ini sepadan dengan sistem anda.
+        // ═════════════════════════════════════════════════════════════
+        const IPGK_TO_KOD = {
+            'IPGK TEMENGGUNG IBRAHIM': 'TIB',
+            'IPGK TUN HUSSEIN ONN': 'THO',
+            'IPGK PEREMPUAN MELAYU': 'PM',
+            'IPGK RAJA MELEWAR': 'RM',
+            'IPGK PENDIDIKAN TEKNIK': 'PT',
+            'IPGK PENDIDIKAN ISLAM': 'PI',
+            'IPGK ILMU KHAS': 'IK',
+            'IPGK BAHASA MELAYU': 'BM',
+            'IPGK BAHASA ANTARABANGSA': 'BA',
+            'IPGK IPOH': 'IP',
+            'IPGK DARULAMAN': 'DA',
+            'IPGK PERLIS': 'PS',
+            'IPGK PULAU PINANG': 'PP',
+            'IPGK TUANKU BAINUN': 'TB',
+            'IPGK TENGKU AMPUAN AFZAN': 'TAA',
+            "IPGK DATO' RAZALI ISMAIL": 'DRI',
+            'IPGK SULTAN MIZAN': 'SM',
+            'IPGK KOTA BHARU': 'KB',
+            'IPGK RAJANG': 'RJ',
+            'IPGK KENT': 'KT',
+            'IPGK BATU LINTANG': 'BL',
+            'IPGK TAWAU': 'TW',
+            'IPGK KENINGAU': 'KG',
+            'IPGK TUN ABDUL RAZAK': 'TAR',
+            'IPGK SULTAN ABDUL HALIM': 'SH',
+            'IPGK GAYA': 'GY',
+            'IPGK SARAWAK': 'SR'
+        };
+
+        function dapatkanKodKampus(ipgkName) {
+            const name = String(ipgkName || '').trim().toUpperCase();
+            return IPGK_TO_KOD[name] || name;
+        }
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -186,7 +255,8 @@ const DASS_LEVELS = {
 const ITEMS_PER_PAGE = 7;
 
 // ===================== LOGIK OPERASI APLIKASI =====================
-const GOOGLE_SHEETS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyTZBHPaMa1AMFbfzCXjUh_ZnCEzgD-3vxBce9pJqK2GpUpvwNmV4_BVZv2pXsQQZ9zxA/exec';
+// ✨ Firebase Firestore dah di-initialize di <head> sebagai `db`
+// Tiada lagi Apps Script, tiada lagi Google Sheet
 
 const app = {
     phase: 'welcome',
@@ -411,8 +481,8 @@ const app = {
                 this.section++; this.renderInventoryPage(); this.updateProgress();
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
-                // Hantar ke Google Sheets Sebelum Paparkan Keputusan
-                await this.submitToSheet();
+                // Hantar ke Firestore Sebelum Paparkan Keputusan
+                await this.submitToFirestore();
                 this.phase = 'results';
                 this.renderResults();
                 this.openModal('modal-complete');
@@ -465,8 +535,10 @@ const app = {
     saveB(idx, val) { this.answers.B[idx] = parseInt(val); },
     resetInventory() { this.phase = 'welcome'; this.section = 0; this.answers = { A:{}, B:{} }; this.renderWelcome(); },
     
-    // FUNGI HANTAR KE GOOGLE SHEET (DENGAN 21 SKOR ITEM)
-    async submitToSheet() {
+    // ══════════════════════════════════════════════════════════════
+    // FUNGSI HANTAR KE FIRESTORE (SAMBUNGAN TERUS, TANPA APPS SCRIPT)
+    // ══════════════════════════════════════════════════════════════
+    async submitToFirestore() {
         const scores = this.calcDass();
         const levels = this.getLevels(scores);
         
@@ -476,23 +548,77 @@ const app = {
             itemScores.push(this.answers.B[i] !== undefined ? this.answers.B[i] : 0);
         }
 
-        const payload = {
-            student: { ...this.answers.A },
-            items: itemScores, // Hantar 21 skor item
-            scores: scores,
-            levels: { D: levels.D.label, A: levels.A.label, S: levels.S.label }
+        // Dapatkan kodKampus dari nama IPGK (untuk Firestore Security Rules)
+        const kodKampus = dapatkanKodKampus(this.answers.A.ipg);
+        const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+
+        // Bina dokumen Firestore (struktur mengikut gaya database akrab)
+        const docData = {
+            pengguna: {
+                namaPenuh: this.answers.A.nama || '',
+                kadPengenalan: this.answers.A.kad_pengenalan || '',
+                noMatrik: this.answers.A.no_matrik || '',
+                emel: this.answers.A.emel || '',
+                jantina: this.answers.A.jantina || '',
+                kategori: this.answers.A.kategori || '',
+                ipgk: this.answers.A.ipg || ''
+            },
+            skor: {
+                D: scores.D,
+                A: scores.A,
+                S: scores.S
+            },
+            tahap: {
+                D: levels.D.label,
+                A: levels.A.label,
+                S: levels.S.label
+            },
+            kodKampus: kodKampus,
+            diciptaPada: timestamp,
+            dikemasKiniPada: timestamp,
+            sumber: 'web_form',
+            // Simpan juga 21 item sebagai array untuk query mudah
+            // (selain subcollection item/)
+            itemScores: itemScores
         };
 
         try {
-            await fetch(GOOGLE_SHEETS_WEB_APP_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(payload)
-            });
-            this.notify('success', 'Berjaya Dihantar', 'Maklumat dan 21 skor item anda telah direkodkan.');
+            // DEBUG LOG - supaya kita dapat lihat dalam Browser Console
+            console.log('🔥 DASS21: Memulakan submit ke Firestore...');
+            console.log('🔥 DASS21: Collection = dass21');
+            console.log('🔥 DASS21: Doc data =', docData);
+
+            // Verify Firebase dah di-initialize
+            if (typeof db === 'undefined') {
+                throw new Error('Firestore belum di-initialize. Pastikan firebaseConfig dah diisi dengan betul.');
+            }
+            console.log('🔥 DASS21: Firestore dah di-initialize ✓');
+
+            // Tulis ke collection utama
+            console.log('🔥 DASS21: Sedang tulis dokumen utama...');
+            const docRef = await db.collection('dass21').add(docData);
+            console.log('🔥 DASS21: ✅ Dokumen utama berjaya! ID:', docRef.id);
+
+            // Tulis 21 items ke subcollection "item"
+            console.log('🔥 DASS21: Sedang tulis 21 items ke subcollection...');
+            const batch = db.batch();
+            for (let i = 0; i < 21; i++) {
+                const itemRef = docRef.collection('item').doc('item_' + (i + 1));
+                batch.set(itemRef, {
+                    itemNumber: i + 1,
+                    nilai: itemScores[i],
+                    diciptaPada: timestamp
+                });
+            }
+            await batch.commit();
+            console.log('🔥 DASS21: ✅ 21 items berjaya ditulis!');
+
+            this.notify('success', 'Berjaya Dihantar', 'Maklumat dan 21 skor item anda telah direkodkan ke Firestore. Doc ID: ' + docRef.id);
         } catch (error) {
-            this.notify('error', 'Gagal Dihantar', 'Sila semak sambungan internet anda.');
+            console.error('🔥 DASS21: ❌ GAGAL!', error);
+            console.error('🔥 DASS21: Error code:', error.code);
+            console.error('🔥 DASS21: Error message:', error.message);
+            this.notify('error', 'Gagal Dihantar', 'Error: ' + (error.message || error));
         }
     },
 
