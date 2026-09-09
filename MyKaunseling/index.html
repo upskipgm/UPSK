@@ -562,6 +562,138 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
         console.log(`[Reset Tool] ${tab}: ${allDocs.length} rekod (${page} halaman)${kampusFilter ? " — filter: " + kampusFilter : ""}`);
         return allDocs;
       },
+      // ── Enrolmen Pelajar Firestore CRUD ──
+      // Dipadan mengikut `no_matrik`. Koleksi: enrolmen_pelajar.
+      listEnrolmenPelajar: async (kampusFilter) => {
+        const PAGE_SIZE = 400;
+        let allDocs = [];
+        let lastDoc = null;
+        let page = 0;
+        while(true){
+          page++;
+          const q = lastDoc
+            ? query(collection(db, "enrolmen_pelajar"), startAfter(lastDoc), limit(PAGE_SIZE))
+            : query(collection(db, "enrolmen_pelajar"), limit(PAGE_SIZE));
+          const snap = await getDocs(q);
+          if(snap.empty) break;
+          allDocs = allDocs.concat(snap.docs.map(d => ({ _docId: d.id, ...d.data() })));
+          lastDoc = snap.docs[snap.docs.length - 1];
+          if(snap.docs.length < PAGE_SIZE) break;
+        }
+        // Apply kampus filter if provided
+        if(kampusFilter){
+          const kod = canonicalKodKampus(kampusFilter);
+          if(kod && kod !== "IPGM"){
+            allDocs = allDocs.filter(d => canonicalKodKampus(d.kodKampus || d.kampus_id || d.kampus || d.ipgk || d.organisasi) === kod);
+          }
+        }
+        console.log(`[Enrolmen Pelajar] Loaded: ${allDocs.length} rekod (${page} halaman)`);
+        return allDocs;
+      },
+      // Upsert batch rekod pelajar (tambah jika baru, kemaskini jika wujud)
+      // Pulangkan { created, updated, total }
+      upsertEnrolmenBatch: async (records, onProgress) => {
+        const BATCH_LIMIT = 499;
+        const DELAY_MS = 300;
+        const MAX_RETRY = 3;
+        // Cipta map no_matrik → _docId supaya boleh setDoc pada ID sedia ada
+        const existing = await window.MYFB.listEnrolmenPelajar(null);
+        const idMap = new Map(existing.filter(r => r.no_matrik).map(r => [r.no_matrik, r._docId]));
+        let created = 0, updated = 0;
+        for(let i = 0; i < records.length; i += BATCH_LIMIT){
+          const chunk = records.slice(i, i + BATCH_LIMIT);
+          let success = false;
+          for(let attempt = 1; attempt <= MAX_RETRY; attempt++){
+            try {
+              const batchRef = writeBatch(db);
+              for(let j = 0; j < chunk.length; j++){
+                const r = chunk[j];
+                const existingId = idMap.get(r.no_matrik);
+                if(existingId){
+                  batchRef.update(doc(db, "enrolmen_pelajar", existingId), { ...r, dikemasKiniPada: serverTimestamp(), dikemasKiniOleh: (window.SES?.uid || null) });
+                  updated++;
+                } else {
+                  const newId = r.no_matrik || `ep_${i+j}_${Date.now()}_${j}`;
+                  batchRef.set(doc(db, "enrolmen_pelajar", newId), { ...r, diciptaPada: serverTimestamp(), dikemasKiniPada: serverTimestamp(), dikemasKiniOleh: (window.SES?.uid || null) });
+                  created++;
+                }
+              }
+              await batchRef.commit();
+              if(typeof onProgress === "function") onProgress(i + chunk.length, records.length, created, updated);
+              success = true;
+              break;
+            } catch(batchErr){
+              console.warn(`Batch upsert gagal (cubaan ${attempt}/${MAX_RETRY}):`, batchErr.message);
+              if(attempt < MAX_RETRY) await new Promise(r => setTimeout(r, DELAY_MS * attempt * 2));
+              else throw batchErr;
+            }
+          }
+          if(success && i + BATCH_LIMIT < records.length){
+            await new Promise(r => setTimeout(r, DELAY_MS));
+          }
+        }
+        return { created, updated, total: records.length };
+      },
+      // Padam pelajar mengikut senarai no_matrik
+      // Pulangkan { deleted }
+      deleteEnrolmenByMatrik: async (matrikList, onProgress) => {
+        if(!matrikList.length) return { deleted: 0 };
+        const BATCH_LIMIT = 499;
+        const existing = await window.MYFB.listEnrolmenPelajar(null);
+        const idMap = new Map(existing.filter(r => r.no_matrik).map(r => [r.no_matrik, r._docId]));
+        const toDelete = matrikList.map(m => idMap.get(m)).filter(Boolean);
+        let deleted = 0;
+        for(let i = 0; i < toDelete.length; i += BATCH_LIMIT){
+          const chunk = toDelete.slice(i, i + BATCH_LIMIT);
+          const batchRef = writeBatch(db);
+          chunk.forEach(docId => batchRef.delete(doc(db, "enrolmen_pelajar", docId)));
+          await batchRef.commit();
+          deleted += chunk.length;
+          if(typeof onProgress === "function") onProgress(deleted, toDelete.length);
+        }
+        return { deleted };
+      },
+      // Padam rekod enrolmen_pelajar yang no_matrik TIADA dalam senarai yang diberi
+      // Berguna untuk sync penuh — padam pelajar lama yang tidak lagi wujud dalam fail baharu
+      // Pulangkan { deleted, archived, archivedIds }
+      deleteEnrolmenNotInList: async (keepMatrikSet, onProgress, shouldArchive) => {
+        const BATCH_LIMIT = 499;
+        const existing = await window.MYFB.listEnrolmenPelajar(null);
+        // Cari rekod yang no_matrik tiada dalam keepMatrikSet
+        const toDelete = existing.filter(r => {
+          const m = String(r.no_matrik || "").trim().toUpperCase();
+          return m && !keepMatrikSet.has(m);
+        });
+        console.log(`[EB] Rekod untuk dipadam (tiada dalam fail): ${toDelete.length}`);
+        let archivedIds = [];
+        // Arkib dulu jika diminta
+        if(shouldArchive && toDelete.length){
+          const { db, doc, collection, writeBatch, serverTimestamp } = window.__FS;
+          for(let i = 0; i < toDelete.length; i += BATCH_LIMIT){
+            const chunk = toDelete.slice(i, i + BATCH_LIMIT);
+            const b = writeBatch(db);
+            chunk.forEach(r => {
+              const { _docId, ...rest } = r;
+              const arkibId = _docId || `arkib_${r.no_matrik}_${Date.now()}`;
+              archivedIds.push(arkibId);
+              b.set(doc(db, "enrolmen_pelajar_arkib", arkibId), { ...rest, dipadamOleh: (window.SES?.uid || ""), sebabDipadam: "TIADA_DALAM_CSV_BAHARU", dipadamPada: serverTimestamp() });
+            });
+            await b.commit();
+            if(typeof onProgress === "function") onProgress({phase:"archive", done:i+chunk.length, total:toDelete.length});
+          }
+        }
+        // Padam rekod
+        let deleted = 0;
+        for(let i = 0; i < toDelete.length; i += BATCH_LIMIT){
+          const chunk = toDelete.slice(i, i + BATCH_LIMIT);
+          const batchRef = writeBatch(db);
+          chunk.forEach(r => batchRef.delete(doc(db, "enrolmen_pelajar", r._docId)));
+          await batchRef.commit();
+          deleted += chunk.length;
+          if(typeof onProgress === "function") onProgress({phase:"delete", done:deleted, total:toDelete.length});
+        }
+        return { deleted, archived: archivedIds.length, archivedIds };
+      },
       // ── Kaunselor Firestore CRUD ──
       listKaunselor: async (kampusFilter) => {
         const kod = canonicalKodKampus(kampusFilter);
@@ -2390,6 +2522,7 @@ function initSys(){
       <div class="sb-link" onclick="navTo('au-pengguna')"><i class="fas fa-users-cog"></i><span>Pengguna Sistem</span></div>
       <div class="sb-link" onclick="navTo('au-hubungi')"><i class="fas fa-address-book"></i><span>Maklumat Hubungi</span></div>
       <div class="sb-link" onclick="navTo('au-csv')"><i class="fas fa-database"></i><span>Urus Data CSV</span></div>
+      <div class="sb-link" onclick="navTo('au-enrolmen-bulk')"><i class="fas fa-arrow-up-from-bracket"></i><span>Kemaskini Enrolmen</span> <span class="sb-badge">Baharu</span></div>
 
       <div class="sb-section">Dokumen Kaunseling</div>
       <div class="sb-link" onclick="navTo('au-dokumen')"><i class="fas fa-folder-open"></i><span>Dokumen Kaunseling</span></div>`;
@@ -2449,7 +2582,7 @@ function navTo(pg){
     "au-pkpp":"PKPP — Kesejahteraan Pelajar (Kebangsaan)",
     "au-pkpw":"PKPW — Kesejahteraan Warga (Kebangsaan)",
     "au-minda":"Minda Sihat — Kebangsaan",
-    "au-hebahan":"Pengurusan Hebahan","au-maklumat-kampus":"Maklumat Kampus","au-pengguna":"Pengurusan Pengguna","au-hubungi":"Maklumat Hubungi"
+    "au-hebahan":"Pengurusan Hebahan","au-maklumat-kampus":"Maklumat Kampus","au-pengguna":"Pengurusan Pengguna","au-hubungi":"Maklumat Hubungi","au-csv":"Urus Data CSV","au-enrolmen-bulk":"Kemaskini Enrolmen Pelajar"
   };
   const crumbs={
     "ak-dashboard":"Admin Kampus / Dashboard","ak-pelajar":"Admin Kampus / Rekod Pelajar","ak-staf":"Admin Kampus / Enrolmen / Pensyarah & Pegawai","ak-laporan":"Admin Kampus / Laporan",
@@ -2470,7 +2603,7 @@ function navTo(pg){
     "au-pkpp":"Admin Utama / Analisis / PKPP",
     "au-pkpw":"Admin Utama / Analisis / PKPW",
     "au-minda":"Admin Utama / Analisis / Minda Sihat",
-    "au-hebahan":"Admin Utama / Sistem / Hebahan","au-maklumat-kampus":"Admin Utama / Sistem / Maklumat Kampus","au-pengguna":"Admin Utama / Sistem / Pengguna","au-hubungi":"Admin Utama / Sistem / Hubungi"
+    "au-hebahan":"Admin Utama / Sistem / Hebahan","au-maklumat-kampus":"Admin Utama / Sistem / Maklumat Kampus","au-pengguna":"Admin Utama / Sistem / Pengguna","au-hubungi":"Admin Utama / Sistem / Hubungi","au-csv":"Admin Utama / Sistem / Urus Data CSV","au-enrolmen-bulk":"Admin Utama / Sistem / Kemaskini Enrolmen Pelajar"
   };
   document.getElementById("pg-title").textContent=titles[pg]||"";
   document.getElementById("pg-crumb").textContent=crumbs[pg]||"";
@@ -2493,7 +2626,7 @@ function navTo(pg){
     "au-pkpp":pgAUPPP,
     "au-pkpw":pgAUPKPW,
     "au-minda":pgAUMinda,
-    "au-hebahan":pgAUHebahan,"au-maklumat-kampus":pgAUMaklumatKampus,"au-pengguna":pgAUPengguna,"au-hubungi":pgAUHubungi,"au-csv":pgAUCSV
+    "au-hebahan":pgAUHebahan,"au-maklumat-kampus":pgAUMaklumatKampus,"au-pengguna":pgAUPengguna,"au-hubungi":pgAUHubungi,"au-csv":pgAUCSV,"au-enrolmen-bulk":pgAUEnrolmenBulk
   };
   const c=document.getElementById("pg-body");
   c.classList.toggle("pbi-dashboard", pg==="ak-dashboard" || pg==="au-dashboard");
@@ -2580,7 +2713,7 @@ function pgAKPelajar(c){
         <input type="text" class="fi" style="max-width:220px" placeholder="Cari nama / matrik..." id="cari-pelajar" oninput="filterPelajar()">
         <select class="fi" style="width:auto" id="filter-prog" onchange="filterPelajar()">
           <option value="">Semua Program</option>
-          <option>PISMP</option><option>DPLI</option><option>BPisMP</option>
+          <option>PISMP</option><option>PDPP</option><option>PPISMP</option>
         </select>
         <select class="fi" style="width:auto" id="filter-status" onchange="filterPelajar()">
           <option value="">Semua Status</option>
@@ -2634,7 +2767,7 @@ function modalTambahPelajar(){
           <div><label class="fl">No. Matrik</label><input type="text" id="np-matrik" class="fi" placeholder="Contoh: PI2024001"></div>
         </div>
         <div class="grid grid-cols-3 gap-3">
-          <div><label class="fl">Program</label><select id="np-prog" class="fi"><option>PISMP</option><option>DPLI</option><option>BPisMP</option></select></div>
+          <div><label class="fl">Program</label><select id="np-prog" class="fi"><option>PISMP</option><option>PDPP</option><option>PPISMP</option></select></div>
           <div><label class="fl">Semester</label><select id="np-sem" class="fi">${[1,2,3,4,5,6,7,8].map(s=>`<option>${s}</option>`).join("")}</select></div>
           <div><label class="fl">Status Kaunseling</label><select id="np-sts" class="fi"><option value="Normal">Normal</option><option value="Aktif — Perlu Susulan">Perlu Susulan</option></select></div>
         </div>
@@ -4022,7 +4155,7 @@ const ENROLMEN_DATA = (function(){
   const nL=["AHMAD FAUZI","MUHAMMAD HAZIQ","MOHD AMIN","RASHDAN MALIK","ADAM AZIM","ATIQ MUSTAQIM","KHAIRUL NIZAM","ZULHILMI","HAFIZUDDIN","IZZAT HAZWAN"];
   const nP=["NURUL AISYAH","SITI BALQIS","NUR AFIQAH","FARAH AIN","NORAINI","ADLINA BATRISYIA","AIDA MAISARAH","AINA BATRISYIA","AISHAH DINI","ALIA QISTINA","ALYA INSYIRAH","AMIRAH ARDINI","ANIS NAJWA","KAVITHA A/P RAJAN","PRIYA A/P MUTHU","SITI NURBAYA"];
   const opsyen=["TSLB","ETSLB","PK","BM","BI","MT","SC","PJ","PSV","KH","TMK","SEJ","GEO","PI","BC","BT","ERT","RBT"];
-  const prog=["PPISMP","PISMP","DPLI"];
+  const prog=["PPISMP","PISMP","PDPP"];
   const aliran=["SK","SJKC","SJKT"];
   const agMap={1:"Islam",2:"Kristian",3:"Buddha",4:"Hindu",5:"Lain-lain"};
   const negeri=["KUALA LUMPUR","SELANGOR","JOHOR","PERAK","KEDAH","PULAU PINANG","KELANTAN","TERENGGANU","PAHANG","NEGERI SEMBILAN","MELAKA","SABAH","SARAWAK","PERLIS"];
@@ -4039,7 +4172,7 @@ const ENROLMEN_DATA = (function(){
       const pr=prog[s%3];
       const si=sesiList[(s+i)%5];
       const ag=(s%10<7)?1:(s%10<8)?2:(s%10<9)?3:4;
-      const sts=(s%20===0)?"BERHENTI":(s%15===0)?"TANGGUH":"ATIF";
+      const sts=(s%20===0)?"BERHENTI":(s%15===0)?"TANGGUH":"AKTIF";
       const ops1=opsyen[s%opsyen.length];
       const ops2=opsyen[(s+3)%opsyen.length];
       const al=aliran[s%3];
@@ -4055,7 +4188,7 @@ const ENROLMEN_DATA = (function(){
         kampus_id:k.id,
         kampus_nama:k.nama,
         aliran_sekolah:al,
-        kod_program:pr==="PPISMP"?101:pr==="PISMP"?102:201,
+        kod_program:pr==="PPISMP"?101:pr==="PISMP"?102:106,
         mod_pengajian:1,
         opsyen_1:ops1,
         opsyen_2:(al!=="SK"&&s%3===0)?"0":ops2,
@@ -4066,7 +4199,7 @@ const ENROLMEN_DATA = (function(){
         agama:ag,
         agama_txt:agMap[ag],
         program:pr,
-        tahun:pr==="PPISMP"?"PPISMP/T"+(s%2+1):pr==="PISMP"?"PISMP/T"+(s%4+1):"DPLI/T1",
+        tahun:pr==="PPISMP"?"PPISMP/T"+(s%2+1):pr==="PISMP"?"PISMP/T"+(s%4+1):"PDPP/T1",
         daerah:daerah[s%daerah.length],
         negeri:negeri[(s+ki)%negeri.length],
         lat:3.0+(s%100)/200,
@@ -4079,7 +4212,7 @@ const ENROLMEN_DATA = (function(){
 })();
 
 function enrolmenStat(data){
-  const aktif=data.filter(d=>d.status_pengajian==="ATIF").length;
+  const aktif=data.filter(d=>(d.status_pengajian==="ATIF"||d.status_pengajian==="AKTIF")).length;
   const berhenti=data.filter(d=>d.status_pengajian==="BERHENTI").length;
   const tangguh=data.filter(d=>d.status_pengajian==="TANGGUH").length;
   const tamat=data.filter(d=>d.status_pengajian==="TAMAT").length;
@@ -4152,38 +4285,73 @@ function pgAUEnrolmenPRSD(c){
 }
 
 async function loadAndRenderEnrolmen(c, kampusId){
-  // Cuba API dulu jika ada data live atau belum cuba
-  // Load Enrolmen: Sheets > IDB > sampel
-  const enrolmenParsed = await loadTabData("enrolmen", _parseEnrolmenRow, {_e: window.ENROLMEN_LIVE||[]}, "_e");
-  if(enrolmenParsed && enrolmenParsed.length > 0){
-    window.ENROLMEN_LIVE = enrolmenParsed;
-    window.ENROLMEN_CSV  = enrolmenParsed;
-    _sheetsLoaded = true;
-  }
-
-  // Tentukan sumber data
-  // Filter helper: guna kampus_id (tepat) dahulu, fallback ke matchKampus (fuzzy)
+  // ── Prioriti 1: FIRESTORE (enrolmen_pelajar) ──
+  // Baca data sebenar yang dikemaskini melalui alat "Kemaskini Enrolmen".
+  // Jika Firestore ada data, gunakan ia sebagai sumber utama.
   const filterKampus = (arr, kid) => kid ? arr.filter(d => (d.kampus_id && d.kampus_id === kid) || matchKampus(d, kid)) : arr;
   let raw, tajuk, sumber;
-  if(window.ENROLMEN_LIVE && window.ENROLMEN_LIVE.length > 0){
-    raw = filterKampus(window.ENROLMEN_LIVE, kampusId);
-    tajuk = kampusId ? kObj(kampusId).nama : "Semua Kampus IPG Malaysia";
-    sumber = "live";
-  } else if(window.ENROLMEN_CSV && window.ENROLMEN_CSV.length > 0){
-    raw = filterKampus(window.ENROLMEN_CSV, kampusId);
-    tajuk = kampusId ? kObj(kampusId).nama : "Semua Kampus IPG Malaysia";
-    sumber = "csv";
-  } else {
-    raw = ENROLMEN_DATA.filter(d=>kampusId?(d.kampus_id && d.kampus_id===kampusId)||matchKampus(d,kampusId):true);
-    tajuk = kampusId ? kObj(kampusId).nama : "Semua Kampus IPG Malaysia";
-    sumber = "sampel";
+  tajuk = kampusId ? kObj(kampusId).nama : "Semua Kampus IPG Malaysia";
+
+  let fsData = [];
+  let fsError = null;
+  if(!DEMO_MODE && window.MYFB && window.MYFB_CONFIGURED && typeof window.MYFB.listEnrolmenPelajar === "function"){
+    try {
+      console.log("[ENROLMEN] Membaca dari Firestore (enrolmen_pelajar)...");
+      fsData = await window.MYFB.listEnrolmenPelajar(kampusId || null);
+      console.log(`[ENROLMEN] Firestore: ${fsData.length} rekod`);
+      if(fsData && fsData.length > 0){
+        // Normalize rekod Firestore — pastikan no_matrik uppercase, status uppercase
+        fsData = fsData.map(d => {
+          const r = { ...d };
+          if(r.no_matrik) r.no_matrik = String(r.no_matrik).toUpperCase();
+          if(r.status_pengajian) r.status_pengajian = (typeof normalizeStatusPengajian === "function") ? normalizeStatusPengajian(r.status_pengajian) : String(r.status_pengajian).toUpperCase();
+          if(r.program) r.program = (typeof normalizeProgram === "function") ? normalizeProgram(r.program) : r.program;
+          if(r.jantina) r.jantina = String(r.jantina).toUpperCase();
+          return r;
+        });
+        // Cache ke ENROLMEN_LIVE supaya fungsi lain (carta, eksport) guna data Firestore
+        window.ENROLMEN_LIVE = fsData;
+        window.ENROLMEN_CSV = fsData;
+        _sheetsLoaded = true;
+        raw = filterKampus(fsData, kampusId);
+        sumber = "firestore";
+      }
+    } catch(err){
+      console.warn("[ENROLMEN] Gagal baca dari Firestore, fallback ke Sheets/CSV:", err.message);
+      fsError = err.message;
+    }
+  }
+
+  // ── Prioriti 2: GOOGLE SHEETS / CSV (jika Firestore tiada data) ──
+  if(!raw || raw.length === 0){
+    const enrolmenParsed = await loadTabData("enrolmen", _parseEnrolmenRow, {_e: window.ENROLMEN_LIVE||[]}, "_e");
+    if(enrolmenParsed && enrolmenParsed.length > 0){
+      window.ENROLMEN_LIVE = enrolmenParsed;
+      window.ENROLMEN_CSV  = enrolmenParsed;
+      _sheetsLoaded = true;
+    }
+    if(window.ENROLMEN_LIVE && window.ENROLMEN_LIVE.length > 0){
+      raw = filterKampus(window.ENROLMEN_LIVE, kampusId);
+      sumber = "live";
+    } else if(window.ENROLMEN_CSV && window.ENROLMEN_CSV.length > 0){
+      raw = filterKampus(window.ENROLMEN_CSV, kampusId);
+      sumber = "csv";
+    } else {
+      raw = ENROLMEN_DATA.filter(d=>kampusId?(d.kampus_id && d.kampus_id===kampusId)||matchKampus(d,kampusId):true);
+      sumber = "sampel";
+    }
   }
 
   renderEnrolmenPage(c, raw, tajuk, !kampusId);
 
   // Notice bar mengikut sumber
   const notice = document.createElement("div");
-  if(sumber === "live"){
+  if(sumber === "firestore"){
+    notice.style.cssText="background:rgba(14,124,97,0.08);border:1px solid rgba(14,124,97,0.25);border-radius:8px;padding:8px 14px;font-size:12px;color:#0B634D;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
+    notice.innerHTML=`<i class="fas fa-database"></i><span>Data <b>Firestore</b> (enrolmen_pelajar) — ${raw.length.toLocaleString("ms-MY")} rekod</span>
+      <button onclick="window.ENROLMEN_LIVE=null;_sheetsLoaded=false;navTo(SES.pg)" style="font-size:11px;background:rgba(14,124,97,0.15);color:#0B634D;border:none;padding:3px 10px;border-radius:6px;cursor:pointer;margin-left:auto;"><i class="fas fa-rotate-right"></i> Refresh</button>
+      ${isAdmin()?'<a href="#" onclick="navTo(\'au-enrolmen-bulk\');return false;" style="font-size:11px;background:#0E7C61;color:#fff;padding:3px 10px;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-arrow-up-from-bracket"></i> Kemaskini Enrolmen</a>':''}`;
+  } else if(sumber === "live"){
     notice.style.cssText="background:rgba(22,163,74,0.08);border:1px solid rgba(22,163,74,0.2);border-radius:8px;padding:8px 14px;font-size:12px;color:#166534;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
     notice.innerHTML=`<i class="fas fa-circle-check"></i><span>Data <b>Google Sheets</b> — ${raw.length} rekod</span>
       <button onclick="window.ENROLMEN_LIVE=null;_sheetsLoaded=false;_sheetsError=null;navTo(SES.pg)" style="font-size:11px;background:rgba(22,163,74,0.15);color:#166534;border:none;padding:3px 10px;border-radius:6px;cursor:pointer;margin-left:auto;"><i class="fas fa-rotate-right"></i> Refresh</button>`;
@@ -4241,22 +4409,35 @@ function importCSVEnrolmen(input, kampusFilter){
         const row = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^(?=,))/g)||line.split(",");
         const ipgk = g(row,"IPGK") || g(row,"KOD_IPG") || "";
         const kobj = KAMPUS.find(k=>"IPGK"+k.id===ipgk || k.id===ipgk.replace(/^IPGK/,"K")) || {};
+        const agamaRaw = g(row,"AGAMA");
+        const agamaNorm = (agamaRaw && agamaRaw.length === 1 && /^\d$/.test(agamaRaw)) ? "0" + agamaRaw : agamaRaw;
+        const kodProgramRaw = g(row,"KOD_PROGRAM") || g(row,"PROGRAM");
+        const programAkronim = (typeof normalizeProgram === "function") ? normalizeProgram(kodProgramRaw) : kodProgramRaw;
+        const statusRaw = g(row,"STATUS_PENGAJIAN") || g(row,"STATUS PENGAJIAN");
+        const statusNorm = (typeof normalizeStatusPengajian === "function") ? normalizeStatusPengajian(statusRaw) : (statusRaw||"").toUpperCase();
         return {
-          no_matrik: g(row,"NO_MATRIK"),
+          no_matrik: g(row,"NO_MATRIK").toUpperCase(),
+          noKP: g(row,"NO_KP") || g(row,"NO KP"),
           nama: g(row,"NAMA"),
-          jantina: g(row,"JANTINA"),
+          jantina: (g(row,"JANTINA")||"").toUpperCase(),
+          tel: g(row,"NO TELEFON HP") || g(row,"TELEFON") || "0",
+          emel: g(row,"EMEL") || g(row,"EMAIL"),
           ipgk, zon: g(row,"ZON"),
+          kodKampus: g(row,"KodKampus") || g(row,"KOD_KAMPUS") || ipgk.replace(/^IPGK_/, ""),
           kampus_id: normalizeCampusId(ipgk || g(row,"KOD_IPG")),
           kampus_nama: kobj.nama || ipgk,
           aliran_sekolah: g(row,"ALIRAN SEKOLAH") || g(row,"ALIRAN_SEKOLAH"),
+          kod_program: g(row,"KOD_PROGRAM"),
+          program: programAkronim,
+          mod_pengajian: g(row,"MOD PENGAJIAN") || g(row,"MOD_PENGAJIAN"),
           opsyen_1: g(row,"KOD_OPSYEN_1"),
-          opsyen_2: g(row,"KOD_OPSYEN_2"),
+          opsyen_2: g(row,"KOD_OPSYEN_2") || "0",
+          opsyen_3: g(row,"KOD_OPSYEN_3") || "0",
           sesi_ambilan: g(row,"SESI_AMBILAN_PENGAJIAN"),
           sesi_tamat: g(row,"SESI_TAMAT_PENGAJIAN"),
-          status_pengajian: g(row,"STATUS_PENGAJIAN") || g(row,"STATUS PENGAJIAN"),
-          agama: g(row,"AGAMA"),
-          agama_txt: {"1":"Islam","2":"Kristian","3":"Buddha","4":"Hindu","5":"Lain-lain"}[g(row,"AGAMA")] || g(row,"AGAMA"),
-          program: g(row,"PROGRAM"),
+          status_pengajian: statusNorm,
+          agama: agamaRaw,
+          agama_txt: (typeof EB_AGAMA_MAP !== "undefined" ? EB_AGAMA_MAP[agamaNorm] : ({"1":"Islam","2":"Kristian","3":"Buddha","4":"Hindu","5":"Lain-lain"})[agamaNorm]) || agamaRaw,
           tahun: g(row,"TAHUN"),
           daerah: g(row,"DAERAH"),
           negeri: g(row,"NEGERI"),
@@ -4287,10 +4468,25 @@ function importCSVEnrolmen(input, kampusFilter){
 
 function enrolmenMalaysiaMap(rawData){
   const counts={};
+  const kampusStats={};
   (window.ENROLMEN_LIVE||window.ENROLMEN_CSV||ENROLMEN_DATA).forEach(d=>{
     // Guna kampus_id yang dah di-resolve, atau resolve sekarang
     const kid = d._resolvedKid || resolveKampusInfo(d).kampus_id || d.kampus_id || "—";
     counts[kid]=(counts[kid]||0)+1;
+    if(!kampusStats[kid]) kampusStats[kid]={total:0,program:{},sesi:{},jantina:{L:0,P:0},status:{AKTIF:0,BERHENTI:0,TANGGUH:0,TAMAT:0}};
+    kampusStats[kid].total++;
+    const prog = d.program || "—";
+    kampusStats[kid].program[prog]=(kampusStats[kid].program[prog]||0)+1;
+    const sesi = d.sesi_ambilan || "—";
+    kampusStats[kid].sesi[sesi]=(kampusStats[kid].sesi[sesi]||0)+1;
+    const j=(d.jantina||"").toUpperCase();
+    if(j==="L") kampusStats[kid].jantina.L++;
+    else if(j==="P") kampusStats[kid].jantina.P++;
+    const sts=(d.status_pengajian||"").toUpperCase();
+    if(sts==="AKTIF"||sts==="ATIF") kampusStats[kid].status.AKTIF++;
+    else if(sts==="BERHENTI") kampusStats[kid].status.BERHENTI++;
+    else if(sts==="TANGGUH") kampusStats[kid].status.TANGGUH++;
+    else if(sts==="TAMAT") kampusStats[kid].status.TAMAT++;
   });
   const selected=(rawData.length && new Set(rawData.map(d=>d._resolvedKid||resolveKampusInfo(d).kampus_id||d.kampus_id)).size===1)?(rawData[0]._resolvedKid||resolveKampusInfo(rawData[0]).kampus_id||rawData[0].kampus_id):null;
   const pos={
@@ -4302,18 +4498,23 @@ function enrolmenMalaysiaMap(rawData){
   const markers=[...KAMPUS].sort(compareMasterKampus).map(k=>{
     const p=pos[k.id]||[0,0], n=counts[k.id]||0, active=selected===k.id;
     const canClick=isAdmin() || k.id===SES.kampus;
-    return `<g transform="translate(${p[0]},${p[1]})" ${canClick?`onclick="openKampusFromMap('${k.id}')" style="cursor:pointer"`:''}>
+    // Bulatan luar (lebih besar, lebih mudah diklik) + bulatan dalam (visual)
+    return `<g transform="translate(${p[0]},${p[1]})" ${canClick?`onclick="showKampusMapDetail('${k.id}')" style="cursor:pointer"`:''}>
+      <!-- Bulatan luar telus untuk kawasan klik yang lebih besar -->
+      <circle r="14" fill="transparent" />
+      <!-- Bulatan dalam dengan bayang -->
       <circle r="${active?11:8}" fill="${active?'#E88D3A':'#0E7C61'}" stroke="#fff" stroke-width="3" filter="url(#shadow)"></circle>
       <text y="3" text-anchor="middle" font-size="7" font-weight="800" fill="#fff">${String(k.id).replace(/^K/,'').slice(0,4)}</text>
-      <title>${k.nama}: ${n.toLocaleString('ms-MY')} rekod</title>
+      ${n > 0 ? `<text y="${active?-18:-14}" text-anchor="middle" font-size="8" font-weight="800" fill="${active?'#E88D3A':'#0E7C61'}">${n.toLocaleString('ms-MY')}</text>` : ''}
+      <title>${k.nama}: ${n.toLocaleString('ms-MY')} rekod — Klik untuk maklumat terperinci</title>
     </g>`;
   }).join('');
   return `<div class="card afu" style="margin-bottom:16px;overflow:hidden;">
     <div class="card-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-      <div><span class="card-title"><i class="fas fa-map-location-dot text-pri-500 mr-2"></i>Peta Enrolmen 27 Kampus IPGKPM</span><div style="font-size:11px;color:#64748b;margin-top:3px;">Klik penanda kampus untuk melihat data enrolmen kampus.</div></div>
+      <div><span class="card-title"><i class="fas fa-map-location-dot text-pri-500 mr-2"></i>Peta Enrolmen 27 Kampus IPGKPM</span><div style="font-size:11px;color:#64748b;margin-top:3px;">Klik penanda kampus untuk lihat maklumat terperinci enrolmen.</div></div>
       ${isAdmin()&&selected?'<button class="btn btn-ghost" onclick="openKampusFromMap(null)"><i class="fas fa-globe-asia"></i> Semua Kampus</button>':''}
     </div>
-    <div style="padding:10px 14px 14px;background:linear-gradient(180deg,#f8fafc,#eef4f7);">
+    <div style="padding:10px 14px 14px;background:linear-gradient(180deg,#f8fafc,#eef4f7);position:relative;">
       <svg viewBox="0 0 700 315" role="img" aria-label="Peta Malaysia dan lokasi 27 kampus IPG" style="width:100%;height:auto;max-height:390px;display:block;">
         <defs><filter id="shadow" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity=".25"/></filter></defs>
         <path d="M88 30 L132 35 151 58 158 87 176 109 173 139 195 159 181 189 190 214 177 244 198 271 185 294 159 280 145 250 126 225 116 194 103 165 108 132 95 103 101 72 Z" fill="#dbe7e8" stroke="#a8bec3" stroke-width="2"/>
@@ -4324,7 +4525,148 @@ function enrolmenMalaysiaMap(rawData){
       </svg>
       <div style="display:flex;align-items:center;justify-content:center;gap:18px;font-size:11px;color:#64748b;margin-top:4px;flex-wrap:wrap;"><span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#0E7C61;margin-right:5px;"></i>Kampus IPG</span><span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#E88D3A;margin-right:5px;"></i>Kampus dipilih</span></div>
     </div>
+  </div>
+  <!-- Container untuk popup detail kampus -->
+  <div id="kampus-map-detail"></div>`;
+}
+
+// Popup interaktif yang tunjuk maklumat terperinci kampus apabila penanda peta diklik
+function showKampusMapDetail(kampusId){
+  if(!kampusId){ openKampusFromMap(null); return; }
+  if(!isAdmin() && kampusId !== SES.kampus){ toast('Akses data terhad kepada kampus anda','inf'); return; }
+  const k = kObj(kampusId);
+  if(!k){ toast('Kampus tidak dijumpai','err'); return; }
+  // Kira stats untuk kampus ini dari data sedia ada
+  const allData = (window.ENROLMEN_LIVE || window.ENROLMEN_CSV || ENROLMEN_DATA) || [];
+  const kampusRows = allData.filter(d => {
+    const kid = d._resolvedKid || resolveKampusInfo(d).kampus_id || d.kampus_id || "";
+    return String(kid).toUpperCase() === String(kampusId).toUpperCase();
+  });
+  const total = kampusRows.length;
+  const L = kampusRows.filter(d => String(d.jantina||"").toUpperCase()==="L").length;
+  const P = kampusRows.filter(d => String(d.jantina||"").toUpperCase()==="P").length;
+  const aktif = kampusRows.filter(d => {
+    const s = String(d.status_pengajian||"").toUpperCase();
+    return s === "AKTIF" || s === "ATIF";
+  }).length;
+  const berhenti = kampusRows.filter(d => String(d.status_pengajian||"").toUpperCase()==="BERHENTI").length;
+  const tangguh = kampusRows.filter(d => String(d.status_pengajian||"").toUpperCase()==="TANGGUH").length;
+  const tamat = kampusRows.filter(d => String(d.status_pengajian||"").toUpperCase()==="TAMAT").length;
+  // Kira program
+  const progCount = {};
+  kampusRows.forEach(d => {
+    const p = d.program || "—";
+    progCount[p] = (progCount[p]||0)+1;
+  });
+  const progList = Object.entries(progCount).sort((a,b)=>b[1]-a[1]);
+  // Kira sesi ambilan
+  const sesiCount = {};
+  kampusRows.forEach(d => {
+    const s = d.sesi_ambilan || "—";
+    sesiCount[s] = (sesiCount[s]||0)+1;
+  });
+  const sesiList = Object.entries(sesiCount).sort((a,b)=>b[1]-a[1]);
+  // Kira aliran
+  const aliranCount = {};
+  kampusRows.forEach(d => {
+    const a = d.aliran_sekolah || "—";
+    aliranCount[a] = (aliranCount[a]||0)+1;
+  });
+  const aliranList = Object.entries(aliranCount).sort((a,b)=>b[1]-a[1]);
+
+  const html = `
+  <div class="card afu" style="margin-top:-10px;margin-bottom:16px;border:2px solid #0E7C61;animation:fadeUp .3s ease both;">
+    <div class="card-head" style="background:linear-gradient(135deg,#0E7C61 0%,#084A39 100%);color:#fff;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:1rem;">
+          <i class="fas fa-school"></i>
+        </div>
+        <div>
+          <div style="font-family:'Outfit',sans-serif;font-weight:800;font-size:1rem;color:#fff;">${k.nama}</div>
+          <div style="font-size:.72rem;color:rgba(255,255,255,0.7);margin-top:1px;">
+            <span class="bdg" style="background:rgba(255,255,255,0.15);color:#fff;font-size:.62rem;">${k.id}</span>
+            <span style="margin-left:6px;">${k.zon||"—"} · ${k.negeri||"—"}</span>
+          </div>
+        </div>
+      </div>
+      <button onclick="document.getElementById('kampus-map-detail').innerHTML='';" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:1rem;">&times;</button>
+    </div>
+    <div class="card-body" style="padding:14px 16px;">
+      <!-- Stat utama -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+        <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:#15803D;line-height:1;">${total.toLocaleString("ms-MY")}</div>
+          <div style="font-size:.65rem;color:#16A34A;text-transform:uppercase;font-weight:700;margin-top:3px;">Jumlah Pelajar</div>
+        </div>
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:#1E40AF;line-height:1;">${aktif.toLocaleString("ms-MY")}</div>
+          <div style="font-size:.65rem;color:#1D4ED8;text-transform:uppercase;font-weight:700;margin-top:3px;">Aktif</div>
+        </div>
+        <div style="background:#E8ECF2;border:1px solid #C5CDE0;border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:#2E4070;line-height:1;">${L} <span style="font-size:.8rem;">/</span> ${P}</div>
+          <div style="font-size:.65rem;color:#3D5490;text-transform:uppercase;font-weight:700;margin-top:3px;">Lelaki / Prmpn</div>
+        </div>
+        <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px;text-align:center;">
+          <div style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:#B91C1C;line-height:1;">${(berhenti+tangguh+tamat).toLocaleString("ms-MY")}</div>
+          <div style="font-size:.65rem;color:#DC2626;text-transform:uppercase;font-weight:700;margin-top:3px;">B/T/Tt</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <!-- Program -->
+        <div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;"><i class="fas fa-graduation-cap text-pri-500 mr-1"></i>Mengikut Program</div>
+          ${progList.length ? progList.map(([p,n]) => {
+            const pct = total ? Math.round(n/total*100) : 0;
+            return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:.72rem;">
+              <span class="bdg bdg-pri" style="font-size:.6rem;min-width:50px;text-align:center;">${p}</span>
+              <div style="flex:1;height:6px;background:#E2E8F0;border-radius:3px;overflow:hidden;"><div style="height:100%;background:#0E7C61;width:${pct}%;"></div></div>
+              <span style="font-weight:700;color:var(--navy);min-width:32px;text-align:right;">${n}</span>
+            </div>`;
+          }).join("") : '<div style="font-size:.72rem;color:var(--muted);">Tiada data</div>'}
+        </div>
+        <!-- Sesi Ambilan -->
+        <div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;"><i class="fas fa-calendar-alt text-amb-500 mr-1"></i>Mengikut Sesi Ambilan</div>
+          ${sesiList.length ? sesiList.map(([s,n]) => {
+            const pct = total ? Math.round(n/total*100) : 0;
+            return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:.72rem;">
+              <span style="min-width:75px;color:var(--muted);">${s}</span>
+              <div style="flex:1;height:6px;background:#E2E8F0;border-radius:3px;overflow:hidden;"><div style="height:100%;background:#E88D3A;width:${pct}%;"></div></div>
+              <span style="font-weight:700;color:var(--navy);min-width:32px;text-align:right;">${n}</span>
+            </div>`;
+          }).join("") : '<div style="font-size:.72rem;color:var(--muted);">Tiada data</div>'}
+        </div>
+      </div>
+
+      <!-- Aliran Sekolah -->
+      <div style="margin-top:12px;">
+        <div style="font-size:.72rem;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;"><i class="fas fa-school text-navy-500 mr-1"></i>Mengikut Aliran Sekolah</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${aliranList.length ? aliranList.map(([a,n]) => {
+            const bg = a==="SK"?"rgba(22,163,74,0.1)":a==="SJKC"?"rgba(232,141,58,0.1)":"rgba(220,38,38,0.1)";
+            const fg = a==="SK"?"#16A34A":a==="SJKC"?"#C47428":"#DC2626";
+            return `<span style="background:${bg};color:${fg};font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:12px;">${a}: ${n}</span>`;
+          }).join("") : '<span style="font-size:.72rem;color:var(--muted);">Tiada data</span>'}
+        </div>
+      </div>
+
+      <!-- Butang tindakan -->
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('kampus-map-detail').innerHTML='';">Tutup</button>
+        <button class="btn btn-pri btn-sm" onclick="document.getElementById('kampus-map-detail').innerHTML='';openKampusFromMap('${kampusId}');"><i class="fas fa-arrow-right"></i> Lihat Senarai Penuh</button>
+      </div>
+    </div>
   </div>`;
+  const container = document.getElementById("kampus-map-detail");
+  if(container){
+    container.innerHTML = html;
+    // Scroll ke popup
+    container.scrollIntoView({ behavior:"smooth", block:"nearest" });
+  } else {
+    // Jika container tiada (page belum render), fallback ke openKampusFromMap
+    openKampusFromMap(kampusId);
+  }
 }
 function openKampusFromMap(kampusId){
   if(!isAdmin() && kampusId && kampusId!==SES.kampus){toast('Akses data terhad kepada kampus anda','inf');return;}
@@ -4470,14 +4812,14 @@ function renderEnrolmenPage(c,rawData,tajuk,isUtama){
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
           <select class="fi" id="en-b-program" style="width:auto;font-size:.8rem;" onchange="enBatchPreview()">
-            <option value="">Semua Program</option><option>PPISMP</option><option>PISMP</option><option>DPLI</option>
+            <option value="">Semua Program</option><option>PPISMP</option><option>PISMP</option><option>PDPP</option>
           </select>
           <select class="fi" id="en-b-sesi" style="width:auto;font-size:.8rem;" onchange="enBatchPreview()">
             <option value="">Semua Sesi Ambilan</option>
             <option>OGOS 2023</option><option>JAN 2024</option><option>OGOS 2024</option><option>JAN 2025</option><option>OGOS 2025</option>
           </select>
           <select class="fi" id="en-b-status" style="width:auto;font-size:.8rem;" onchange="enBatchPreview()">
-            <option value="">Semua Status</option><option>ATIF</option><option>BERHENTI</option><option>TANGGUH</option><option>TAMAT</option>
+            <option value="">Semua Status</option><option>AKTIF</option><option>BERHENTI</option><option>TANGGUH</option><option>TAMAT</option>
           </select>
           <select class="fi" id="en-b-jantina" style="width:auto;font-size:.8rem;" onchange="enBatchPreview()">
             <option value="">Semua Jantina</option><option value="L">Lelaki</option><option value="P">Perempuan</option>
@@ -4510,7 +4852,7 @@ function renderEnrolmenPage(c,rawData,tajuk,isUtama){
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;">
         <input type="text" class="fi" style="max-width:190px;font-size:.8rem;" placeholder="Cari nama / matrik..." id="en-cari" oninput="filterEnrolmen()">
         <select class="fi" style="width:auto;font-size:.8rem;" id="en-status" onchange="filterEnrolmen()">
-          <option value="">Semua Status</option><option>ATIF</option><option>BERHENTI</option><option>TANGGUH</option>
+          <option value="">Semua Status</option><option>AKTIF</option><option>BERHENTI</option><option>TANGGUH</option>
         </select>
         <select class="fi" style="width:auto;font-size:.8rem;" id="en-jantina" onchange="filterEnrolmen()">
           <option value="">Semua Jantina</option><option value="L">Lelaki</option><option value="P">Perempuan</option>
@@ -4519,7 +4861,7 @@ function renderEnrolmenPage(c,rawData,tajuk,isUtama){
           <option value="">Semua Aliran</option><option>SK</option><option>SJKC</option><option>SJKT</option>
         </select>
         <select class="fi" style="width:auto;font-size:.8rem;" id="en-prog" onchange="filterEnrolmen()">
-          <option value="">Semua Program</option><option>PPISMP</option><option>PISMP</option><option>DPLI</option>
+          <option value="">Semua Program</option><option>PPISMP</option><option>PISMP</option><option>PDPP</option>
         </select>
         ${isUtama?`<select class="fi" style="width:auto;font-size:.8rem;" id="en-kampus" onchange="filterEnrolmen()">
           <option value="">Semua Kampus</option>${kampusOptgroup()}
@@ -5034,7 +5376,7 @@ function openEnrolmenProgramStudents(key, kampusId, program){
 function _enCardFiltered(key){
   const src = (window.ENROLMEN_LIVE || window.ENROLMEN_CSV || ENROLMEN_DATA) || [];
   if(key === "total")            return src.slice();
-  if(key === "aktif")            return src.filter(d => d.status_pengajian === "ATIF");
+  if(key === "aktif")            return src.filter(d => d.status_pengajian === "ATIF" || d.status_pengajian === "AKTIF");
   if(key === "berhenti_tangguh") return src.filter(d => d.status_pengajian === "BERHENTI" || d.status_pengajian === "TANGGUH");
   if(key === "nisbah")           return src.slice();
   return src;
@@ -5095,7 +5437,7 @@ function renderEnrolmenTable(data,isUtama){
     <td><span class="bdg ${d.aliran_sekolah==="SK"?"bdg-green":d.aliran_sekolah==="SJKC"?"bdg-amber":"bdg-red"}" style="font-size:.65rem;">${d.aliran_sekolah}</span></td>
     <td style="font-size:.78rem;">${d.sesi_ambilan}</td>
     <td style="font-size:.78rem;color:var(--muted);">${d.sesi_tamat}</td>
-    <td><span class="bdg ${d.status_pengajian==="ATIF"?"bdg-green":d.status_pengajian==="BERHENTI"?"bdg-red":"bdg-amber"}" style="font-size:.65rem;">${d.status_pengajian}</span></td>
+    <td><span class="bdg ${(d.status_pengajian==="ATIF"||d.status_pengajian==="AKTIF")?"bdg-green":d.status_pengajian==="BERHENTI"?"bdg-red":"bdg-amber"}" style="font-size:.65rem;">${d.status_pengajian}</span></td>
   </tr>`).join("")}</tbody></table>`;
 }
 
@@ -7047,11 +7389,34 @@ function renderKaunselorPage(c, enriched, kampusFilter){
   // Vacancy analysis by kampus — guna kod kampus (resolved) sebagai kunci utama
   // Setiap kampus wajib ada 3 jawatan: Ketua Kaunselor, Kaunselor (Pentadbiran), Kaunselor (Pelajar)
   // Jawatan kosong dikira secara automatik berdasarkan jawatan yang tiada, BUKAN bergantung pada baris "KOSONG" dalam data
-  const EXPECTED_POSITIONS = [
-    { key: "KETUA", label: "Ketua Kaunselor", test: j => j.toUpperCase().includes("KETUA") },
-    { key: "PENTADBIRAN", label: "Kaunselor (Pentadbiran)", test: j => { const x=j.toUpperCase(); return x.includes("PENTADBIR") || x.includes("PENTADBIRAN"); } },
-    { key: "PELAJAR", label: "Kaunselor (Pelajar)", test: j => j.toUpperCase().includes("PELAJAR") || j.toUpperCase().includes("MURID") }
-  ];
+  // Perjawatan yang dijangka mengikut jenis kampus:
+  //  • IPGM (Ibu Pejabat) → KPP + PP sahaja (2 jawatan)
+  //  • ELTC                 → 1 Pegawai Kaunseling ELTC
+  //  • 27 IPG Kampus        → Ketua Kaunselor + Pentadbir + Pelajar (3 jawatan)
+  // Nota: "KETUA" test kecualikan "PENGARAH" supaya "Ketua Penolong Pengarah"
+  //       tidak tersalah anggap sebagai "Ketua Kaunselor".
+  const getExpectedPositions = (kid) => {
+    const k = String(kid || "").toUpperCase();
+    if(k === "IPGM"){
+      return [
+        { key: "KPP", label: "Ketua Penolong Pengarah (KPP)", test: j => j.toUpperCase().includes("KETUA PENOLONG PENGARAH") },
+        { key: "PP",  label: "Penolong Pengarah (PP)",        test: j => { const x=j.toUpperCase(); return x.includes("PENOLONG PENGARAH") && !x.includes("KETUA"); } }
+      ];
+    }
+    if(k === "ELTC"){
+      return [
+        { key: "ELTC", label: "Pegawai Kaunseling ELTC", test: j => j.toUpperCase().includes("ELTC") || j.toUpperCase().includes("PEGAWAI KAUNSELING") }
+      ];
+    }
+    // 27 IPG Kampus — 3 perjawatan Kaunselor Pendidikan
+    return [
+      { key: "KETUA",      label: "Ketua Kaunselor",       test: j => { const x=j.toUpperCase(); return x.includes("KETUA") && !x.includes("PENGARAH"); } },
+      { key: "PENTADBIRAN", label: "Kaunselor (Pentadbiran)", test: j => j.toUpperCase().includes("PENTADBIR") },
+      { key: "PELAJAR",    label: "Kaunselor (Pelajar)",   test: j => j.toUpperCase().includes("PELAJAR") || j.toUpperCase().includes("MURID") }
+    ];
+  };
+  // Fallback untuk backward compatibility (3 jawatan IPG)
+  const EXPECTED_POSITIONS = getExpectedPositions("");
 
   const kampusMap = {};
   const canonicalFilterKampus = canonicalKodKampusGlobal(kampusFilter || "");
@@ -7070,6 +7435,18 @@ function renderKaunselorPage(c, enriched, kampusFilter){
       kosong:[]
     };
   });
+  // Tambah entri IPGM (untuk rekod KPP / Penolong Pengarah) — hanya untuk Admin Utama
+  if(isAdmin()){
+    kampusMap["IPGM"]={
+      nama:"IPGM (Ibu Pejabat — KPP/PP)",
+      kod:"IPGM",
+      zon:"Zon IPGM",
+      negeri:"Wilayah Persekutuan",
+      zonOrder:0,
+      staff:[],
+      kosong:[]
+    };
+  }
   enriched.forEach(u => {
     const kid=String(u._resolvedKid||u.kodKampus||u.kampus_id||"").toUpperCase();
     if(kampusMap[kid]) kampusMap[kid].staff.push(u);
@@ -7077,8 +7454,10 @@ function renderKaunselorPage(c, enriched, kampusFilter){
 
   // Kira jawatan kosong berdasarkan dua syarat serentak:
   // (1) rekod memegang jawatan berkenaan, dan (2) ruangan nama benar-benar diisi.
-  Object.values(kampusMap).forEach(v => {
-    EXPECTED_POSITIONS.forEach(pos => {
+  // Guna perjawatan khusus ikut jenis kampus (IPGM = KPP+PP, ELTC = 1, IPG = 3).
+  Object.entries(kampusMap).forEach(([kid, v]) => {
+    const positions = getExpectedPositions(kid);
+    positions.forEach(pos => {
       const isFilled = v.staff.some(s => pos.test(s.jawatan || "") && namaSah(s));
       if (!isFilled) v.kosong.push(pos.label);
     });
@@ -7092,17 +7471,22 @@ function renderKaunselorPage(c, enriched, kampusFilter){
     .sort(sortKampusEntries);
 
   // Struktur rasmi: 81 jawatan di 27 IPG Kampus + 1 ELTC + 2 IPGM = 84.
-  const JUMLAH_JAWATAN_RASMI = kampusFilter ? 3 : 84;
-  const jawatanDiisiKampus = Object.values(kampusMap).reduce((jumlah, v) => {
-    return jumlah + EXPECTED_POSITIONS.filter(pos =>
+  // Jika kampusFilter diberi, jumlah jangkaan ikut jenis kampus dipilih.
+  const JUMLAH_JAWATAN_RASMI = kampusFilter
+    ? (String(kampusFilter).toUpperCase()==="IPGM" ? 2 : String(kampusFilter).toUpperCase()==="ELTC" ? 1 : 3)
+    : 84;
+  // Kira jawatan diisi ikut perjawatan khusus setiap kampus
+  const jawatanDiisiKampus = Object.entries(kampusMap).reduce((jumlah, [kid, v]) => {
+    const positions = getExpectedPositions(kid);
+    return jumlah + positions.filter(pos =>
       v.staff.some(s => pos.test(s.jawatan || "") && namaSah(s))
     ).length;
   }, 0);
   const rekodELTC = enriched.filter(u => String(u._resolvedKid || u.kodKampus || u.kampus_id || "").toUpperCase() === "ELTC" && namaSah(u)).length;
   const rekodIPGM = enriched.filter(u => String(u._resolvedKid || u.kodKampus || u.kampus_id || "").toUpperCase() === "IPGM" && namaSah(u)).length;
   const jawatanDiisi = kampusFilter
-    ? Math.min(3, jawatanDiisiKampus)
-    : Math.min(84, jawatanDiisiKampus + Math.min(1, rekodELTC) + Math.min(2, rekodIPGM));
+    ? Math.min(JUMLAH_JAWATAN_RASMI, jawatanDiisiKampus)
+    : Math.min(84, jawatanDiisiKampus);
   const jawatanKosong = Math.max(0, JUMLAH_JAWATAN_RASMI - jawatanDiisi);
 
   const L = staff.filter(u=>(u.jantina||"").toUpperCase()==="LELAKI").length;
@@ -7414,11 +7798,26 @@ function showStatusPerjawatanKampus(kid){
     const n=String(u?.nama||u?.namaPenuh||u?.nama_penuh||"").trim();
     return !!n && !/^(?:-|—|kosong|vacant|tiada|belum diisi|n\/a|null|undefined)$/i.test(n);
   };
-  const positions=[
-    {label:"Ketua Kaunselor Pendidikan IPG", test:j=>j.includes("KETUA")},
-    {label:"Kaunselor Pendidikan IPG (Pentadbir)", test:j=>j.includes("PENTADBIR")},
-    {label:"Kaunselor Pendidikan IPG (Pelajar)", test:j=>j.includes("PELAJAR")||j.includes("MURID")}
-  ];
+  // Pilih perjawatan ikut jenis kampus
+  const k=String(kid||"").toUpperCase();
+  let positions;
+  if(k === "IPGM"){
+    positions=[
+      {label:"Ketua Penolong Pengarah (KPP)", test:j=>j.includes("KETUA PENOLONG PENGARAH")},
+      {label:"Penolong Pengarah (PP)",         test:j=>j.includes("PENOLONG PENGARAH") && !j.includes("KETUA")}
+    ];
+  } else if(k === "ELTC"){
+    positions=[
+      {label:"Pegawai Kaunseling ELTC", test:j=>j.includes("ELTC") || j.includes("PEGAWAI KAUNSELING")}
+    ];
+  } else {
+    // 27 IPG Kampus — perjawatan Kaunselor Pendidikan
+    positions=[
+      {label:"Ketua Kaunselor Pendidikan IPG", test:j=>j.includes("KETUA") && !j.includes("PENGARAH")},
+      {label:"Kaunselor Pendidikan IPG (Pentadbir)", test:j=>j.includes("PENTADBIR")},
+      {label:"Kaunselor Pendidikan IPG (Pelajar)", test:j=>j.includes("PELAJAR")||j.includes("MURID")}
+    ];
+  }
   const cards=positions.map(pos=>{
     const idx=v.staff.findIndex(u=>pos.test(String(u.jawatan||"").toUpperCase()) && namaSahTemp(u));
     const u=idx>=0?v.staff[idx]:null;
@@ -7443,6 +7842,7 @@ function showStatusPerjawatanKampus(kid){
       <b style="color:var(--navy);font-size:.95rem;">${esc(v.nama)}</b>
       <span class="bdg bdg-navy">${esc(v.zon||"—")}</span>
       <span class="bdg bdg-gray">${esc(v.negeri||"—")}</span>
+      ${k==="IPGM"?'<span class="bdg bdg-amber" style="font-size:.7rem;">IPGM — KPP/PP sahaja</span>':''}
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:10px;">${cards}</div>`;
 }
@@ -7621,10 +8021,18 @@ function showKaunselorDetailModal(kid, staffIdx){
 }
 
 function canManageKaunselorKid(kid){
+  // Admin Utama: boleh urus SEMUA rekod (termasuk KPP/PP di IPGM).
   if(isAdmin()) return true;
-  if(!isKampus()) return false;
-  const myKid=String(SES.kampus||"").toUpperCase();
-  return String(kid||"").toUpperCase()===myKid;
+  // Admin Kampus: boleh urus rekod kampus sendiri sahaja.
+  if(isKampus()){
+    // KPP/PP (IPGM) hanya boleh diurus oleh Admin Utama
+    const k = String(kid||"").toUpperCase();
+    if(k === "IPGM") return false;
+    const myKid = String(SES.kampus||"").toUpperCase();
+    return k === myKid;
+  }
+  // Kaunselor: tidak boleh urus rekod berdasarkan kod kampus (hanya rekod diri sendiri).
+  return false;
 }
 
 // Kaunselor biasa boleh mengemaskini rekod diri sendiri.
@@ -7639,9 +8047,22 @@ function isOwnKaunselorRecord(u){
   const sesName=String(SES.nama||"").trim().toUpperCase().replace(/\s+/g," ");
   return !!recName && !!sesName && recName===sesName;
 }
+
+// Boleh EDIT rekod?
+// - Admin Utama: ya (semua)
+// - Admin Kampus: ya (kampus sendiri, kecuali KPP/PP di IPGM)
+// - Kaunselor: ya hanya untuk rekod diri sendiri (sepadan dengan UID/nama)
 function canEditKaunselorRecord(u,kid){
-  return canManageKaunselorKid(kid) || isOwnKaunselorRecord(u);
+  if(canManageKaunselorKid(kid)) return true;
+  // Kaunselor boleh edit rekod diri sendiri sahaja
+  if(normalizedRole() === "kaunselor") return isOwnKaunselorRecord(u);
+  return false;
 }
+
+// Boleh PADAM rekod?
+// - Admin Utama: ya (semua)
+// - Admin Kampus: ya (kampus sendiri, kecuali KPP/PP di IPGM)
+// - Kaunselor: TIDAK boleh padam rekod apa pun
 function canDeleteKaunselorRecord(u,kid){
   return canManageKaunselorKid(kid);
 }
@@ -7741,21 +8162,52 @@ function editKaunselorInCard(staffIdx, kid, docId) {
   window._kaunEditKid = kid;
   const _myK = kObj(SES.kampus);
   const perjVal = (u.perjawatan||"").toLowerCase();
+  // Tentukan sama ada pengguna boleh tukar organisasi/jawatan
+  const canChangeCampus = isAdmin();
+  const canChangeJawatan = isAdmin() || (isKampus() && String(kid).toUpperCase() !== "IPGM");
+  // Senarai jawatan — termasuk KPP/PP
+  const jawatanOpts = [
+    "Ketua Penolong Pengarah (KPP)",
+    "Penolong Pengarah (PP)",
+    "Ketua Kaunselor",
+    "Kaunselor (Pentadbiran)",
+    "Kaunselor (Pelajar)",
+    "Pegawai Kaunseling ELTC"
+  ];
+  // Senarai kampus untuk dropdown organisasi (untuk Admin Utama)
+  const kampusOpts = [...KAMPUS].sort(compareMasterKampus).map(k => `<option value="${k.id}" ${String(kid).toUpperCase()===String(k.id).toUpperCase()?"selected":""}>${k.nama}</option>`).join("");
   document.getElementById("modal-wrap").innerHTML = `
   <div class="modal-bg" onclick="if(event.target===this)closeModal()">
-  <div class="modal-box" style="max-width:520px">
+  <div class="modal-box" style="max-width:560px">
     <div class="flex items-center justify-between mb-4">
-      <h3 class="font-display font-700 text-lg text-navy-800">Kemaskini Kaunselor</h3>
+      <div>
+        <h3 class="font-display font-700 text-lg text-navy-800">Kemaskini Kaunselor</h3>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:2px;">${esc(u._resolvedNama||u.organisasi||km[kid].nama)}${String(kid).toUpperCase()==="IPGM"?' · IPGM (KPP/PP)':''}</div>
+      </div>
       <button onclick="closeModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div style="grid-column:span 2;"><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Nama</label><input class="fi" id="mk-edit-nama" style="width:100%;" value="${esc(u.nama||"")}"></div>
-      <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Jawatan</label><input class="fi" id="mk-edit-jawatan" style="width:100%;" value="${esc(u.jawatan||"")}"></div>
+      <div style="grid-column:span 2;">
+        <label style="font-size:.75rem;font-weight:600;color:var(--navy);">Jawatan ${canChangeJawatan?"":"(read-only)"} ${String(kid).toUpperCase()==="IPGM"?'<span class="bdg bdg-navy" style="font-size:.6rem;margin-left:6px;">IPGM</span>':''}</label>
+        ${canChangeJawatan
+          ? `<select class="fi" id="mk-edit-jawatan" style="width:100%;">${jawatanOpts.map(j=>`<option value="${j}" ${j===(u.jawatan||"")?"selected":""}>${j}</option>`).join("")}</select>`
+          : `<input class="fi" id="mk-edit-jawatan" style="width:100%;" value="${esc(u.jawatan||"")}" readonly>`}
+      </div>
       <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Gred</label><select class="fi" id="mk-edit-gred" style="width:100%;"><option value="">-- Pilih Gred --</option>${["DG9","DG10","DG12","DG13"].map(g=>`<option value="${g}" ${String(u.gred||"").toUpperCase()===g?"selected":""}>${g}</option>`).join("")}</select></div>
       <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">No. Kaunselor</label><input class="fi" id="mk-edit-noKaunselor" style="width:100%;" value="${esc(u.noKaunselor||"")}"></div>
       <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">No. Bimbit</label><input class="fi" id="mk-edit-bimbit" style="width:100%;" value="${esc(u.bimbit||"")}"></div>
       <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Sasaran Sesi</label><input class="fi" id="mk-edit-sasaranSesi" type="number" style="width:100%;" value="${u.sasaranSesi||0}"></div>
       <div style="grid-column:span 2;"><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Email</label><input class="fi" id="mk-edit-email" type="email" style="width:100%;" value="${esc(u.email||"")}"></div>
+      ${canChangeCampus ? `
+      <div style="grid-column:span 2;background:#F0F7F4;border:1px solid #B3E2D2;border-radius:8px;padding:10px 12px;">
+        <label style="font-size:.75rem;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:6px;"><i class="fas fa-building" style="color:#0E7C61;"></i>Pindah ke Kampus / IPGM lain</label>
+        <select class="fi" id="mk-edit-organisasi" style="width:100%;margin-top:6px;">
+          <option value="IPGM" ${String(kid).toUpperCase()==="IPGM"?"selected":""}>— IPGM (Ibu Pejabat — KPP/PP) —</option>
+          ${kampusOpts}
+        </select>
+        <div style="font-size:.7rem;color:#0E7C61;margin-top:4px;"><i class="fas fa-circle-info mr-1"></i>Pilih IPGM jika kaunselor bertukar ke jawatan KPP/PP di ibu pejabat.</div>
+      </div>` : ""}
     </div>
     <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
       ${u._docId?`<button class="btn btn-danger" onclick="deleteKaunselorFromCardEdit()"><i class="fas fa-trash mr-1"></i>Padam</button>`:''}
@@ -7782,16 +8234,51 @@ async function saveKaunselorCardEdit() {
     email: (document.getElementById("mk-edit-email")?.value||"").trim(),
     sasaranSesi: parseFloat(document.getElementById("mk-edit-sasaranSesi")?.value)||0
   };
+  // Auto-detect slotJawatan dari jawatan (KPP/PP/etc)
+  const jUp = String(updates.jawatan||"").toUpperCase();
+  if(jUp.includes("KETUA PENOLONG PENGARAH")) updates.slotJawatan = "KPP";
+  else if(jUp.includes("PENOLONG PENGARAH")) updates.slotJawatan = "PP";
+  else if(jUp.includes("KETUA")) updates.slotJawatan = "KETUA";
+  else if(jUp.includes("PENTADBIR")) updates.slotJawatan = "PENTADBIR";
+  else if(jUp.includes("PELAJAR") || jUp.includes("MURID")) updates.slotJawatan = "PELAJAR";
+  else if(jUp.includes("ELTC")) updates.slotJawatan = "ELTC";
+  // Jika Admin Utama tukar organisasi (pindah kampus / ke IPGM)
+  const orgSelect = document.getElementById("mk-edit-organisasi");
+  let newKid = kid;
+  if(orgSelect && isAdmin()){
+    newKid = String(orgSelect.value||"").toUpperCase();
+    if(newKid === "IPGM"){
+      updates.kodKampus = "IPGM";
+      updates.kampus_id = "IPGM";
+      updates.organisasi = "IPGM (Ibu Pejabat — KPP/PP)";
+      updates.zon = "Zon IPGM";
+      updates.negeri = "Wilayah Persekutuan";
+      updates.ipgk = "IPGM";
+    } else {
+      // Cari kampus master
+      const kobj = [...KAMPUS].find(k => String(k.id).toUpperCase() === newKid);
+      if(kobj){
+        updates.kodKampus = kobj.id;
+        updates.kampus_id = kobj.id;
+        updates.organisasi = kobj.nama;
+        updates.zon = kobj.zon;
+        updates.negeri = kobj.negeri;
+        updates.ipgk = "IPGK" + kobj.id;
+      }
+    }
+  }
+  updates.dikemasKiniOleh = SES.uid || "";
+  updates.dikemasKiniPada = new Date().toISOString();
   try {
     if(window.MYFB && window.MYFB.upsertKaunselor){
       const fullPayload = {
         ...u,
         ...updates,
-        kodKampus: String(kid||u.kodKampus||u.kampus_id||"").toUpperCase(),
-        kampus_id: String(kid||u.kodKampus||u.kampus_id||"").toUpperCase(),
-        organisasi: u.organisasi || u._resolvedNama || km[kid]?.nama || "",
-        zon: u.zon || u._resolvedZon || km[kid]?.zon || "",
-        negeri: u.negeri || u._resolvedNegeri || km[kid]?.negeri || ""
+        kodKampus: updates.kodKampus || String(kid||u.kodKampus||u.kampus_id||"").toUpperCase(),
+        kampus_id: updates.kampus_id || String(kid||u.kodKampus||u.kampus_id||"").toUpperCase(),
+        organisasi: updates.organisasi || u.organisasi || u._resolvedNama || km[kid]?.nama || "",
+        zon: updates.zon || u.zon || u._resolvedZon || km[kid]?.zon || "",
+        negeri: updates.negeri || u.negeri || u._resolvedNegeri || km[kid]?.negeri || ""
       };
       const newDocId = await window.MYFB.upsertKaunselor(u._docId || "", fullPayload, SES.uid);
       Object.assign(u, updates, { _docId:newDocId, kodKampus:fullPayload.kodKampus, kampus_id:fullPayload.kampus_id });
@@ -7800,9 +8287,25 @@ async function saveKaunselorCardEdit() {
         String(r._resolvedKid||r.kodKampus||r.kampus_id||"").toUpperCase()===String(kid).toUpperCase()
       ));
       if(localMatch) Object.assign(localMatch,u);
+      // Jika berpindah kampus, perbarui kampusMap supaya rekod keluar dari kampus lama dan masuk ke kampus baru
+      if(newKid !== kid && km[kid] && km[newKid]){
+        // Buang dari kampus lama
+        const oldIdx = km[kid].staff.findIndex(s => s === u || s._docId === u._docId);
+        if(oldIdx >= 0) km[kid].staff.splice(oldIdx, 1);
+        // Tambah ke kampus baru
+        u._resolvedKid = newKid;
+        km[newKid].staff.push(u);
+        toast(`Kaunselor dipindahkan ke ${km[newKid].nama}`,"ok");
+      } else {
+        closeModal();
+        toast(u._docId===newDocId ? "Maklumat kaunselor disimpan ke Firestore" : "Maklumat kaunselor dikemaskini","ok");
+      }
       closeModal();
-      toast(u._docId===newDocId ? "Maklumat kaunselor disimpan ke Firestore" : "Maklumat kaunselor dikemaskini","ok");
-      showKaunselorKampus(kid);
+      // Refresh tampilan — jika pindah kampus, papar kampus baru; jika tidak, papar kampus sedia ada
+      showKaunselorKampus(newKid !== kid ? newKid : kid);
+      // Update dropdown supaya reflect kampus baru jika pindah
+      const dd = document.getElementById("kaun-kampus-dd");
+      if(dd && newKid !== kid){ dd.value = newKid; }
     } else { toast("Firebase tidak tersedia","err"); }
   } catch(err){
     console.error("Simpan kaunselor gagal",err);
@@ -7859,7 +8362,6 @@ async function deleteKaunselorFromCardEdit() {
 }
 
 function renderKaunselorTable(data){
-  const canEdit = isAdmin() || isKampus(); // Admin Utama & Admin Kampus boleh edit
   const isFSData = window._KAUNSELOR_SUMBER === "firestore";
   if(!data.length) return `<p class="text-sm text-gray-400 p-4 text-center">Tiada kaunselor.</p>`;
   return `<table class="tbl" id="tbl-kaunselor-main">
@@ -7867,26 +8369,34 @@ function renderKaunselorTable(data){
       <th>#</th><th>Nama</th><th>Jawatan</th><th>Gred</th>
       <th>Kod Kampus</th><th>Zon</th><th>Negeri</th>
       <th>No. Kaunselor</th><th>Bimbit</th><th>Email</th><th>Sasaran Sesi</th>
-      ${canEdit?"<th style=\"text-align:center;\">Aksi</th>":""}
+      <th style="text-align:center;">Aksi</th>
     </tr></thead>
-    <tbody>${data.map((u,i)=>{const docId=u._docId||"";return `<tr id="kaun-row-${i}">
-      <td style="color:var(--muted);font-size:.72rem;">${i+1}</td>
-      <td style="font-weight:600;font-size:.82rem;">${u.nama}</td>
-      <td style="font-size:.75rem;">${u.jawatan}</td>
-      <td><span class="bdg bdg-navy" style="font-size:.65rem;">${u.gred}</span></td>
-      <td style="font-size:.72rem;"><span style="font-weight:600;color:var(--pri);">${u._resolvedKid||resolveKampusInfo(u).kampus_id||"—"}</span> ${u._resolvedNama?"<br><span style=\"color:var(--muted);font-size:.65rem;\">"+esc(u._resolvedNama)+"</span>":""}</td>
-      <td><span class="bdg bdg-pri" style="font-size:.65rem;">${u._resolvedZon||resolveKampusInfo(u).zon||"—"}</span></td>
-      <td style="font-size:.72rem;">${u._resolvedNegeri||resolveKampusInfo(u).negeri||"—"}</td>
-      <td style="font-size:.72rem;font-family:monospace;">${u.noKaunselor}</td>
-      <td style="font-size:.72rem;">${u.bimbit}</td>
-      <td style="font-size:.7rem;color:#0E7C61;">${u.email}</td>
-      <td style="text-align:center;font-weight:700;">${u.sasaranSesi||"—"}</td>
-      ${canEdit?`<td style="text-align:center;white-space:nowrap;">
-        ${isFSData?`<button class="btn btn-ghost btn-xs" onclick="editKaunselorRow(${i})" title="Edit"><i class="fas fa-pen" style="color:#0E7C61;"></i></button>
-        ${canEdit?`<button class="btn btn-ghost btn-xs" onclick="deleteKaunselorRow(${i},'${docId}')" title="Padam" style="margin-left:2px;"><i class="fas fa-trash" style="color:#DC2626;"></i></button>`:""}
-        `:`<span style=\"font-size:.65rem;color:var(--muted);\">Sync dulu</span>`}
-      </td>`:""}
-    </tr>`;}).join("")}</tbody>
+    <tbody>${data.map((u,i)=>{
+      const docId = u._docId || "";
+      const kid = String(u._resolvedKid || u.kodKampus || u.kampus_id || "").toUpperCase();
+      const canEdit = canEditKaunselorRecord(u, kid);
+      const canDelete = canDeleteKaunselorRecord(u, kid);
+      return `<tr id="kaun-row-${i}">
+        <td style="color:var(--muted);font-size:.72rem;">${i+1}</td>
+        <td style="font-weight:600;font-size:.82rem;">${u.nama}${canEdit?""/*no flag*/:""}${(u.slotJawatan==="KPP"||u.slotJawatan==="PP")?'<span class="bdg bdg-navy" style="font-size:.55rem;margin-left:4px;">'+u.slotJawatan+'</span>':""}</td>
+        <td style="font-size:.75rem;">${u.jawatan}</td>
+        <td><span class="bdg bdg-navy" style="font-size:.65rem;">${u.gred}</span></td>
+        <td style="font-size:.72rem;"><span style="font-weight:600;color:var(--pri);">${u._resolvedKid||resolveKampusInfo(u).kampus_id||"—"}</span> ${u._resolvedNama?"<br><span style=\"color:var(--muted);font-size:.65rem;\">"+esc(u._resolvedNama)+"</span>":""}</td>
+        <td><span class="bdg bdg-pri" style="font-size:.65rem;">${u._resolvedZon||resolveKampusInfo(u).zon||"—"}</span></td>
+        <td style="font-size:.72rem;">${u._resolvedNegeri||resolveKampusInfo(u).negeri||"—"}</td>
+        <td style="font-size:.72rem;font-family:monospace;">${u.noKaunselor}</td>
+        <td style="font-size:.72rem;">${u.bimbit}</td>
+        <td style="font-size:.7rem;color:#0E7C61;">${u.email}</td>
+        <td style="text-align:center;font-weight:700;">${u.sasaranSesi||"—"}</td>
+        <td style="text-align:center;white-space:nowrap;">
+          ${isFSData ? (`
+            ${canEdit ? `<button class="btn btn-ghost btn-xs" onclick="editKaunselorRow(${i})" title="Kemaskini"><i class="fas fa-pen" style="color:#0E7C61;"></i></button>` : ''}
+            ${canDelete ? `<button class="btn btn-ghost btn-xs" onclick="deleteKaunselorRow(${i},'${docId}')" title="Padam" style="margin-left:2px;"><i class="fas fa-trash" style="color:#DC2626;"></i></button>` : (canEdit ? '<span style="display:inline-block;width:24px;"></span>' : '')}
+            ${(!canEdit && !canDelete) ? '<span style="font-size:.65rem;color:var(--muted);">—</span>' : ''}
+          `) : `<span style="font-size:.65rem;color:var(--muted);">Sync dulu</span>`}
+        </td>
+      </tr>`;
+    }).join("")}</tbody>
   </table>`;
 }
 
@@ -7917,22 +8427,50 @@ window._kaunEditIdx = -1;
 const KAUN_FIELDS = ["nama","jawatan","gred","organisasi","zon","negeri","noKaunselor","bimbit","email","sasaranSesi"];
 const KAUN_LABELS = {nama:"Nama",jawatan:"Jawatan",gred:"Gred",noKaunselor:"No. Kaunselor",bimbit:"Bimbit",email:"Email",sasaranSesi:"Sasaran Sesi",zon:"Zon",negeri:"Negeri",organisasi:"Organisasi"};
 
+// Senarai pilihan jawatan — termasuk KPP/PP untuk Admin Utama
+const KAUN_JAWATAN_OPTS = [
+  "Ketua Penolong Pengarah (KPP)",
+  "Penolong Pengarah (PP)",
+  "Ketua Kaunselor",
+  "Kaunselor (Pentadbiran)",
+  "Kaunselor (Pelajar)",
+  "Pegawai Kaunseling ELTC"
+];
+
 function editKaunselorRow(idx){
   const data = window._kaunFiltered || window._kaunData || [];
   const u = data[idx]; if(!u) return;
   const kid = String(u._resolvedKid || u.kodKampus || u.kampus_id || "").toUpperCase();
-  if(!canManageKaunselorKid(kid)){ toast("Anda hanya boleh mengemaskini rekod kampus sendiri","err"); return; }
+  if(!canEditKaunselorRecord(u, kid)){
+    if(normalizedRole() === "kaunselor" && !isOwnKaunselorRecord(u)){
+      toast("Anda hanya boleh mengemaskini rekod diri sendiri","err");
+    } else {
+      toast("Anda tidak mempunyai kebenaran untuk mengemaskini rekod ini","err");
+    }
+    return;
+  }
   window._kaunEditIdx = idx;
   const row = document.getElementById("kaun-row-"+idx);
   if(!row) return;
+  // Tentukan sama ada pengguna boleh ubah kodKampus & jawatan (hanya Admin Utama)
+  const canChangeCampus = isAdmin();
+  const canChangeJawatan = isAdmin() || (isKampus() && kid !== "IPGM");
   const vals = KAUN_FIELDS.map(f => {
     const v = u[f] || "";
     if(f === "sasaranSesi") return `<input type="number" class="fi" style="font-size:.75rem;padding:3px 6px;width:70px;" value="${v}" data-field="${f}">`;
+    if(f === "jawatan" && canChangeJawatan){
+      const opts = KAUN_JAWATAN_OPTS.map(o => `<option value="${o}" ${o===v?"selected":""}>${o}</option>`).join("");
+      return `<select class="fi" style="font-size:.72rem;padding:3px 6px;min-width:160px;" data-field="${f}">${opts}</select>`;
+    }
+    if(f === "organisasi" && canChangeCampus){
+      const kampOpts = [...KAMPUS].sort(compareMasterKampus).map(k => `<option value="${k.nama}" ${k.nama===v?"selected":""}>${k.nama}</option>`).join("");
+      return `<select class="fi" style="font-size:.72rem;padding:3px 6px;min-width:140px;" data-field="${f}"><option value="">— IPGM (KPP/PP) —</option>${kampOpts}</select>`;
+    }
     return `<input type="text" class="fi" style="font-size:.75rem;padding:3px 6px;min-width:80px;" value="${v}" data-field="${f}">`;
   }).join("");
   row.innerHTML = `<td style="color:var(--muted);font-size:.72rem;">${idx+1}</td>${vals}<td style="text-align:center;white-space:nowrap;">
-    <button class="btn btn-pri btn-xs" onclick="saveKaunselorRow(${idx})"><i class="fas fa-check"></i></button>
-    <button class="btn btn-ghost btn-xs" onclick="cancelKaunselorEdit()" style="margin-left:2px;"><i class="fas fa-times" style="color:#DC2626;"></i></button>
+    <button class="btn btn-pri btn-xs" onclick="saveKaunselorRow(${idx})" title="Simpan"><i class="fas fa-check"></i></button>
+    <button class="btn btn-ghost btn-xs" onclick="cancelKaunselorEdit()" style="margin-left:2px;" title="Batal"><i class="fas fa-times" style="color:#DC2626;"></i></button>
   </td>`;
 }
 
@@ -7950,12 +8488,45 @@ async function saveKaunselorRow(idx){
   if(!docId){ toast("Tiada ID Firestore rekod ini","err"); return; }
   const row = document.getElementById("kaun-row-"+idx);
   if(!row) return;
-  const inputs = row.querySelectorAll("input[data-field]");
+  const inputs = row.querySelectorAll("input[data-field], select[data-field]");
   const updates = {};
   inputs.forEach(inp => {
     const f = inp.dataset.field;
     updates[f] = f === "sasaranSesi" ? parseFloat(inp.value)||0 : inp.value.trim();
   });
+  // Jika Admin Utama tukar organisasi → kira kodKampus baru + zon + negeri
+  if(updates.organisasi !== undefined && isAdmin()){
+    const newOrg = updates.organisasi.trim();
+    if(newOrg){
+      // Cari kampus master yang sepadan dengan nama
+      const kobj = [...KAMPUS].find(k => k.nama === newOrg);
+      if(kobj){
+        updates.kodKampus = kobj.id;
+        updates.kampus_id = kobj.id;
+        updates.zon = kobj.zon;
+        updates.negeri = kobj.negeri;
+        updates.ipgk = "IPGK" + kobj.id;
+      }
+    } else {
+      // organisasi kosong = IPGM (untuk KPP/PP)
+      updates.kodKampus = "IPGM";
+      updates.kampus_id = "IPGM";
+      updates.zon = "Zon IPGM";
+      updates.negeri = "Wilayah Persekutuan";
+    }
+  }
+  // Auto-detect slotJawatan dari jawatan (supaya KPP/PP badge diperbarui)
+  if(updates.jawatan !== undefined){
+    const j = String(updates.jawatan).toUpperCase();
+    if(j.includes("KETUA PENOLONG PENGARAH")) updates.slotJawatan = "KPP";
+    else if(j.includes("PENOLONG PENGARAH")) updates.slotJawatan = "PP";
+    else if(j.includes("KETUA")) updates.slotJawatan = "KETUA";
+    else if(j.includes("PENTADBIR")) updates.slotJawatan = "PENTADBIR";
+    else if(j.includes("PELAJAR") || j.includes("MURID")) updates.slotJawatan = "PELAJAR";
+    else if(j.includes("ELTC")) updates.slotJawatan = "ELTC";
+  }
+  updates.dikemasKiniOleh = SES.uid || "";
+  updates.dikemasKiniPada = new Date().toISOString();
   try {
     if(window.MYFB && window.MYFB.updateKaunselor){
       await window.MYFB.updateKaunselor(docId, updates, SES.uid);
@@ -7972,8 +8543,15 @@ async function deleteKaunselorRow(idx, docId){
   const data = window._kaunFiltered || window._kaunData || [];
   const target = data[idx];
   const kid = target ? String(target._resolvedKid || target.kodKampus || target.kampus_id || "").toUpperCase() : "";
-  if(!canManageKaunselorKid(kid)){ toast("Anda hanya boleh memadam rekod kampus sendiri","err"); return; }
-  if(!docId || !confirm("Padam rekod kaunselor ini?")) return;
+  if(!canDeleteKaunselorRecord(target, kid)){
+    if(normalizedRole() === "kaunselor"){
+      toast("Kaunselor tidak boleh memadam rekod. Sila hubungi Admin Kampus atau Admin Utama.","err");
+    } else {
+      toast("Anda hanya boleh memadam rekod kampus sendiri (kecuali KPP/PP di IPGM)","err");
+    }
+    return;
+  }
+  if(!docId || !confirm(`Padam rekod kaunselor ini?\n\nNama: ${target?.nama||"—"}\nKampus: ${target?._resolvedNama||kid}\n\nTindakan ini tidak boleh diundur.`)) return;
   try {
     if(window.MYFB && window.MYFB.deleteKaunselor){
       await window.MYFB.deleteKaunselor(docId);
@@ -8012,6 +8590,15 @@ function addKaunselorModal(){
   if(!(isAdmin()||isKampus())){ toast("Tiada kebenaran untuk menambah kaunselor","err"); return; }
   const _isAK = isKampus();
   const _myK = kObj(SES.kampus);
+  // Senarai jawatan — termasuk KPP/PP untuk Admin Utama
+  const jawatanOpts = [
+    "Ketua Penolong Pengarah (KPP)",
+    "Penolong Pengarah (PP)",
+    "Ketua Kaunselor",
+    "Kaunselor (Pentadbiran)",
+    "Kaunselor (Pelajar)",
+    "Pegawai Kaunseling ELTC"
+  ];
   document.getElementById("modal-wrap").innerHTML=`
   <div class="modal-bg" onclick="if(event.target===this)closeModal()">
   <div class="modal-box" style="max-width:620px">
@@ -8021,16 +8608,17 @@ function addKaunselorModal(){
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Nama *</label><input class="fi" id="mk-nama" style="width:100%;" placeholder="Nama penuh"></div>
-      <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Jawatan *</label><select class="fi" id="mk-jawatan" style="width:100%;"><option>Ketua Kaunselor</option><option>Kaunselor (Pentadbiran)</option><option>Kaunselor (Pelajar)</option></select></div>
+      <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Jawatan *</label><select class="fi" id="mk-jawatan" style="width:100%;">${jawatanOpts.map(j=>`<option>${j}</option>`).join("")}</select></div>
       <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Gred</label><select class="fi" id="mk-gred" style="width:100%;"><option value="">-- Pilih Gred --</option><option value="DG9">DG9</option><option value="DG10">DG10</option><option value="DG12">DG12</option><option value="DG13">DG13</option></select></div>
       <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">No. Kaunselor</label><input class="fi" id="mk-noKaunselor" style="width:100%;" placeholder="No. pendaftaran"></div>
       <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">No. Bimbit</label><input class="fi" id="mk-bimbit" style="width:100%;" placeholder="01x-xxxxxxx"></div>
       <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Email</label><input class="fi" id="mk-email" type="email" style="width:100%;" placeholder="email@moe.gov.my"></div>
       <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Sasaran Sesi</label><input class="fi" id="mk-sasaranSesi" type="number" style="width:100%;" value="0"></div>
-      <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Organisasi</label>${_isAK ? `<input class="fi" style="width:100%;" value="${_myK.nama||SES.kampus}" readonly>` : `<select class="fi" id="mk-organisasi" style="width:100%;">${[...KAMPUS].sort(compareMasterKampus).map(k=>`<option>${k.nama}</option>`).join("")}</select>`}</div>
-      <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Zon</label>${_isAK ? `<input class="fi" style="width:100%;" value="${_myK.zon||''}" readonly>` : `<select class="fi" id="mk-zon" style="width:100%;">${KLIST.map(z=>`<option>${z}</option>`).join("")}</select>`}</div>
-      <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Negeri</label>${_isAK ? `<input class="fi" style="width:100%;" value="${_myK.negeri||''}" readonly>` : `<input class="fi" id="mk-negeri" style="width:100%;" placeholder="Negeri">`}</div>
+      <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Organisasi ${isAdmin()?"(IPGM untuk KPP/PP)":""}</label>${_isAK ? `<input class="fi" style="width:100%;" value="${_myK.nama||SES.kampus}" readonly>` : `<select class="fi" id="mk-organisasi" style="width:100%;" onchange="onAddKaunselorOrgChange()"><option value="IPGM">— IPGM (Ibu Pejabat — KPP/PP) —</option>${[...KAMPUS].sort(compareMasterKampus).map(k=>`<option value="${k.id}">${k.nama}</option>`).join("")}</select>`}</div>
+      <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Zon</label>${_isAK ? `<input class="fi" style="width:100%;" value="${_myK.zon||''}" readonly>` : `<input class="fi" id="mk-zon" style="width:100%;" value="Zon IPGM" placeholder="Auto-isi">`}</div>
+      <div><label style="font-size:.75rem;font-weight:600;color:var(--navy);">Negeri</label>${_isAK ? `<input class="fi" style="width:100%;" value="${_myK.negeri||''}" readonly>` : `<input class="fi" id="mk-negeri" style="width:100%;" value="Wilayah Persekutuan" placeholder="Auto-isi">`}</div>
     </div>
+    ${isAdmin() ? `<div style="margin-top:8px;font-size:.72rem;color:#0E7C61;background:#F0F7F4;border:1px solid #B3E2D2;border-radius:6px;padding:6px 10px;"><i class="fas fa-circle-info mr-1"></i>Pilih <b>IPGM</b> jika menambah Ketua Penolong Pengarah (KPP) atau Penolong Pengarah (PP) di ibu pejabat. Zon & negeri akan auto-diisi.</div>` : ""}
     <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
       <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
       <button class="btn btn-pri" onclick="saveNewKaunselor()"><i class="fas fa-save mr-1"></i>Simpan</button>
@@ -8038,23 +8626,85 @@ function addKaunselorModal(){
   </div></div>`;
 }
 
+// Auto-isi Zon & Negeri bila Admin Utama pilih kampus/IPGM dalam modal Tambah
+function onAddKaunselorOrgChange(){
+  if(!isAdmin()) return;
+  const org = document.getElementById("mk-organisasi")?.value || "";
+  const zonEl = document.getElementById("mk-zon");
+  const negEl = document.getElementById("mk-negeri");
+  if(org === "IPGM"){
+    if(zonEl) zonEl.value = "Zon IPGM";
+    if(negEl) negEl.value = "Wilayah Persekutuan";
+  } else {
+    const kobj = [...KAMPUS].find(k => String(k.id).toUpperCase() === String(org).toUpperCase());
+    if(kobj){
+      if(zonEl) zonEl.value = kobj.zon || "";
+      if(negEl) negEl.value = kobj.negeri || "";
+    }
+  }
+}
+
 async function saveNewKaunselor(){
   const nama = document.getElementById("mk-nama")?.value?.trim();
   if(!nama){toast("Nama diperlukan","err");return;}
   const _isAK = isKampus();
   const _myK = kObj(SES.kampus);
+  const jawatan = document.getElementById("mk-jawatan")?.value||"";
+  // Auto-detect slotJawatan
+  const jUp = String(jawatan).toUpperCase();
+  let slotJawatan = "LAIN";
+  if(jUp.includes("KETUA PENOLONG PENGARAH")) slotJawatan = "KPP";
+  else if(jUp.includes("PENOLONG PENGARAH")) slotJawatan = "PP";
+  else if(jUp.includes("KETUA")) slotJawatan = "KETUA";
+  else if(jUp.includes("PENTADBIR")) slotJawatan = "PENTADBIR";
+  else if(jUp.includes("PELAJAR") || jUp.includes("MURID")) slotJawatan = "PELAJAR";
+  else if(jUp.includes("ELTC")) slotJawatan = "ELTC";
+  // Kira kampus_id & organisasi
+  let kampus_id, organisasi, zon, negeri;
+  if(_isAK){
+    kampus_id = SES.kampus;
+    organisasi = _myK.nama || SES.kampus;
+    zon = _myK.zon || "";
+    negeri = _myK.negeri || "";
+  } else {
+    const orgVal = document.getElementById("mk-organisasi")?.value || "";
+    if(orgVal === "IPGM"){
+      kampus_id = "IPGM";
+      organisasi = "IPGM (Ibu Pejabat — KPP/PP)";
+      zon = "Zon IPGM";
+      negeri = "Wilayah Persekutuan";
+    } else {
+      const kobj = [...KAMPUS].find(k => String(k.id).toUpperCase() === String(orgVal).toUpperCase());
+      if(kobj){
+        kampus_id = kobj.id;
+        organisasi = kobj.nama;
+        zon = kobj.zon || "";
+        negeri = kobj.negeri || "";
+      } else {
+        // Fallback jika guna kod lama
+        kampus_id = normalizeCampusId(orgVal);
+        organisasi = document.getElementById("mk-organisasi")?.selectedOptions?.[0]?.textContent || orgVal;
+        zon = document.getElementById("mk-zon")?.value || "";
+        negeri = document.getElementById("mk-negeri")?.value || "";
+      }
+    }
+  }
   const rec = {
-    nama, jawatan: document.getElementById("mk-jawatan")?.value||"",
+    nama, jawatan, slotJawatan,
     gred: document.getElementById("mk-gred")?.value||"",
     noKaunselor: document.getElementById("mk-noKaunselor")?.value||"",
     bimbit: document.getElementById("mk-bimbit")?.value||"",
     email: document.getElementById("mk-email")?.value||"",
     sasaranSesi: parseFloat(document.getElementById("mk-sasaranSesi")?.value)||0,
-    organisasi: _isAK ? (_myK.nama||SES.kampus) : (document.getElementById("mk-organisasi")?.value||""),
-    zon: _isAK ? (_myK.zon||"") : (document.getElementById("mk-zon")?.value||""),
-    negeri: _isAK ? (_myK.negeri||"") : (document.getElementById("mk-negeri")?.value||""),
-    kampus_id: _isAK ? SES.kampus : normalizeCampusId(document.getElementById("mk-organisasi")?.value||""),
-    kodKampus: _isAK ? SES.kampus : normalizeCampusId(document.getElementById("mk-organisasi")?.value||"")
+    organisasi, zon, negeri,
+    kampus_id,
+    kodKampus: kampus_id,
+    ipgk: kampus_id === "IPGM" ? "IPGM" : ("IPGK" + kampus_id),
+    diciptaOleh: SES.uid || "",
+    diciptaPada: new Date().toISOString(),
+    dikemasKiniOleh: SES.uid || "",
+    dikemasKiniPada: new Date().toISOString(),
+    aktif: true
   };
   try {
     if(window.MYFB && window.MYFB.saveKaunselorBatch){
@@ -12735,7 +13385,7 @@ function filterProgram(){
 // Wrapper parseSesiRow untuk loadTabData (hi not used, index-based)
 function _parseEnrolmenRow(row, hi){
   const g = (col) => (row[hi[col]||hi[col.toUpperCase()]]||"" ).toString().trim();
-  const kodKampus = g("KODKAMPUS") || g("kodKampus") || "";
+  const kodKampus = g("KODKAMPUS") || g("kodKampus") || g("KOD_KAMPUS") || "";
   const ipgk = g("IPGK") || kodKampus || g("KOD_IPG") || "";
   const _validEnrolIds = new Set([...KAMPUS].sort(compareMasterKampus).map(k=>k.id).concat(["ELTC","IPGM"]));
   // Cuba cari kampus_id: dahulu dari kodKampus/ipgk format IPGKXX
@@ -12745,20 +13395,34 @@ function _parseEnrolmenRow(row, hi){
     _kampusId = (_kampusIdRaw && _validEnrolIds.has(_kampusIdRaw)) ? _kampusIdRaw : _kampusId;
   }
   const kobj = KAMPUS.find(k=>k.id===_kampusId)||{};
+  // Normalize agama (padded 2-digit + map)
+  const agamaRaw = g("AGAMA");
+  const agamaNorm = (agamaRaw && agamaRaw.length === 1 && /^\d$/.test(agamaRaw)) ? "0" + agamaRaw : agamaRaw;
+  // Normalize program ke akronim (PPISMP/PISMP/PDPP)
+  const kodProgramRaw = g("KOD_PROGRAM") || g("PROGRAM");
+  const programAkronim = (typeof normalizeProgram === "function") ? normalizeProgram(kodProgramRaw) : kodProgramRaw;
+  // Normalize status pengajian (AKTIF/ATIF → AKTIF)
+  const statusRaw = g("STATUS_PENGAJIAN") || g("STATUS PENGAJIAN");
+  const statusNorm = (typeof normalizeStatusPengajian === "function") ? normalizeStatusPengajian(statusRaw) : (statusRaw||"").toUpperCase();
   return {
-    noKP: g("NO_KP"), no_matrik: g("NO_MATRIK"), nama: g("NAMA"), jantina: g("JANTINA"),
-    telefon: g("NO TELEFON HP"), emel: g("EMEL"),
+    noKP: g("NO_KP"), no_matrik: (g("NO_MATRIK")||"").toUpperCase(), nama: g("NAMA"), jantina: (g("JANTINA")||"").toUpperCase(),
+    telefon: g("NO TELEFON HP") || g("TELEFON") || "0",
+    tel: g("NO TELEFON HP") || g("TELEFON") || "0",
+    emel: g("EMEL") || g("EMAIL"),
     ipgk, kodKampus, zon: g("ZON"),
     kampus_id: _kampusId,
     kampus_nama: kobj.nama||ipgk,
     aliran_sekolah: g("ALIRAN SEKOLAH")||g("ALIRAN_SEKOLAH"),
-    opsyen_1: g("KOD_OPSYEN_1"), opsyen_2: g("KOD_OPSYEN_2"),
+    kod_program: g("KOD_PROGRAM"),
+    program: programAkronim,
+    mod_pengajian: g("MOD PENGAJIAN") || g("MOD_PENGAJIAN"),
+    opsyen_1: g("KOD_OPSYEN_1"), opsyen_2: g("KOD_OPSYEN_2") || "0", opsyen_3: g("KOD_OPSYEN_3") || "0",
     sesi_ambilan: g("SESI_AMBILAN_PENGAJIAN"),
     sesi_tamat: g("SESI_TAMAT_PENGAJIAN"),
-    status_pengajian: g("STATUS_PENGAJIAN")||g("STATUS PENGAJIAN"),
-    agama: g("AGAMA"),
-    agama_txt: {"1":"Islam","2":"Kristian","3":"Buddha","4":"Hindu","5":"Lain-lain"}[g("AGAMA")]||g("AGAMA"),
-    program: g("PROGRAM"), tahun: g("TAHUN"),
+    status_pengajian: statusNorm,
+    agama: agamaRaw,
+    agama_txt: (typeof EB_AGAMA_MAP !== "undefined" ? EB_AGAMA_MAP[agamaNorm] : ({"1":"Islam","2":"Kristian","3":"Buddha","4":"Hindu","5":"Lain-lain"})[agamaNorm]) || agamaRaw,
+    tahun: g("TAHUN"),
     daerah: g("DAERAH"), negeri: g("NEGERI"),
     lat: parseFloat(g("LATITUDE"))||0, lng: parseFloat(g("LONGITUDE"))||0
   };
@@ -18841,6 +19505,694 @@ function pgAUUjianPsikologi(c){aupLoad(c);}
 // Page entry — wrapper for the role (ak vs au) so both can navigate here
 function pgAKResetUjian(c){ _resetUjianLoad(c, SES.kampus, false); }
 function pgAUResetUjian(c){ _resetUjianLoad(c, null, true); }
+
+// ════════════════════════════════════════════════════════════════════════════
+// KEMASKINI ENROLMEN BERKUMPULAN — Admin Utama
+// Membolehkan admin muat naik CSV/Excel senarai pelajar terkini, sistem akan:
+//   1. Tambah rekod baharu (matrik tidak wujud)
+//   2. Kemaskini rekod sedia ada (matrik sama, data berbeza)
+//   3. Padam rekod yang berstatus "TAMAT" (opsyen, boleh ditogol)
+// ════════════════════════════════════════════════════════════════════════════
+
+// State for the bulk-update flow
+let _ebParsed = [];        // Records parsed from CSV (after column mapping)
+let _ebExisting = [];      // Existing records in Firestore
+let _ebStats = { total:0, baru:0, kemaskini:0, tamat:0, tiadaStatus:0 };
+
+function pgAUEnrolmenBulk(c){
+  // Guard: only admin utama
+  if(!isAdmin()){
+    c.innerHTML = `<div style="text-align:center;padding:60px;color:var(--muted);"><i class="fas fa-lock" style="font-size:42px;display:block;margin-bottom:14px;opacity:.3;"></i><div style="font-weight:600;color:var(--navy);">Akses Dihadkan</div><div style="font-size:.82rem;margin-top:4px;">Hanya Admin Utama boleh menggunakan alat ini.</div></div>`;
+    return;
+  }
+  c.innerHTML = `
+    <div class="afu bg-gradient-to-br from-navy-800 to-pri-700 rounded-xl p-5 mb-5 text-white relative overflow-hidden">
+      <div class="absolute right-0 top-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/3 translate-x-1/4"></div>
+      <div class="relative z-10">
+        <div class="text-white/50 text-xs mb-1"><i class="fas fa-arrow-up-from-bracket"></i> Pengurusan Sistem</div>
+        <div class="font-display font-800 text-xl">Kemaskini Enrolmen Pelajar (Berkumpulan)</div>
+        <div class="text-white/55 text-sm mt-1">Muat naik CSV/Excel senarai pelajar terkini — sistem akan tambah, kemaskini, atau padam rekod secara automatik.</div>
+      </div>
+    </div>
+
+    <!-- STEP 1: Upload -->
+    <div class="card afu">
+      <div class="card-head">
+        <span class="card-title"><i class="fas fa-upload text-pri-500 mr-1"></i>Langkah 1 — Muat Naik Fail CSV / Excel</span>
+      </div>
+      <div class="card-body">
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;">
+          <label class="btn btn-pri" style="cursor:pointer;">
+            <i class="fas fa-file-csv"></i> Pilih Fail CSV
+            <input type="file" accept=".csv,text/csv" id="eb-file-input" style="display:none;" onchange="ebHandleFile(this)">
+          </label>
+          <label class="btn btn-out" style="cursor:pointer;">
+            <i class="fas fa-file-excel" style="color:#16A34A;"></i> Pilih Fail Excel (.xlsx)
+            <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="eb-xlsx-input" style="display:none;" onchange="ebHandleFile(this)">
+          </label>
+          <span style="font-size:.78rem;color:var(--muted);">Atau drag &amp; drop fail ke sini</span>
+        </div>
+        <div style="margin-top:14px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:.78rem;color:#92400e;">
+          <b><i class="fas fa-info-circle"></i> Struktur lajur yang diperlukan (case-insensitive):</b><br>
+          <span style="font-family:monospace;">NO_MATRIK, NAMA, JANTINA, IPGK, STATUS_PENGAJIAN</span> (wajib)<br>
+          <span style="font-family:monospace;">ZON, ALIRAN_SEKOLAH, PROGRAM, KOD_OPSYEN_1, KOD_OPSYEN_2, SESI_AMBILAN_PENGAJIAN, SESI_TAMAT_PENGAJIAN, AGAMA, TAHUN, DAERAH, NEGERI, NO TELEFON HP, EMEL</span> (pilihan)
+          <br><br>
+          <b>Status Pengajian yang dikenali:</b> ATIF, BERHENTI, TANGGUH, TAMAT<br>
+          <span style="color:#991b1b;"><i class="fas fa-triangle-exclamation"></i> Rekod dengan status <b>TAMAT</b> akan ditandai untuk dipadam (boleh ditogol di Langkah 3).</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Column mapping + Preview -->
+    <div id="eb-step2" class="hidden" style="margin-top:14px;">
+      <div class="card afu">
+        <div class="card-head">
+          <span class="card-title"><i class="fas fa-table-columns text-pri-500 mr-1"></i>Langkah 2 — Pemetaan Lajur &amp; Preview</span>
+          <button class="btn btn-ghost btn-sm" onclick="ebReset()"><i class="fas fa-rotate-left"></i> Mula Semula</button>
+        </div>
+        <div class="card-body">
+          <div id="eb-mapping" style="margin-bottom:14px;"></div>
+          <div id="eb-preview"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: Apply -->
+    <div id="eb-step3" class="hidden" style="margin-top:14px;">
+      <div class="card afu">
+        <div class="card-head">
+          <span class="card-title"><i class="fas fa-bolt text-amb-500 mr-1"></i>Langkah 3 — Laksanakan Kemaskini</span>
+        </div>
+        <div class="card-body">
+          <div id="eb-summary"></div>
+          <div style="margin-top:18px;display:flex;flex-direction:column;gap:10px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;cursor:pointer;">
+              <input type="checkbox" id="eb-opt-delete-tamat" checked>
+              <span>Padam rekod <b>TAMAT</b> secara kekal dari Firestore</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;cursor:pointer;">
+              <input type="checkbox" id="eb-opt-archive-tamat">
+              <span>Simpan rekod <b>TAMAT</b> ke koleksi <code>enrolmen_pelajar_arkib</code> sebelum dipadam</span>
+            </label>
+            <label style="display:flex;align-items:flex-start;gap:8px;font-size:.82rem;cursor:pointer;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:8px 10px;">
+              <input type="checkbox" id="eb-opt-delete-missing" style="margin-top:2px;">
+              <span><b style="color:#991B1B;">⚠ Padam rekod sedia ada yang TIADA dalam fail ini</b><br><span style="font-size:.75rem;color:#7F1D1D;">Rekod lama dalam Firestore yang <code>no_matrik</code> tidak wujud dalam fail ini akan dipadam (boleh diarkibkan dahulu). Ini memastikan Firestore betul-betul sync dengan fail Excel.</span></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;cursor:pointer;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:8px 10px;">
+              <input type="checkbox" id="eb-opt-archive-missing">
+              <span>Arkib rekod yang akan dipadam ke <code>enrolmen_pelajar_arkib</code> sebelum dipadam (disyorkan)</span>
+            </label>
+          </div>
+          <div style="margin-top:14px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:.78rem;color:#92400e;">
+            <i class="fas fa-info-circle"></i> Operasi ini boleh mengambil masa beberapa minit bergantung kepada bilangan rekod. Jangan tutup tetingkap ini semasa proses berjalan.
+          </div>
+          <div style="margin-top:14px;display:flex;gap:8px;">
+            <button class="btn btn-pri" onclick="ebApply()"><i class="fas fa-bolt"></i> Laksanakan Kemaskini</button>
+            <button class="btn btn-ghost" onclick="ebReset()">Batal &amp; Mula Semula</button>
+          </div>
+          <div id="eb-progress" style="margin-top:14px;display:none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4: Result -->
+    <div id="eb-step4" class="hidden" style="margin-top:14px;">
+      <div class="card afu">
+        <div class="card-head"><span class="card-title"><i class="fas fa-check-circle text-pri-500 mr-1"></i>Langkah 4 — Hasil Kemaskini</span></div>
+        <div class="card-body">
+          <div id="eb-result"></div>
+          <div style="margin-top:14px;display:flex;gap:8px;">
+            <button class="btn btn-pri" onclick="navTo('au-enrolmen')"><i class="fas fa-arrow-right"></i> Lihat Paparan Enrolmen</button>
+            <button class="btn btn-ghost" onclick="ebReset()">Muat Naik Fail Lain</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Mapping of expected CSV columns to internal field names
+const EB_FIELD_MAP = [
+  { field:"no_matrik",         label:"NO_MATRIK",                aliases:["no_matrik","no.matrik","no matrik","matrik","matrik_no"], required:true },
+  { field:"nama",              label:"NAMA",                      aliases:["nama","nama_pelajar","name"], required:true },
+  { field:"jantina",           label:"JANTINA",                   aliases:["jantina","gender","j"], required:true },
+  { field:"ipgk",              label:"IPGK / KOD_IPG",            aliases:["ipgk","ipg","kod_ipg","ipgkkampus","kampus_kod","kod_ipg"], required:true },
+  { field:"status_pengajian",  label:"STATUS_PENGAJIAN",          aliases:["status_pengajian","status pengajian","status"], required:true },
+  { field:"noKP",              label:"NO_KP",                     aliases:["no_kp","nokp","no kp","kad_pengenalan","ic","mykid"], required:false },
+  { field:"kodKampus",         label:"KodKampus",                 aliases:["kodkampus","kod_kampus","kampus_kod","kampuskod"], required:false },
+  { field:"zon",               label:"ZON",                        aliases:["zon","zone"], required:false },
+  { field:"aliran_sekolah",    label:"ALIRAN_SEKOLAH",            aliases:["aliran_sekolah","aliran sekolah","aliran","stream"], required:false },
+  { field:"kod_program",       label:"KOD_PROGRAM",               aliases:["kod_program","kod program","program_kod","programkod"], required:false },
+  { field:"mod_pengajian",     label:"MOD PENGAJIAN",             aliases:["mod_pengajian","mod pengajian","mod","mode"], required:false },
+  { field:"opsyen_1",          label:"KOD_OPSYEN_1",              aliases:["kod_opsyen_1","kod opsyen 1","opsyen_1","opsyen1"], required:false },
+  { field:"opsyen_2",          label:"KOD_OPSYEN_2",              aliases:["kod_opsyen_2","kod opsyen 2","opsyen_2","opsyen2"], required:false },
+  { field:"opsyen_3",          label:"KOD_OPSYEN_3",              aliases:["kod_opsyen_3","kod opsyen 3","opsyen_3","opsyen3"], required:false },
+  { field:"sesi_ambilan",      label:"SESI_AMBILAN_PENGAJIAN",   aliases:["sesi_ambilan_pengajian","sesi ambilan pengajian","sesi_ambilan","sesi ambilan","ambilan"], required:false },
+  { field:"sesi_tamat",        label:"SESI_TAMAT_PENGAJIAN",     aliases:["sesi_tamat_pengajian","sesi tamat pengajian","sesi_tamat","sesi tamat","tamat"], required:false },
+  { field:"agama",             label:"AGAMA",                      aliases:["agama","religion"], required:false },
+  { field:"tahun",             label:"TAHUN",                      aliases:["tahun","year"], required:false },
+  { field:"daerah",            label:"DAERAH",                     aliases:["daerah","district"], required:false },
+  { field:"negeri",            label:"NEGERI",                     aliases:["negeri","state"], required:false },
+  { field:"tel",               label:"NO TELEFON HP",            aliases:["no telefon hp","no_telefon_hp","tel","telefon","telefon_hp","bimbit"], required:false },
+  { field:"emel",              label:"EMEL",                       aliases:["emel","email","e-mel"], required:false },
+];
+
+// Mapping kod program (101/102/105/106) kepada akronim untuk paparan
+const EB_PROGRAM_MAP = {
+  "101": "PPISMP",  // Program Persediaan Ijazah Sarjana Muda Perguruan
+  "102": "PISMP",   // Program Ijazah Sarjana Muda Perguruan
+  "105": "PIPP",    // Program Ijazah Perguruan Pendidikan (placeholder — sila kemaskini jika nama salah)
+  "106": "PDPP",    // Program Diploma Pascasiswazah Pendidikan
+  // Legacy aliases untuk keserasian data lama
+  "PPISMP": "PPISMP",
+  "PISMP":  "PISMP",
+  "PDPP":   "PDPP",
+  "PIPP":   "PIPP",
+  "DPLI":   "PDPP",  // DPLI lama = PDPP baru
+  "201":    "PDPP"
+};
+
+// Mapping kod agama kepada label (sumber: IPGM)
+const EB_AGAMA_MAP = {
+  "1":  "Islam",     "01": "Islam",
+  "2":  "Kristian",  "02": "Kristian",
+  "3":  "Buddha",    "03": "Buddha",
+  "4":  "Hindu",     "04": "Hindu",
+  "5":  "Lain-lain", "05": "Lain-lain",
+  // Kod tambahan yang dijumpai dalam data Excel
+  "6":  "Taoisme",   "06": "Taoisme",
+  "7":  "Sikh",      "07": "Sikh",
+  "9":  "Bahai",     "09": "Bahai",
+  "99": "Tiada Agama"
+};
+
+// Normalize STATUS_PENGAJIAN — terima kedua-dua ejaan "AKTIF" (betul) & "ATIF" (legacy typo)
+function normalizeStatusPengajian(s){
+  const v = String(s || "").trim().toUpperCase();
+  if(v === "AKTIF" || v === "ATIF") return "AKTIF";
+  return v;
+}
+
+// Normalize kod program ke akronim (PPISMP/PISMP/PDPP) untuk paparan
+function normalizeProgram(kodOrAkronim){
+  const v = String(kodOrAkronim || "").trim().toUpperCase();
+  if(!v) return "";
+  // Jika dah akronim, kekal
+  if(["PPISMP","PISMP","PDPP"].includes(v)) return v;
+  // Jika kod nombor atau akronim lama, map
+  return EB_PROGRAM_MAP[v] || v;
+}
+
+let _ebHeaders = [];   // CSV headers from the file
+let _ebRawRows = [];   // Raw CSV rows (arrays of strings)
+
+// Handle file upload — accept CSV or XLSX
+async function ebHandleFile(input){
+  const file = input.files[0];
+  if(!file){ return; }
+  toast(`Memproses fail: ${file.name}...`, "inf");
+
+  try {
+    if(file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv"){
+      const text = await file.text();
+      ebParseCSV(text);
+    } else if(file.name.toLowerCase().endsWith(".xlsx")){
+      const data = await ebParseXLSX(file);
+      ebParseFromArrays(data.headers, data.rows);
+    } else {
+      toast("Fail tidak disokong. Sila muat naik .csv atau .xlsx", "err");
+      return;
+    }
+    ebRenderMapping();
+  } catch(err){
+    console.error("[EB] File parse error:", err);
+    toast("Gagal baca fail: " + (err.message || err), "err");
+  }
+}
+
+// Parse CSV text — supports quoted fields with commas
+function ebParseCSV(text){
+  const lines = text.replace(/\r/g, "").split("\n").filter(l => l.trim());
+  if(lines.length < 2){ toast("Fail CSV kosong atau tiada data", "err"); return; }
+  // Robust CSV split that handles quoted commas
+  const splitCSVLine = (line) => {
+    const out = [];
+    let cur = "", inQ = false;
+    for(let i = 0; i < line.length; i++){
+      const ch = line[i];
+      if(ch === '"'){
+        if(inQ && line[i+1] === '"'){ cur += '"'; i++; }
+        else { inQ = !inQ; }
+      } else if(ch === ',' && !inQ){
+        out.push(cur); cur = "";
+      } else { cur += ch; }
+    }
+    out.push(cur);
+    return out.map(s => s.trim().replace(/^"|"$/g, ""));
+  };
+  _ebHeaders = splitCSVLine(lines[0]);
+  _ebRawRows = lines.slice(1).map(splitCSVLine);
+  console.log(`[EB] CSV parsed: ${_ebHeaders.length} columns, ${_ebRawRows.length} rows`);
+  toast(`${_ebRawRows.length} baris dijumpai dalam CSV`, "ok");
+}
+
+// Parse XLSX file using SheetJS
+async function ebParseXLSX(file){
+  if(typeof XLSX === "undefined"){
+    toast("Pustaka XLSX tidak dimuatkan. Sila gunakan CSV.", "err");
+    throw new Error("XLSX library missing");
+  }
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array" });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+  if(json.length < 2){ throw new Error("Fail Excel kosong atau tiada data"); }
+  return { headers: json[0].map(h => String(h).trim()), rows: json.slice(1).filter(r => r.some(c => String(c).trim())) };
+}
+
+// Build records from headers + rows
+function ebParseFromArrays(headers, rows){
+  _ebHeaders = headers;
+  _ebRawRows = rows;
+  console.log(`[EB] Parsed: ${headers.length} columns, ${rows.length} rows`);
+  toast(`${rows.length} baris dijumpai`, "ok");
+}
+
+// Auto-detect which CSV column maps to which internal field
+function ebAutoDetectMapping(){
+  const map = {};
+  EB_FIELD_MAP.forEach(f => {
+    const hdr = _ebHeaders.findIndex(h => {
+      const hl = h.toLowerCase().replace(/[\s._-]+/g, "_");
+      if(hl === f.label.toLowerCase().replace(/[\s._-]+/g, "_")) return true;
+      return f.aliases.some(a => hl === a.toLowerCase().replace(/[\s._-]+/g, "_"));
+    });
+    map[f.field] = hdr >= 0 ? hdr : "";
+  });
+  return map;
+}
+
+// Build a record from a row using the current mapping
+function ebBuildRecord(row, mapping){
+  const get = (field) => {
+    const idx = mapping[field];
+    return (idx !== "" && idx >= 0 && idx < row.length) ? String(row[idx] ?? "").trim() : "";
+  };
+  const ipgk = get("ipgk");
+  // Resolve kampus_id and kampus_nama from ipgk code
+  const normalizedKampusId = (typeof normalizeCampusId === "function") ? normalizeCampusId(ipgk) : ipgk;
+  const kobj = (typeof KAMPUS === "object" && KAMPUS.length) ? KAMPUS.find(k => k.id === normalizedKampusId) : null;
+  const agamaRaw = get("agama");
+  // Normalize agama — pastikan 2-digit (cth. "1" → "01")
+  const agamaNorm = (agamaRaw && agamaRaw.length === 1 && /^\d$/.test(agamaRaw)) ? "0" + agamaRaw : agamaRaw;
+  // Normalize kod program → akronim untuk paparan
+  const kodProgramRaw = get("kod_program");
+  const programAkronim = normalizeProgram(kodProgramRaw);
+  // Normalize status pengajian (AKTIF/ATIF → AKTIF)
+  const statusRaw = get("status_pengajian");
+  const statusNorm = normalizeStatusPengajian(statusRaw);
+  // Normalize jantina
+  const jantinaRaw = get("jantina").toUpperCase();
+  const jantinaNorm = jantinaRaw === "L" ? "L" : (jantinaRaw === "P" ? "P" : jantinaRaw);
+  return {
+    no_matrik:        get("no_matrik").toUpperCase(),
+    noKP:             get("noKP"),
+    nama:             get("nama"),
+    jantina:          jantinaNorm,
+    tel:              get("tel") || "0",
+    emel:             get("emel"),
+    kod_ipg:          ipgk,
+    ipgk:             ipgk,
+    kodKampus:        get("kodKampus") || ipgk.replace(/^IPGK_/, ""),
+    zon:              get("zon"),
+    kampus_id:        normalizedKampusId,
+    kampus_nama:      kobj?.nama || ipgk,
+    aliran_sekolah:   get("aliran_sekolah"),
+    kod_program:      kodProgramRaw,
+    program:          programAkronim,
+    mod_pengajian:    get("mod_pengajian"),
+    opsyen_1:         get("opsyen_1"),
+    opsyen_2:         get("opsyen_2") || "0",
+    opsyen_3:         get("opsyen_3") || "0",
+    sesi_ambilan:     get("sesi_ambilan"),
+    sesi_tamat:       get("sesi_tamat"),
+    status_pengajian: statusNorm,
+    agama:            agamaRaw,
+    agama_txt:        EB_AGAMA_MAP[agamaNorm] || agamaRaw,
+    tahun:            get("tahun"),
+    daerah:           get("daerah"),
+    negeri:           get("negeri"),
+    lat: 0,
+    lng: 0,
+    _source: "csv_upload"
+  };
+}
+
+// Render the column-mapping screen
+function ebRenderMapping(){
+  const mapping = ebAutoDetectMapping();
+  const html = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;">
+      ${EB_FIELD_MAP.map(f => {
+        const sel = mapping[f.field];
+        const opts = `<option value="">— Tiada —</option>` + _ebHeaders.map((h, i) => `<option value="${i}" ${String(i) === String(sel) ? "selected" : ""}>${h}</option>`).join("");
+        return `<div>
+          <label style="font-size:.75rem;font-weight:600;color:var(--text);">${f.label}${f.required ? ' <span style="color:#DC2626;">*</span>' : ''}</label>
+          <select class="fi" style="font-size:.8rem;padding:6px 8px;" data-eb-field="${f.field}">${opts}</select>
+        </div>`;
+      }).join("")}
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;">
+      <button class="btn btn-pri btn-sm" onclick="ebParseAndPreview()"><i class="fas fa-eye"></i> Papar Preview</button>
+    </div>
+  `;
+  document.getElementById("eb-mapping").innerHTML = html;
+  document.getElementById("eb-step2").classList.remove("hidden");
+  // Auto-run preview on first load
+  ebParseAndPreview();
+}
+
+// Read current mapping from the selects and rebuild records
+function ebGetCurrentMapping(){
+  const map = {};
+  document.querySelectorAll("[data-eb-field]").forEach(el => {
+    map[el.getAttribute("data-eb-field")] = el.value === "" ? "" : parseInt(el.value, 10);
+  });
+  return map;
+}
+
+// Build all records + fetch existing Firestore data, then render preview
+async function ebParseAndPreview(){
+  const mapping = ebGetCurrentMapping();
+  // Validate required fields
+  const missing = EB_FIELD_MAP.filter(f => f.required && (mapping[f.field] === "" || mapping[f.field] === undefined));
+  if(missing.length){
+    toast(`Sila petakan lajur wajib: ${missing.map(m => m.label).join(", ")}`, "err");
+    document.getElementById("eb-preview").innerHTML = `<div style="padding:14px;background:#fee2e2;border:1px solid #DC2626;border-radius:8px;color:#991b1b;font-size:.82rem;"><i class="fas fa-triangle-exclamation"></i> Lajur wajib belum dipetakan: ${missing.map(m => `<b>${m.label}</b>`).join(", ")}</div>`;
+    document.getElementById("eb-step3").classList.add("hidden");
+    return;
+  }
+  // Build records
+  _ebParsed = _ebRawRows.map(row => ebBuildRecord(row, mapping)).filter(r => r.no_matrik || r.nama);
+  // Fetch existing records from Firestore
+  document.getElementById("eb-preview").innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);"><i class="fas fa-spinner fa-spin" style="font-size:24px;color:var(--pri);"></i><div style="margin-top:8px;font-size:.82rem;">Memuatkan data sedia ada dari Firestore untuk perbandingan...</div></div>`;
+  try {
+    if(window.MYFB && window.MYFB_CONFIGURED && !DEMO_MODE){
+      _ebExisting = await window.MYFB.listEnrolmenPelajar(null);
+    } else {
+      _ebExisting = (window.ENROLMEN_LIVE || window.ENROLMEN_CSV || ENROLMEN_DATA || []);
+      toast("Firebase tidak dikonfigurasi — menggunakan data tempatan untuk preview sahaja", "inf");
+    }
+    ebComputeStats();
+    ebRenderPreview();
+    ebRenderSummary();
+    document.getElementById("eb-step3").classList.remove("hidden");
+  } catch(err){
+    console.error("[EB] Preview error:", err);
+    document.getElementById("eb-preview").innerHTML = `<div style="padding:14px;background:#fee2e2;border:1px solid #DC2626;border-radius:8px;color:#991b1b;font-size:.82rem;"><i class="fas fa-triangle-exclamation"></i> Gagal memuatkan data: ${err.message}</div>`;
+  }
+}
+
+// Compute stats by comparing parsed records against existing
+function ebComputeStats(){
+  const existingMatrik = new Set(_ebExisting.filter(r => r.no_matrik).map(r => String(r.no_matrik).trim().toUpperCase()));
+  const csvMatrik = new Set(_ebParsed.filter(r => r.no_matrik).map(r => String(r.no_matrik).trim().toUpperCase()));
+  // Kira rekod dalam Firestore yang no_matrik tiada dalam CSV (akan dipadam jika opsyen diaktifkan)
+  let missing = 0;
+  _ebExisting.forEach(r => {
+    const m = String(r.no_matrik || "").trim().toUpperCase();
+    if(m && !csvMatrik.has(m)) missing++;
+  });
+  _ebStats = { total:_ebParsed.length, baru:0, kemaskini:0, tamat:0, tiadaStatus:0, missing };
+  _ebParsed.forEach(r => {
+    if(!r.status_pengajian){ _ebStats.tiadaStatus++; return; }
+    if(r.status_pengajian === "TAMAT"){ _ebStats.tamat++; }
+    if(existingMatrik.has(String(r.no_matrik).trim().toUpperCase())){ _ebStats.kemaskini++; }
+    else { _ebStats.baru++; }
+  });
+}
+
+// Render preview table — first 10 records
+function ebRenderPreview(){
+  const sample = _ebParsed.slice(0, 10);
+  const existingMatrik = new Set(_ebExisting.filter(r => r.no_matrik).map(r => r.no_matrik));
+  const html = `
+    <div style="margin-bottom:10px;font-size:.82rem;color:var(--muted);">
+      <i class="fas fa-info-circle"></i> Menunjukkan 10 rekod pertama daripada ${_ebParsed.length.toLocaleString("ms-MY")} rekod dalam fail.
+    </div>
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;">
+      <table class="tbl">
+        <thead><tr>
+          <th>#</th><th>No. Matrik</th><th>Nama</th><th>Jantina</th><th>IPGK</th>
+          <th>Program</th><th>Sesi Ambilan</th><th>Sesi Tamat</th><th>Status</th><th>Tindakan</th>
+        </tr></thead>
+        <tbody>
+          ${sample.map((r, i) => {
+            const isNew = !existingMatrik.has(r.no_matrik);
+            const isTamat = r.status_pengajian === "TAMAT";
+            const tindakan = isTamat ? '<span class="bdg bdg-red">PADAM</span>' : (isNew ? '<span class="bdg bdg-green">TAMBAH</span>' : '<span class="bdg bdg-amber">KEMASKINI</span>');
+            return `<tr>
+              <td>${i+1}</td>
+              <td class="font-mono text-xs">${r.no_matrik}</td>
+              <td>${r.nama}</td>
+              <td>${r.jantina}</td>
+              <td>${r.ipgk}</td>
+              <td>${r.program || "—"}</td>
+              <td>${r.sesi_ambilan || "—"}</td>
+              <td>${r.sesi_tamat || "—"}</td>
+              <td><span class="bdg ${(r.status_pengajian==="ATIF"||r.status_pengajian==="AKTIF")?"bdg-green":r.status_pengajian==="BERHENTI"?"bdg-red":r.status_pengajian==="TAMAT"?"bdg-gray":"bdg-amber"}" style="font-size:.65rem;">${r.status_pengajian || "—"}</span></td>
+              <td>${tindakan}</td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+  document.getElementById("eb-preview").innerHTML = html;
+}
+
+// Render the summary card with stats
+function ebRenderSummary(){
+  const totalInFirestore = _ebExisting.length;
+  const totalInCSV = _ebStats.total;
+  const totalBaru = _ebStats.baru;
+  const totalKemaskini = _ebStats.kemaskini;
+  const totalTamat = _ebStats.tamat;
+  const totalTiadaStatus = _ebStats.tiadaStatus;
+  const totalMissing = _ebStats.missing || 0;
+  const totalAkanDipadam = (document.getElementById("eb-opt-delete-tamat")?.checked !== false) ? totalTamat : 0;
+  const html = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px;">
+      <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:14px;">
+        <div style="font-size:.72rem;color:#16A34A;text-transform:uppercase;font-weight:700;">Rekod Baharu</div>
+        <div style="font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#15803D;line-height:1.1;margin-top:4px;">${totalBaru.toLocaleString("ms-MY")}</div>
+        <div style="font-size:.7rem;color:#16A34A;margin-top:3px;">Akan ditambah ke Firestore</div>
+      </div>
+      <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:14px;">
+        <div style="font-size:.72rem;color:#D97706;text-transform:uppercase;font-weight:700;">Dikemaskini</div>
+        <div style="font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#B45309;line-height:1.1;margin-top:4px;">${totalKemaskini.toLocaleString("ms-MY")}</div>
+        <div style="font-size:.7rem;color:#D97706;margin-top:3px;">Rekod sedia ada, data ditindih</div>
+      </div>
+      <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;">
+        <div style="font-size:.72rem;color:#DC2626;text-transform:uppercase;font-weight:700;">Tamat Pengajian</div>
+        <div style="font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#B91C1C;line-height:1.1;margin-top:4px;">${totalTamat.toLocaleString("ms-MY")}</div>
+        <div style="font-size:.7rem;color:#DC2626;margin-top:3px;">Status TAMAT dalam fail</div>
+      </div>
+      <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;${totalMissing > 0 ? "box-shadow:0 0 0 2px #DC2626;" : ""}">
+        <div style="font-size:.72rem;color:#DC2626;text-transform:uppercase;font-weight:700;">⚠ Rekod Hilang</div>
+        <div style="font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#B91C1C;line-height:1.1;margin-top:4px;">${totalMissing.toLocaleString("ms-MY")}</div>
+        <div style="font-size:.7rem;color:#DC2626;margin-top:3px;">Dalam Firestore, tiada dalam fail</div>
+      </div>
+      <div style="background:#F8FAFC;border:1px solid var(--border);border-radius:8px;padding:14px;">
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;font-weight:700;">Tiada Status</div>
+        <div style="font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:var(--navy);line-height:1.1;margin-top:4px;">${totalTiadaStatus.toLocaleString("ms-MY")}</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:3px;">Diabaikan</div>
+      </div>
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:14px;">
+        <div style="font-size:.72rem;color:#1D4ED8;text-transform:uppercase;font-weight:700;">Dalam CSV</div>
+        <div style="font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#1E40AF;line-height:1.1;margin-top:4px;">${totalInCSV.toLocaleString("ms-MY")}</div>
+        <div style="font-size:.7rem;color:#1D4ED8;margin-top:3px;">Jumlah rekod dalam fail</div>
+      </div>
+      <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:8px;padding:14px;">
+        <div style="font-size:.72rem;color:#6D28D9;text-transform:uppercase;font-weight:700;">Dalam Firestore</div>
+        <div style="font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#5B21B6;line-height:1.1;margin-top:4px;">${totalInFirestore.toLocaleString("ms-MY")}</div>
+        <div style="font-size:.7rem;color:#6D28D9;margin-top:3px;">Rekod sedia ada</div>
+      </div>
+    </div>
+    ${totalMissing > 0 ? `<div style="padding:10px 14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;font-size:.78rem;color:#991B1B;margin-bottom:10px;"><i class="fas fa-triangle-exclamation"></i> <b>${totalMissing.toLocaleString("ms-MY")} rekod</b> dalam Firestore tidak wujud dalam fail ini. Untuk sync penuh, aktifkan opsyen <b>"Padam rekod sedia ada yang TIADA dalam fail ini"</b> di bawah.</div>` : ""}
+    ${totalTiadaStatus > 0 ? `<div style="padding:10px 14px;background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;font-size:.78rem;color:#92400E;margin-bottom:10px;"><i class="fas fa-triangle-exclamation"></i> ${totalTiadaStatus} rekod tidak mempunyai status pengajian dan akan diabaikan.</div>` : ""}
+  `;
+  document.getElementById("eb-summary").innerHTML = html;
+}
+
+// Apply the bulk update
+async function ebApply(){
+  // Filter out records with no status
+  const valid = _ebParsed.filter(r => r.status_pengajian);
+  const toUpsert = valid.filter(r => r.status_pengajian !== "TAMAT");
+  const toDelete = valid.filter(r => r.status_pengajian === "TAMAT");
+  const deleteTamat = document.getElementById("eb-opt-delete-tamat")?.checked !== false;
+  const archiveTamat = document.getElementById("eb-opt-archive-tamat")?.checked === true;
+  const deleteMissing = document.getElementById("eb-opt-delete-missing")?.checked === true;
+  const archiveMissing = document.getElementById("eb-opt-archive-missing")?.checked === true;
+
+  // Bina set no_matrik yang ada dalam fail (untuk padam rekod yang tiada)
+  const keepMatrikSet = new Set(_ebParsed.filter(r => r.no_matrik).map(r => String(r.no_matrik).trim().toUpperCase()));
+  const missingCount = _ebStats.missing || 0;
+
+  if(!toUpsert.length && (!deleteTamat || !toDelete.length) && (!deleteMissing || !missingCount)){
+    toast("Tiada tindakan untuk dilaksanakan", "err");
+    return;
+  }
+  const confirmMsg = `Sahkan operasi?\n\n` +
+    `• Tambah/Kemaskini: ${toUpsert.length} rekod\n` +
+    (deleteTamat ? `• Padam rekod TAMAT: ${toDelete.length} rekod\n` : "") +
+    (archiveTamat ? `• Arkib rekod TAMAT sebelum dipadam: Ya\n` : "") +
+    (deleteMissing ? `• Padam rekod hilang (tiada dalam fail): ${missingCount} rekod\n` : "") +
+    (archiveMissing && deleteMissing ? `• Arkib rekod hilang sebelum dipadam: Ya\n` : "") +
+    `\nOperasi ini tidak boleh diundur. Teruskan?`;
+  if(!confirm(confirmMsg)) return;
+
+  // Show progress
+  document.getElementById("eb-progress").style.display = "block";
+  document.getElementById("eb-progress").innerHTML = `<div style="padding:14px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;"><i class="fas fa-spinner fa-spin" style="color:#1D4ED8;"></i> <span id="eb-progress-msg">Memulakan...</span></div>`;
+
+  const progMsg = (msg) => { const el = document.getElementById("eb-progress-msg"); if(el) el.textContent = msg; };
+
+  try {
+    // Step 1: Archive TAMAT records (if enabled)
+    if(archiveTamat && deleteTamat && toDelete.length){
+      progMsg(`Mengarkib ${toDelete.length} rekod TAMAT...`);
+      const { db, doc, collection, writeBatch, serverTimestamp } = window.__FS;
+      const BATCH_LIMIT = 499;
+      const existingForArchive = _ebExisting.filter(r => toDelete.some(d => d.no_matrik === r.no_matrik));
+      for(let i = 0; i < existingForArchive.length; i += BATCH_LIMIT){
+        const chunk = existingForArchive.slice(i, i + BATCH_LIMIT);
+        const b = writeBatch(db);
+        chunk.forEach(r => {
+          const { _docId, ...rest } = r;
+          b.set(doc(db, "enrolmen_pelajar_arkib", _docId || `arkib_${r.no_matrik}_${Date.now()}`), { ...rest, dikemasKiniPada: serverTimestamp(), dipadamOleh: SES.uid || "", sebabDipadam: "TAMAT_PENGAJIAN" });
+        });
+        await b.commit();
+      }
+      console.log(`[EB] Archived ${existingForArchive.length} TAMAT records`);
+    }
+
+    // Step 2: Upsert (add/update) non-TAMAT records
+    let created = 0, updated = 0;
+    if(toUpsert.length){
+      progMsg(`Menambah/mengemaskini ${toUpsert.length} rekod...`);
+      const result = await window.MYFB.upsertEnrolmenBatch(toUpsert, (done, total, c, u) => {
+        const pct = Math.round(done/total*100);
+        progMsg(`Menyimpan... ${done}/${total} (${pct}%) — baru: ${c}, kemaskini: ${u}`);
+      });
+      created = result.created;
+      updated = result.updated;
+    }
+
+    // Step 3: Delete TAMAT records (if enabled)
+    let deletedTamatCount = 0;
+    if(deleteTamat && toDelete.length){
+      progMsg(`Memadam ${toDelete.length} rekod TAMAT...`);
+      const delResult = await window.MYFB.deleteEnrolmenByMatrik(toDelete.map(r => r.no_matrik), (done, total) => {
+        const pct = Math.round(done/total*100);
+        progMsg(`Memadam TAMAT... ${done}/${total} (${pct}%)`);
+      });
+      deletedTamatCount = delResult.deleted;
+    }
+
+    // Step 4: Delete MISSING records (rekod dalam Firestore yang tiada dalam fail) — SYNC PENUH
+    let deletedMissingCount = 0;
+    let archivedMissingCount = 0;
+    if(deleteMissing && missingCount > 0){
+      progMsg(`Memadam ${missingCount} rekod hilang (tiada dalam fail)...`);
+      const delResult = await window.MYFB.deleteEnrolmenNotInList(keepMatrikSet, (p) => {
+        if(p.phase === "archive"){
+          const pct = Math.round(p.done/p.total*100);
+          progMsg(`Mengarkib rekod hilang... ${p.done}/${p.total} (${pct}%)`);
+        } else {
+          const pct = Math.round(p.done/p.total*100);
+          progMsg(`Memadam rekod hilang... ${p.done}/${p.total} (${pct}%)`);
+        }
+      }, archiveMissing);
+      deletedMissingCount = delResult.deleted;
+      archivedMissingCount = delResult.archived;
+    }
+
+    const deletedCount = deletedTamatCount + deletedMissingCount;
+
+    // Step 5: Audit log
+    try {
+      const { db, doc, collection, setDoc, serverTimestamp } = window.__FS;
+      await setDoc(doc(collection(db, "audit_enrolmen_bulk")), {
+        tarikh: serverTimestamp(),
+        dilakukanOleh: SES.uid || "",
+        idPengguna: SES.id || "",
+        namaPengguna: SES.nama || "",
+        jumlahRekodCSV: _ebParsed.length,
+        rekodBaharu: created,
+        rekodKemaskini: updated,
+        rekodDipadamTamat: deletedTamatCount,
+        rekodDipadamHilang: deletedMissingCount,
+        rekodDiarkib: (archiveTamat && deleteTamat ? toDelete.length : 0) + archivedMissingCount,
+        arkibTamat: archiveTamat && deleteTamat,
+        padamRekodHilang: deleteMissing,
+        arkibRekodHilang: archiveMissing && deleteMissing,
+        namaFailCSV: document.getElementById("eb-file-input")?.files?.[0]?.name || document.getElementById("eb-xlsx-input")?.files?.[0]?.name || ""
+      });
+    } catch(auditErr){
+      console.warn("[EB] Audit log failed:", auditErr);
+    }
+
+    // Step 6: Render result
+    document.getElementById("eb-progress").style.display = "none";
+    document.getElementById("eb-step3").classList.add("hidden");
+    document.getElementById("eb-step2").classList.add("hidden");
+    document.getElementById("eb-step4").classList.remove("hidden");
+    document.getElementById("eb-result").innerHTML = `
+      <div style="text-align:center;padding:20px 0;">
+        <i class="fas fa-circle-check" style="font-size:48px;color:#16A34A;"></i>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--navy);margin-top:14px;">Kemaskini Selesai!</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:14px;">
+        <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:14px;text-align:center;">
+          <div style="font-size:.72rem;color:#16A34A;text-transform:uppercase;font-weight:700;">Rekod Baharu</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#15803D;line-height:1.1;margin-top:4px;">${created}</div>
+        </div>
+        <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:14px;text-align:center;">
+          <div style="font-size:.72rem;color:#D97706;text-transform:uppercase;font-weight:700;">Dikemaskini</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#B45309;line-height:1.1;margin-top:4px;">${updated}</div>
+        </div>
+        <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;text-align:center;">
+          <div style="font-size:.72rem;color:#DC2626;text-transform:uppercase;font-weight:700;">Dipadam (TAMAT)</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#B91C1C;line-height:1.1;margin-top:4px;">${deletedTamatCount}</div>
+        </div>
+        ${deleteMissing ? `<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:14px;text-align:center;">
+          <div style="font-size:.72rem;color:#DC2626;text-transform:uppercase;font-weight:700;">Dipadam (Hilang)</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#B91C1C;line-height:1.1;margin-top:4px;">${deletedMissingCount}</div>
+        </div>` : ""}
+        ${(archiveTamat || archiveMissing) ? `<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:14px;text-align:center;">
+          <div style="font-size:.72rem;color:#D97706;text-transform:uppercase;font-weight:700;">Diarkib</div>
+          <div style="font-family:'Outfit',sans-serif;font-size:1.6rem;font-weight:800;color:#B45309;line-height:1.1;margin-top:4px;">${(archiveTamat && deleteTamat ? toDelete.length : 0) + archivedMissingCount}</div>
+        </div>` : ""}
+      </div>
+    `;
+    toast("Kemaskini enrolmen berjaya!", "ok");
+  } catch(err){
+    console.error("[EB] Apply failed:", err);
+    document.getElementById("eb-progress").style.display = "none";
+    toast("Kemaskini gagal: " + (err.message || err), "err");
+  }
+}
+
+// Reset the entire flow
+function ebReset(){
+  _ebParsed = []; _ebExisting = []; _ebStats = { total:0, baru:0, kemaskini:0, tamat:0, tiadaStatus:0, missing:0 };
+  ["eb-step2","eb-step3","eb-step4"].forEach(id => document.getElementById(id)?.classList.add("hidden"));
+  const fi = document.getElementById("eb-file-input"); if(fi) fi.value = "";
+  const xi = document.getElementById("eb-xlsx-input"); if(xi) xi.value = "";
+  toast("Alat dikemaskini semula", "inf");
+}
 
 // Collection metadata used by the reset tool
 const RUJ_COLLECTIONS = [
