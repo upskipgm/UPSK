@@ -564,11 +564,46 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
       },
       // ── Enrolmen Pelajar Firestore CRUD ──
       // Dipadan mengikut `no_matrik`. Koleksi: enrolmen_pelajar.
+      // Untuk admin kampus: guna where() query (jauh lebih pantas — hanya fetch rekod kampus sendiri)
+      // Untuk admin utama: pagination 400/halaman dengan cache session
       listEnrolmenPelajar: async (kampusFilter) => {
+        // Cek cache session dulu — elak reload 33k rekod setiap kali navigasi
+        if(window._ENROLMEN_CACHE && window._ENROLMEN_CACHE_TIME){
+          const ageSec = (Date.now() - window._ENROLMEN_CACHE_TIME) / 1000;
+          // Cache 5 minit (300 saat)
+          if(ageSec < 300){
+            console.log(`[Enrolmen Pelajar] Cache hit: ${window._ENROLMEN_CACHE.length} rekod (umur ${Math.round(ageSec)}s)`);
+            const cached = window._ENROLMEN_CACHE;
+            if(kampusFilter){
+              const kod = canonicalKodKampus(kampusFilter);
+              if(kod && kod !== "IPGM"){
+                return cached.filter(d => canonicalKodKampus(d.kodKampus || d.kampus_id || d.kampus || d.ipgk || d.organisasi) === kod);
+              }
+            }
+            return cached;
+          }
+        }
+
         const PAGE_SIZE = 400;
         let allDocs = [];
         let lastDoc = null;
         let page = 0;
+
+        // Jika ada kampusFilter dan bukan IPGM, guna where() query — JAUH lebih pantas
+        const kod = kampusFilter ? canonicalKodKampus(kampusFilter) : null;
+        if(kod && kod !== "IPGM"){
+          console.log(`[Enrolmen Pelajar] Query terus dengan where("kodKampus" == "${kod}")...`);
+          try {
+            const exact = await getDocs(query(collection(db, "enrolmen_pelajar"), where("kodKampus", "==", kod)));
+            allDocs = exact.docs.map(d => ({ _docId: d.id, ...d.data() }));
+            console.log(`[Enrolmen Pelajar] where() query: ${allDocs.length} rekod (1 halaman)`);
+            return allDocs;
+          } catch(e){
+            console.warn("[Enrolmen Pelajar] where() query gagal, fallback ke pagination:", e.message);
+          }
+        }
+
+        // Pagination untuk admin utama (semua kampus) — dengan progress
         while(true){
           page++;
           const q = lastDoc
@@ -579,15 +614,15 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
           allDocs = allDocs.concat(snap.docs.map(d => ({ _docId: d.id, ...d.data() })));
           lastDoc = snap.docs[snap.docs.length - 1];
           if(snap.docs.length < PAGE_SIZE) break;
-        }
-        // Apply kampus filter if provided
-        if(kampusFilter){
-          const kod = canonicalKodKampus(kampusFilter);
-          if(kod && kod !== "IPGM"){
-            allDocs = allDocs.filter(d => canonicalKodKampus(d.kodKampus || d.kampus_id || d.kampus || d.ipgk || d.organisasi) === kod);
+          // Log progress supaya boleh nampak dalam console
+          if(page % 10 === 0){
+            console.log(`[Enrolmen Pelajar] Loading... ${allDocs.length} rekod (halaman ${page})`);
           }
         }
-        console.log(`[Enrolmen Pelajar] Loaded: ${allDocs.length} rekod (${page} halaman)`);
+        // Cache hasil supaya navigasi seterusnya tak perlu reload
+        window._ENROLMEN_CACHE = allDocs;
+        window._ENROLMEN_CACHE_TIME = Date.now();
+        console.log(`[Enrolmen Pelajar] Loaded & cached: ${allDocs.length} rekod (${page} halaman)`);
         return allDocs;
       },
       // Upsert batch rekod pelajar (tambah jika baru, kemaskini jika wujud)
@@ -872,6 +907,23 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
       deleteAkrab: async (docId) => {
         await deleteDoc(doc(db, "akrab", docId));
       },
+      // Upsert ahli AKRAB (tambah jika baru, kemaskini jika wujud)
+      upsertAkrab: async (docId, data, adminUid) => {
+        const clean = { ...data };
+        delete clean._docId;
+        const payload = {
+          ...withCanonicalKampus(clean),
+          dikemasKiniOleh: adminUid || null,
+          dikemasKiniPada: serverTimestamp()
+        };
+        if(!docId){
+          payload.diciptaOleh = adminUid || null;
+          payload.diciptaPada = serverTimestamp();
+        }
+        const finalId = docId || `akrab_${data.kodKampus || "XX"}_${Date.now()}`;
+        await setDoc(doc(db, "akrab", finalId), payload, { merge: true });
+        return finalId;
+      },
 
       // ── PRSD Firestore CRUD ──
       listPRSD: async (kampusFilter) => {
@@ -928,6 +980,23 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
         await updateDoc(doc(db, "prsd", docId), { ...clean, dikemasKiniOleh: adminUid || null, dikemasKiniPada: serverTimestamp() });
       },
       deletePRSD: async (docId) => { await deleteDoc(doc(db, "prsd", docId)); },
+      // Upsert ahli PRSD (tambah jika baru, kemaskini jika wujud)
+      upsertPRSD: async (docId, data, adminUid) => {
+        const clean = { ...data };
+        delete clean._docId;
+        const payload = {
+          ...withCanonicalKampus(clean),
+          dikemasKiniOleh: adminUid || null,
+          dikemasKiniPada: serverTimestamp()
+        };
+        if(!docId){
+          payload.diciptaOleh = adminUid || null;
+          payload.diciptaPada = serverTimestamp();
+        }
+        const finalId = docId || `prsd_${data.kodKampus || "XX"}_${Date.now()}`;
+        await setDoc(doc(db, "prsd", finalId), payload, { merge: true });
+        return finalId;
+      },
       // ── Peruntukan Kewangan Firestore CRUD ──
       listPeruntukan: async (kampusFilter) => {
         const snap = await Promise.race([
@@ -4252,7 +4321,11 @@ function pgAKEnrolmenStaf(c){
   pgAKStaf(document.getElementById("enrolmen-content"));
 }
 function pgAUEnrolmen(c){
-  c.innerHTML=enrolmenTabs("utama","pelajar")+`<div id="enrolmen-content">${enrolmenLoading("36,000 rekod pelajar seluruh negara — sila tunggu sebentar")}</div>`;
+  // Cek cache — jika ada, papar terus tanpa loading
+  const cachedText = (window._ENROLMEN_CACHE && window._ENROLMEN_CACHE_TIME && (Date.now() - window._ENROLMEN_CACHE_TIME) < 300000)
+    ? `${window._ENROLMEN_CACHE.length.toLocaleString("ms-MY")} rekod (cached)`
+    : "Memuatkan 33,000+ rekod dari Firestore...";
+  c.innerHTML=enrolmenTabs("utama","pelajar")+`<div id="enrolmen-content">${enrolmenLoading(cachedText)}</div>`;
   loadAndRenderEnrolmen(document.getElementById("enrolmen-content"), null);
 }
 function pgAUEnrolmenStaf(c){
@@ -4347,9 +4420,11 @@ async function loadAndRenderEnrolmen(c, kampusId){
   // Notice bar mengikut sumber
   const notice = document.createElement("div");
   if(sumber === "firestore"){
+    const cacheAge = window._ENROLMEN_CACHE_TIME ? Math.round((Date.now() - window._ENROLMEN_CACHE_TIME)/1000) : null;
+    const cacheLabel = cacheAge !== null ? ` · cache ${cacheAge}s` : "";
     notice.style.cssText="background:rgba(14,124,97,0.08);border:1px solid rgba(14,124,97,0.25);border-radius:8px;padding:8px 14px;font-size:12px;color:#0B634D;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
-    notice.innerHTML=`<i class="fas fa-database"></i><span>Data <b>Firestore</b> (enrolmen_pelajar) — ${raw.length.toLocaleString("ms-MY")} rekod</span>
-      <button onclick="window.ENROLMEN_LIVE=null;_sheetsLoaded=false;navTo(SES.pg)" style="font-size:11px;background:rgba(14,124,97,0.15);color:#0B634D;border:none;padding:3px 10px;border-radius:6px;cursor:pointer;margin-left:auto;"><i class="fas fa-rotate-right"></i> Refresh</button>
+    notice.innerHTML=`<i class="fas fa-database"></i><span>Data <b>Firestore</b> (enrolmen_pelajar) — ${raw.length.toLocaleString("ms-MY")} rekod${cacheLabel}</span>
+      <button onclick="window._ENROLMEN_CACHE=null;window._ENROLMEN_CACHE_TIME=null;window.ENROLMEN_LIVE=null;_sheetsLoaded=false;navTo(SES.pg)" style="font-size:11px;background:rgba(14,124,97,0.15);color:#0B634D;border:none;padding:3px 10px;border-radius:6px;cursor:pointer;margin-left:auto;"><i class="fas fa-rotate-right"></i> Refresh (Clear Cache)</button>
       ${isAdmin()?'<a href="#" onclick="navTo(\'au-enrolmen-bulk\');return false;" style="font-size:11px;background:#0E7C61;color:#fff;padding:3px 10px;border-radius:6px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;"><i class="fas fa-arrow-up-from-bracket"></i> Kemaskini Enrolmen</a>':''}`;
   } else if(sumber === "live"){
     notice.style.cssText="background:rgba(22,163,74,0.08);border:1px solid rgba(22,163,74,0.2);border-radius:8px;padding:8px 14px;font-size:12px;color:#166534;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;";
@@ -4798,6 +4873,7 @@ function renderEnrolmenPage(c,rawData,tajuk,isUtama){
       <span class="card-title"><i class="fas fa-table text-pri-500 mr-2"></i>Senarai Pelajar</span>
       <div style="display:flex;gap:6px;align-items:center;">
         <span style="font-size:.72rem;color:var(--muted);">${rawData.length} rekod</span>
+        ${isAdmin()?'<button class="btn btn-pri btn-sm" onclick="generateKemaskiniLinks()" style="font-size:11px;background:#25D366;"><i class="fab fa-whatsapp"></i> Hantar Pautan Kemaskini</button>':''}
         <button class="btn btn-out btn-sm" onclick="exportEnrolmenXlsx()"><i class="fas fa-file-excel" style="color:#16A34A;"></i> Excel</button>
         <button class="btn btn-out btn-sm" onclick="exportEnrolmenCSV()"><i class="fas fa-download"></i>CSV</button>
         <button class="btn btn-ghost btn-sm" onclick="exportPagePDF()" style="font-size:11px;"><i class="fas fa-file-pdf" style="color:#DC2626;"></i> PDF</button>
@@ -10488,6 +10564,7 @@ function renderPRSDPage(c, data, kampusFilter) {
         <input type="file" accept=".csv" style="display:none" id="prsd-csv-inp">
       </label>
       ` : ''}
+      ${(isAdmin()||isKampus())?`<button onclick="addPrsdMember()" style="background:#0E7C61;color:#fff;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px;"><i class="fas fa-user-plus"></i>Tambah Ahli</button>`:''}
       ${isAdmin() && window.MYFB_CONFIGURED ? `
       <label style="background:#B45309;color:#fff;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px;">
         <i class="fas fa-arrows-rotate"></i>Ganti Data Firestore (84)
@@ -11373,7 +11450,7 @@ function renderDokumenList(){
         <div style="font-size:.72rem;color:var(--muted);margin-top:1px;">${f.keterangan||""} ${f.tarikh?'· '+f.tarikh:""}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0;">
-        <a href="${f.url}" target="_blank" class="btn btn-out btn-sm"><i class="fas fa-download"></i> Muat Turun</a>
+        <a href="${f.url}" target="_blank" rel="noopener noreferrer" class="btn btn-out btn-sm" title="Buka di Google Drive" style="color:#0E7C61;border-color:#0E7C61;"><i class="fab fa-google-drive"></i> Buka GD</a>
         ${SES.role==="admin_utama"?`<button onclick="hapusDokumen(${i})" class="btn btn-danger btn-sm btn-xs"><i class="fas fa-trash"></i></button>`:""}
       </div>
     </div>`).join("")}
@@ -13704,6 +13781,7 @@ function renderAkrabPage(c,data,kampusFilter){
         <i class="fas fa-cloud-arrow-up"></i> Ganti Data AKRAB Firestore
         <input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="syncAkrabCSVToFirestore(this)">
       </label>`:""}
+      ${(isAdmin()||isKampus())?`<button class="btn btn-pri btn-sm" onclick="addAkrabMemberV3()" style="font-size:11px;"><i class="fas fa-user-plus"></i> Tambah Ahli</button>`:""}
       <button onclick="exportAkrabXlsx()" class="btn btn-out btn-sm" style="font-size:11px;"><i class="fas fa-file-excel"></i> Excel</button>
       <button onclick="exportPagePDF()" class="btn btn-ghost btn-sm" style="font-size:11px;"><i class="fas fa-file-pdf"></i></button>
     </div>
@@ -13932,6 +14010,12 @@ function showAkrabMemberDetailV3(docId){
 function editAkrabMemberV3(docId){
   const member=akrabFindByDocId(docId);
   if(!member) return;
+  // Kawalan akses: Admin Utama (semua), Admin Kampus & Kaunselor (kampus sendiri)
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && canonicalKodKampusGlobal(member.kodKampus) !== ownCampus){
+    toast("Anda hanya boleh mengemaskini rekod kampus sendiri","err");
+    return;
+  }
   const currentCampus = canonicalKodKampusGlobal(SES.kampus || "");
   const allowedCampuses = isAdmin()
     ? MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus")
@@ -13972,8 +14056,9 @@ async function saveAkrabMemberV3(){
   const kod=canonicalKodKampusGlobal(document.getElementById("ak-v3-kampus")?.value);
   const ownCampus=canonicalKodKampusGlobal(SES.kampus || "");
 
+  // Kawalan akses: Admin Utama (semua), Admin Kampus & Kaunselor (kampus sendiri)
   if(!isAdmin() && kod !== ownCampus){
-    toast("Admin Kampus hanya boleh mengemas kini data kampus sendiri.","err");
+    toast("Anda hanya boleh mengemaskini rekod kampus sendiri.","err");
     return;
   }
 
@@ -14014,11 +14099,12 @@ async function saveAkrabMemberV3(){
 async function deleteAkrabMemberV3(docId){
   const record=akrabFindByDocId(docId);
   const ownCampus=canonicalKodKampusGlobal(SES.kampus || "");
+  // Kawalan akses: Admin Utama (semua), Admin Kampus & Kaunselor (kampus sendiri)
   if(!isAdmin() && (!record || canonicalKodKampusGlobal(record.kodKampus)!==ownCampus)){
-    toast("Admin Kampus hanya boleh memadam rekod kampus sendiri.","err");
+    toast("Anda hanya boleh memadam rekod kampus sendiri.","err");
     return;
   }
-  if(!confirm("Padam rekod ahli AKRAB ini daripada Firestore?")) return;
+  if(!confirm(`Padam rekod ahli AKRAB ini?\n\nNama: ${record?.namaPenuh||"—"}\nKampus: ${record?.ipgk||"—"}\n\nTindakan ini tidak boleh diundur.`)) return;
   try{
     if(!window.MYFB?.deleteAkrab) throw new Error("Fungsi Firestore tidak tersedia.");
     await window.MYFB.deleteAkrab(docId);
@@ -14028,6 +14114,302 @@ async function deleteAkrabMemberV3(docId){
   }catch(error){
     toast("Gagal padam: "+(error.message||error),"err");
   }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// TAMBAH AHLI AKRAB BAHARU
+// ════════════════════════════════════════════════════════════════════════════
+
+function addAkrabMemberV3(){
+  if(!isAdmin() && !isKampus()){ toast("Tiada kebenaran untuk menambah ahli","err"); return; }
+  const currentCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  const allowedCampuses = isAdmin()
+    ? MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus")
+    : MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus" && k.id===currentCampus);
+  const campusOptions = allowedCampuses
+    .sort(compareMasterKampus)
+    .map(k=>`<option value="${k.id}">${esc(k.zon)} · ${esc(k.negeri)} · ${esc(k.nama)}</option>`)
+    .join("");
+  // Default kampus: kampus sendiri untuk admin kampus/kaunselor
+  const defaultKod = !isAdmin() ? currentCampus : (allowedCampuses[0]?.id || "");
+
+  document.getElementById("modal-wrap").innerHTML=`
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:720px;">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-700 text-lg text-navy-800"><i class="fas fa-user-plus text-pri-500 mr-2"></i>Tambah Ahli AKRAB Baharu</h3>
+        <button onclick="closeModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+        <div style="grid-column:span 2;"><label class="fl">IPG Kampus *</label><select class="fi" id="ak-v3-add-kampus">${campusOptions}</select></div>
+        <div style="grid-column:span 2;"><label class="fl">Nama Penyelaras</label><input class="fi" id="ak-v3-add-penyelaras" placeholder="Nama penyelaras AKRAB kampus"></div>
+        <div style="grid-column:span 2;"><label class="fl">Nama Penuh *</label><input class="fi" id="ak-v3-add-nama" placeholder="Nama penuh ahli AKRAB"></div>
+        <div><label class="fl">No. MyKad</label><input class="fi" id="ak-v3-add-mykad" placeholder="xxxxxx-xx-xxxx"></div>
+        <div><label class="fl">No. Telefon</label><input class="fi" id="ak-v3-add-telefon" placeholder="01x-xxxxxxx"></div>
+        <div><label class="fl">Jawatan AKRAB</label><select class="fi" id="ak-v3-add-jawatan"><option value="">— Pilih Jawatan —</option><option>Penyelaras AKRAB</option><option>Ahli AKRAB</option><option>Timbalan Penyelaras AKRAB</option><option>Setiausaha AKRAB</option><option>Bendahari AKRAB</option></select></div>
+        <div><label class="fl">No. Keahlian AKRAB</label><input class="fi" id="ak-v3-add-keahlian" placeholder="No. pendaftaran keahlian"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button class="btn btn-pri" onclick="saveNewAkrabMemberV3()"><i class="fas fa-save mr-1"></i>Simpan</button>
+      </div>
+    </div>
+  </div>`;
+  // Set default kampus
+  const kampusSelect = document.getElementById("ak-v3-add-kampus");
+  if(kampusSelect && defaultKod) kampusSelect.value = defaultKod;
+}
+
+async function saveNewAkrabMemberV3(){
+  const kod = canonicalKodKampusGlobal(document.getElementById("ak-v3-add-kampus")?.value);
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && kod !== ownCampus){
+    toast("Anda hanya boleh menambah ahli untuk kampus sendiri.","err");
+    return;
+  }
+  const nama = (document.getElementById("ak-v3-add-nama")?.value || "").trim();
+  if(!nama){ toast("Nama penuh diperlukan","err"); return; }
+  const info = MASTER_KAMPUS_BY_ID[kod] || {};
+  const rec = {
+    kodKampus: kod, kampus_id: kod,
+    zon: info?.zon || "", negeri: info?.negeri || "",
+    ipgk: info?.nama || "", organisasi: info?.nama || "",
+    namaPenyelaras: akrabClean(document.getElementById("ak-v3-add-penyelaras")?.value),
+    namaPenuh: nama,
+    noMyKad: akrabClean(document.getElementById("ak-v3-add-mykad")?.value),
+    noTelefon: akrabClean(document.getElementById("ak-v3-add-telefon")?.value),
+    jawatan: akrabClean(document.getElementById("ak-v3-add-jawatan")?.value),
+    noKeahlianAkrab: akrabClean(document.getElementById("ak-v3-add-keahlian")?.value),
+    statusRekod: "LENGKAP",
+    diciptaOleh: SES.uid || "",
+    diciptaPada: new Date().toISOString(),
+    aktif: true
+  };
+  try {
+    if(!window.MYFB?.upsertAkrab) throw new Error("Fungsi Firestore tidak tersedia.");
+    const newDocId = await window.MYFB.upsertAkrab("", rec, SES.uid);
+    rec._docId = newDocId;
+    (window._akrabData||[]).push(rec);
+    closeModal();
+    toast("Ahli AKRAB baharu ditambah","ok");
+    const container = document.getElementById("enrolmen-content");
+    if(container) await loadAndRenderAkrab(container, isKampus() ? SES.kampus : null);
+  } catch(err){ toast("Gagal: "+err.message,"err"); }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CRUD PRSD — Edit / Tambah / Padam (template sama seperti AKRAB)
+// ════════════════════════════════════════════════════════════════════════════
+
+function prsdFindByDocId(docId){
+  return (window._prsdData||[]).find(r=>r._docId===docId);
+}
+
+function showPrsdMemberDetail(docId){
+  const member = prsdFindByDocId(docId);
+  if(!member) return;
+  const info = MASTER_KAMPUS_BY_ID[member._resolvedKid || member.kodKampus] || {};
+  const fields = [
+    ["Nama Penuh", member.nama],
+    ["Jawatan", member.jawatan],
+    ["Perjawatan", member.perjawatan],
+    ["No. MyKad", member.noMyKad || member.noKP],
+    ["No. Telefon", member.noTelefon || member.telefon],
+    ["IPG Kampus", info.nama || member.ipgk || member.organisasi],
+    ["Kod Kampus", member._resolvedKid || member.kodKampus],
+    ["Zon", member._resolvedZon || member.zon],
+    ["Negeri", member._resolvedNegeri || member.negeri]
+  ];
+  document.getElementById("modal-wrap").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:700px;padding:0;overflow:hidden;">
+      <div style="padding:18px 22px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;gap:12px;">
+        <div>
+          <h3 style="font-size:1.15rem;font-weight:800;color:var(--navy);">${esc(member.nama||"Rekod PRSD")}</h3>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:3px;">Maklumat lengkap ahli PRSD</div>
+        </div>
+        <button class="user-drawer-close" onclick="closeModal()">×</button>
+      </div>
+      <div style="padding:20px 22px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+        ${fields.map(([label,value])=>`<div style="border:1px solid #E2E8F0;border-radius:8px;padding:10px;">
+          <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;">${esc(label)}</div>
+          <div style="font-size:.83rem;font-weight:650;color:var(--navy);margin-top:3px;overflow-wrap:anywhere;">${esc(value||"—")}</div>
+        </div>`).join("")}
+      </div>
+      <div style="padding:12px 22px;border-top:1px solid #E2E8F0;display:flex;justify-content:flex-end;gap:7px;">
+        ${(isAdmin()||isKampus())?`<button class="btn btn-pri" onclick="closeModal();editPrsdMember('${esc(docId)}')"><i class="fas fa-pen"></i>Kemaskini</button>`:""}
+        <button class="btn btn-ghost" onclick="closeModal()">Tutup</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function editPrsdMember(docId){
+  const member = prsdFindByDocId(docId);
+  if(!member) return;
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  const memberKod = canonicalKodKampusGlobal(member._resolvedKid || member.kodKampus || "");
+  if(!isAdmin() && memberKod !== ownCampus){
+    toast("Anda hanya boleh mengemaskini rekod kampus sendiri","err");
+    return;
+  }
+  const allowedCampuses = isAdmin()
+    ? MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus")
+    : MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus" && k.id===ownCampus);
+  const campusOptions = allowedCampuses
+    .sort(compareMasterKampus)
+    .map(k=>`<option value="${k.id}" ${k.id===memberKod?"selected":""}>${esc(k.zon)} · ${esc(k.negeri)} · ${esc(k.nama)}</option>`)
+    .join("");
+
+  document.getElementById("modal-wrap").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:720px;">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-700 text-lg text-navy-800"><i class="fas fa-pen text-pri-500 mr-2"></i>Kemaskini Ahli PRSD</h3>
+        <button onclick="closeModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
+      </div>
+      <input type="hidden" id="prsd-edit-docid" value="${esc(docId)}">
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+        <div style="grid-column:span 2;"><label class="fl">IPG Kampus</label><select class="fi" id="prsd-edit-kampus">${campusOptions}</select></div>
+        <div style="grid-column:span 2;"><label class="fl">Nama Penuh</label><input class="fi" id="prsd-edit-nama" value="${esc(member.nama||"")}"></div>
+        <div><label class="fl">No. MyKad</label><input class="fi" id="prsd-edit-mykad" value="${esc(member.noMyKad||member.noKP||"")}"></div>
+        <div><label class="fl">No. Telefon</label><input class="fi" id="prsd-edit-telefon" value="${esc(member.noTelefon||member.telefon||"")}"></div>
+        <div><label class="fl">Jawatan</label><input class="fi" id="prsd-edit-jawatan" value="${esc(member.jawatan||"")}"></div>
+        <div><label class="fl">Perjawatan</label><select class="fi" id="prsd-edit-perjawatan"><option value="">— Pilih —</option><option ${member.perjawatan==="Pensyarah"?"selected":""}>Pensyarah</option><option ${member.perjawatan==="Pegawai"?"selected":""}>Pegawai</option><option ${member.perjawatan==="Staf"?"selected":""}>Staf</option></select></div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
+        ${member._docId?`<button class="btn btn-danger" onclick="deletePrsdMember('${esc(docId)}')"><i class="fas fa-trash mr-1"></i>Padam</button>`:''}
+        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button class="btn btn-pri" onclick="savePrsdMember()"><i class="fas fa-save mr-1"></i>Simpan</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function savePrsdMember(){
+  const docId = document.getElementById("prsd-edit-docid")?.value;
+  const kod = canonicalKodKampusGlobal(document.getElementById("prsd-edit-kampus")?.value);
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && kod !== ownCampus){
+    toast("Anda hanya boleh mengemaskini rekod kampus sendiri.","err");
+    return;
+  }
+  const info = MASTER_KAMPUS_BY_ID[kod] || {};
+  const updates = {
+    kodKampus: kod, kampus_id: kod,
+    zon: info?.zon || "", negeri: info?.negeri || "",
+    ipgk: info?.nama || "", organisasi: info?.nama || "",
+    nama: (document.getElementById("prsd-edit-nama")?.value || "").trim(),
+    noMyKad: (document.getElementById("prsd-edit-mykad")?.value || "").trim(),
+    noKP: (document.getElementById("prsd-edit-mykad")?.value || "").trim(),
+    noTelefon: (document.getElementById("prsd-edit-telefon")?.value || "").trim(),
+    telefon: (document.getElementById("prsd-edit-telefon")?.value || "").trim(),
+    jawatan: (document.getElementById("prsd-edit-jawatan")?.value || "").trim(),
+    perjawatan: (document.getElementById("prsd-edit-perjawatan")?.value || "").trim()
+  };
+  try {
+    if(!window.MYFB?.updatePRSD) throw new Error("Fungsi Firestore tidak tersedia.");
+    await window.MYFB.updatePRSD(docId, updates, SES.uid);
+    const member = prsdFindByDocId(docId);
+    if(member) Object.assign(member, updates);
+    closeModal();
+    toast("Maklumat ahli PRSD berjaya dikemas kini","ok");
+    const container = document.getElementById("enrolmen-content");
+    if(container) await loadAndRenderPRSD(container, isKampus() ? SES.kampus : null);
+  } catch(error){ toast("Gagal kemas kini: "+(error.message||error),"err"); }
+}
+
+async function deletePrsdMember(docId){
+  const record = prsdFindByDocId(docId);
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  const memberKod = canonicalKodKampusGlobal(record?._resolvedKid || record?.kodKampus || "");
+  if(!isAdmin() && memberKod !== ownCampus){
+    toast("Anda hanya boleh memadam rekod kampus sendiri.","err");
+    return;
+  }
+  if(!confirm(`Padam rekod ahli PRSD ini?\n\nNama: ${record?.nama||"—"}\nKampus: ${record?._resolvedNama||"—"}\n\nTindakan ini tidak boleh diundur.`)) return;
+  try {
+    if(!window.MYFB?.deletePRSD) throw new Error("Fungsi Firestore tidak tersedia.");
+    await window.MYFB.deletePRSD(docId);
+    toast("Rekod PRSD dipadam","ok");
+    closeModal();
+    const container = document.getElementById("enrolmen-content");
+    if(container) await loadAndRenderPRSD(container, isKampus() ? SES.kampus : null);
+  } catch(error){ toast("Gagal padam: "+(error.message||error),"err"); }
+}
+
+function addPrsdMember(){
+  if(!isAdmin() && !isKampus()){ toast("Tiada kebenaran untuk menambah ahli","err"); return; }
+  const currentCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  const allowedCampuses = isAdmin()
+    ? MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus")
+    : MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus" && k.id===currentCampus);
+  const campusOptions = allowedCampuses
+    .sort(compareMasterKampus)
+    .map(k=>`<option value="${k.id}">${esc(k.zon)} · ${esc(k.negeri)} · ${esc(k.nama)}</option>`)
+    .join("");
+  const defaultKod = !isAdmin() ? currentCampus : (allowedCampuses[0]?.id || "");
+
+  document.getElementById("modal-wrap").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:720px;">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-700 text-lg text-navy-800"><i class="fas fa-user-plus text-pri-500 mr-2"></i>Tambah Ahli PRSD Baharu</h3>
+        <button onclick="closeModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+        <div style="grid-column:span 2;"><label class="fl">IPG Kampus *</label><select class="fi" id="prsd-add-kampus">${campusOptions}</select></div>
+        <div style="grid-column:span 2;"><label class="fl">Nama Penuh *</label><input class="fi" id="prsd-add-nama" placeholder="Nama penuh"></div>
+        <div><label class="fl">No. MyKad</label><input class="fi" id="prsd-add-mykad" placeholder="xxxxxx-xx-xxxx"></div>
+        <div><label class="fl">No. Telefon</label><input class="fi" id="prsd-add-telefon" placeholder="01x-xxxxxxx"></div>
+        <div><label class="fl">Jawatan</label><input class="fi" id="prsd-add-jawatan" placeholder="Jawatan"></div>
+        <div><label class="fl">Perjawatan</label><select class="fi" id="prsd-add-perjawatan"><option value="">— Pilih —</option><option>Pensyarah</option><option>Pegawai</option><option>Staf</option></select></div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button class="btn btn-pri" onclick="saveNewPrsdMember()"><i class="fas fa-save mr-1"></i>Simpan</button>
+      </div>
+    </div>
+  </div>`;
+  const kampusSelect = document.getElementById("prsd-add-kampus");
+  if(kampusSelect && defaultKod) kampusSelect.value = defaultKod;
+}
+
+async function saveNewPrsdMember(){
+  const kod = canonicalKodKampusGlobal(document.getElementById("prsd-add-kampus")?.value);
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && kod !== ownCampus){
+    toast("Anda hanya boleh menambah ahli untuk kampus sendiri.","err");
+    return;
+  }
+  const nama = (document.getElementById("prsd-add-nama")?.value || "").trim();
+  if(!nama){ toast("Nama penuh diperlukan","err"); return; }
+  const info = MASTER_KAMPUS_BY_ID[kod] || {};
+  const rec = {
+    kodKampus: kod, kampus_id: kod,
+    zon: info?.zon || "", negeri: info?.negeri || "",
+    ipgk: info?.nama || "", organisasi: info?.nama || "",
+    nama: nama,
+    noMyKad: (document.getElementById("prsd-add-mykad")?.value || "").trim(),
+    noKP: (document.getElementById("prsd-add-mykad")?.value || "").trim(),
+    noTelefon: (document.getElementById("prsd-add-telefon")?.value || "").trim(),
+    telefon: (document.getElementById("prsd-add-telefon")?.value || "").trim(),
+    jawatan: (document.getElementById("prsd-add-jawatan")?.value || "").trim(),
+    perjawatan: (document.getElementById("prsd-add-perjawatan")?.value || "").trim(),
+    diciptaOleh: SES.uid || "",
+    diciptaPada: new Date().toISOString(),
+    aktif: true
+  };
+  try {
+    if(!window.MYFB?.upsertPRSD) throw new Error("Fungsi Firestore tidak tersedia.");
+    const newDocId = await window.MYFB.upsertPRSD("", rec, SES.uid);
+    rec._docId = newDocId;
+    (window._prsdData||[]).push(rec);
+    closeModal();
+    toast("Ahli PRSD baharu ditambah","ok");
+    const container = document.getElementById("enrolmen-content");
+    if(container) await loadAndRenderPRSD(container, isKampus() ? SES.kampus : null);
+  } catch(err){ toast("Gagal: "+err.message,"err"); }
 }
 
 function showAkrabStatDetail(type){
@@ -14413,6 +14795,7 @@ function renderAkrabPage(c,data,kampusFilter){
         <i class="fas fa-cloud-arrow-up"></i> Ganti Data AKRAB Firestore
         <input type="file" accept=".csv,.xlsx,.xls" style="display:none" onchange="syncAkrabCSVToFirestore(this)">
       </label>`:""}
+      ${(isAdmin()||isKampus())?`<button class="btn btn-pri btn-sm" onclick="addAkrabMemberV3()" style="font-size:11px;"><i class="fas fa-user-plus"></i> Tambah Ahli</button>`:""}
       <button onclick="exportAkrabXlsx()" class="btn btn-out btn-sm" style="font-size:11px;"><i class="fas fa-file-excel"></i> Excel</button>
       <button onclick="exportPagePDF()" class="btn btn-ghost btn-sm" style="font-size:11px;"><i class="fas fa-file-pdf"></i></button>
     </div>
@@ -20654,6 +21037,204 @@ function _rujDelete(collectionName, docId, studentLabel){
   const typed = prompt("Taip PADAM untuk mengesahkan pemadaman rekod " + _rujLabelFor(collectionName) + " bagi " + studentLabel + ":");
   if(typed !== "PADAM"){ toast("Pemadaman dibatalkan.","inf"); return; }
   _rujDeleteRecord(collectionName, docId, studentLabel, reason);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ALAT GENERATE PAUTAN WHATSAPP (UNTUK ADMIN UTAMA)
+// Pautan akan menuju ke halaman kemaskini berasingan (kemaskini.html)
+// Dari paparan Enrolmen → klik butang "Hantar Pautan Kemaskini"
+// ════════════════════════════════════════════════════════════════════════════
+
+function generateKemaskiniLinks(){
+  const src = (window.ENROLMEN_LIVE || window.ENROLMEN_CSV || ENROLMEN_DATA) || [];
+  if(!src.length){ toast("Tiada data enrolmen","err"); return; }
+
+  // Filter rekod yang TIADA no. telefon (atau tel = "0")
+  const noPhone = src.filter(r => {
+    const tel = String(r.tel || r.telefon || "").trim();
+    return !tel || tel === "0";
+  });
+  const hasPhone = src.filter(r => {
+    const tel = String(r.tel || r.telefon || "").trim();
+    return tel && tel !== "0";
+  });
+
+  // URL borang kemaskini berasingan — admin boleh ubah
+  // Default: subfolder /kemaskini/ pada domain yang sama
+  const defaultKemaskiniUrl = window.location.origin + "/kemaskini/";
+  const baseUrl = defaultKemaskiniUrl;
+  document.getElementById("modal-wrap").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box" style="max-width:720px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div>
+        <h3 style="font-family:'Outfit',sans-serif;font-weight:800;color:var(--navy);font-size:1.05rem;"><i class="fas fa-share-nodes text-pri-500 mr-1"></i>Hantar Pautan Kemaskini Profil</h3>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:2px;">Pelajar akan terima pautan WhatsApp untuk kemaskini no. telefon &amp; emel mereka</div>
+      </div>
+      <button onclick="closeModal()" class="user-drawer-close" title="Tutup">&times;</button>
+    </div>
+
+    <!-- Ringkasan -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:#15803D;">${hasPhone.length.toLocaleString("ms-MY")}</div>
+        <div style="font-size:.7rem;color:#16A34A;text-transform:uppercase;font-weight:700;">Ada Telefon</div>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:2px;">Boleh hantar WhatsApp</div>
+      </div>
+      <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:#B91C1C;">${noPhone.length.toLocaleString("ms-MY")}</div>
+        <div style="font-size:.7rem;color:#DC2626;text-transform:uppercase;font-weight:700;">Tiada Telefon</div>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:2px;">Perlu kemaskini</div>
+      </div>
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px;text-align:center;">
+        <div style="font-family:'Outfit',sans-serif;font-size:1.5rem;font-weight:800;color:#1E40AF;">${src.length.toLocaleString("ms-MY")}</div>
+        <div style="font-size:.7rem;color:#1D4ED8;text-transform:uppercase;font-weight:700;">Jumlah Pelajar</div>
+      </div>
+    </div>
+
+    <!-- URL borang kemaskini -->
+    <div style="margin-bottom:14px;background:#F0F7F4;border:1px solid #B3E2D2;border-radius:8px;padding:10px 12px;">
+      <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px;"><i class="fas fa-link text-pri-500 mr-1"></i>URL Borang Kemaskini</label>
+      <input type="text" id="km-gen-baseurl" value="${esc(baseUrl)}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.82rem;font-family:monospace;" placeholder="https://upskipgm.com/kemaskini/">
+      <div style="font-size:.7rem;color:var(--muted);margin-top:4px;">Pautan pelajar: <code>{URL}?matrik=P26213044</code></div>
+    </div>
+
+    <!-- Pilih kampus -->
+    <div style="margin-bottom:14px;">
+      <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:4px;">Tapis mengikut Kampus (opsyen)</label>
+      <select class="fi" id="km-gen-kampus" style="width:100%;font-size:.85rem;">
+        <option value="">Semua Kampus</option>
+        ${[...KAMPUS].sort(compareMasterKampus).map(k => `<option value="${k.id}">${k.nama}</option>`).join("")}
+      </select>
+    </div>
+
+    <!-- Pilih kumpulan -->
+    <div style="margin-bottom:14px;">
+      <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:6px;">Kumpulan Sasaran</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:6px 10px;">
+          <input type="radio" name="km-gen-group" value="no-phone" checked>
+          <span>Tiada Telefon (${noPhone.length})</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:6px 10px;">
+          <input type="radio" name="km-gen-group" value="has-phone">
+          <span>Ada Telefon (${hasPhone.length})</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:.82rem;cursor:pointer;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:6px 10px;">
+          <input type="radio" name="km-gen-group" value="all">
+          <span>Semua (${src.length})</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Hasil -->
+    <div id="km-gen-result" style="max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:14px;">
+      <div style="padding:20px;text-align:center;color:var(--muted);font-size:.82rem;">Klik "Jana Senarai" untuk lihat pautan</div>
+    </div>
+
+    <!-- Butang -->
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeModal()">Tutup</button>
+      <button class="btn btn-out" onclick="_exportKemaskiniLinksExcel()"><i class="fas fa-file-excel" style="color:#16A34A;"></i> Eksport Excel</button>
+      <button class="btn btn-pri" onclick="_generateKemaskiniLinksList()"><i class="fas fa-list"></i> Jana Senarai</button>
+    </div>
+  </div></div>`;
+}
+
+let _kemaskiniLinksCache = [];
+
+function _generateKemaskiniLinksList(){
+  const src = (window.ENROLMEN_LIVE || window.ENROLMEN_CSV || ENROLMEN_DATA) || [];
+  const kidFilter = document.getElementById("km-gen-kampus")?.value || "";
+  const group = document.querySelector('input[name="km-gen-group"]:checked')?.value || "no-phone";
+
+  let filtered = src;
+  if(kidFilter){
+    filtered = filtered.filter(r => {
+      const k = r._resolvedKid || resolveKampusInfo(r).kampus_id || r.kampus_id || "";
+      return String(k).toUpperCase() === String(kidFilter).toUpperCase();
+    });
+  }
+  if(group === "no-phone"){
+    filtered = filtered.filter(r => {
+      const tel = String(r.tel || r.telefon || "").trim();
+      return !tel || tel === "0";
+    });
+  } else if(group === "has-phone"){
+    filtered = filtered.filter(r => {
+      const tel = String(r.tel || r.telefon || "").trim();
+      return tel && tel !== "0";
+    });
+  }
+
+  const baseUrl = (document.getElementById("km-gen-baseurl")?.value || "").trim().replace(/\/+$/, "");
+  _kemaskiniLinksCache = filtered.map(r => {
+    const tel = String(r.tel || r.telefon || "").trim();
+    const telClean = tel.replace(/[^0-9]/g, "").replace(/^0/, "60");
+    const url = `${baseUrl}/?matrik=${encodeURIComponent(r.no_matrik)}`;
+    const msg = `Salam ${r.nama},%0A%0ASila kemaskini maklumat profil anda di MyKaunseling dengan klik pautan berikut:%0A${url}%0A%0ATerima kasih.`;
+    const waLink = tel && tel !== "0" ? `https://wa.me/${telClean}?text=${msg}` : "";
+    return {
+      no_matrik: r.no_matrik,
+      nama: r.nama,
+      kampus: r.kampus_nama || r.organisasi || "—",
+      tel,
+      emel: r.emel || "",
+      pautan: url,
+      waLink
+    };
+  });
+
+  // Render senarai
+  const html = `
+  <div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;padding:6px 8px;">Menunjukkan ${Math.min(_kemaskiniLinksCache.length, 50)} daripada ${_kemaskiniLinksCache.length} rekod</div>
+  <table class="tbl" style="font-size:.72rem;">
+    <thead><tr><th>#</th><th>Matrik</th><th>Nama</th><th>Kampus</th><th>Telefon</th><th>Tindakan</th></tr></thead>
+    <tbody>
+      ${_kemaskiniLinksCache.slice(0, 50).map((r, i) => `
+        <tr>
+          <td>${i+1}</td>
+          <td class="font-mono text-xs">${r.no_matrik}</td>
+          <td style="font-size:.78rem;">${esc(r.nama)}</td>
+          <td style="font-size:.7rem;">${esc(r.kampus)}</td>
+          <td style="font-size:.7rem;">${r.tel || "<span style='color:#DC2626;'>Tiada</span>"}</td>
+          <td>
+            ${r.waLink ? `<a href="${r.waLink}" target="_blank" class="btn btn-xs" style="background:#25D366;color:#fff;font-size:.65rem;padding:3px 8px;"><i class="fab fa-whatsapp"></i> Hantar</a>` : `<a href="${r.pautan}" target="_blank" class="btn btn-xs btn-ghost" style="font-size:.65rem;padding:3px 8px;"><i class="fas fa-link"></i> Pautan</a>`}
+          </td>
+        </tr>
+      `).join("")}
+    </tbody>
+  </table>`;
+  document.getElementById("km-gen-result").innerHTML = html;
+  toast(`${_kemaskiniLinksCache.length} pautan dijana`, "ok");
+}
+
+function _exportKemaskiniLinksExcel(){
+  if(!_kemaskiniLinksCache.length){
+    toast("Sila jana senarai dahulu", "err");
+    return;
+  }
+  if(typeof XLSX === "undefined"){
+    toast("Pustaka XLSX tidak dimuatkan", "err");
+    return;
+  }
+  const data = _kemaskiniLinksCache.map((r, i) => ({
+    "Bil.": i+1,
+    "No. Matrik": r.no_matrik,
+    "Nama": r.nama,
+    "Kampus": r.kampus,
+    "No. Telefon": r.tel || "",
+    "Emel": r.emel || "",
+    "Pautan Kemaskini": r.pautan,
+    "Pautan WhatsApp": r.waLink || ""
+  }));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws["!cols"] = [{wch:5},{wch:14},{wch:30},{wch:25},{wch:14},{wch:25},{wch:60},{wch:80}];
+  ws["!autofilter"] = { ref: ws["!ref"] };
+  XLSX.utils.book_append_sheet(wb, ws, "Pautan Kemaskini");
+  XLSX.writeFile(wb, "Pautan_Kemaskini_Pelajar_MyKaunseling.xlsx");
+  toast(`${data.length} pautan dieksport ke Excel`, "ok");
 }
 
 </script>
