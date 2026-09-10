@@ -1594,7 +1594,33 @@ const KAMPUS = MASTER_KAMPUS.filter(k => k.kategori === "IPG Kampus")
   .map(k => ({...k, zona:k.zon}));
 const ELTC_INFO = {...MASTER_KAMPUS.find(k => k.id === "ELTC"), zona:"Zon Selatan"};
 const IPGM_INFO = {...MASTER_KAMPUS.find(k => k.id === "IPGM"), zona:"Zon IPGM"};
-const KLIST = ["Zon IPGM","Zon Tengah","Zon Selatan","Zon Timur","Zon Utara","Zon Sabah","Zon Sarawak"];
+const KLIST = ["Zon Tengah","Zon Selatan","Zon Timur","Zon Utara","Zon Sabah","Zon Sarawak"];
+
+// Normalisasi nama zon ke 6 zon standard sahaja
+// IPGM (ibu pejabat) BUKAN zon — dikategorikan sebagai "IPGM (HQ)"
+// Terima pelbagai format: "UTARA", "Zon Utara", "Utara", "UTARA " → "Zon Utara"
+const ZON_ALIASES = {
+  "utara":"Zon Utara", "zon utara":"Zon Utara", "north":"Zon Utara",
+  "selatan":"Zon Selatan", "zon selatan":"Zon Selatan", "south":"Zon Selatan",
+  "timur":"Zon Timur", "zon timur":"Zon Timur", "east":"Zon Timur",
+  "tengah":"Zon Tengah", "zon tengah":"Zon Tengah", "central":"Zon Tengah",
+  "sabah":"Zon Sabah", "zon sabah":"Zon Sabah",
+  "sarawak":"Zon Sarawak", "zon sarawak":"Zon Sarawak"
+};
+function normalizeZon(zon){
+  if(!zon) return "—";
+  const z = String(zon).trim().toLowerCase();
+  // IPGM = ibu pejabat, bukan zon
+  if(z === "ipgm" || z === "zon ipgm") return "IPGM (HQ)";
+  if(ZON_ALIASES[z]) return ZON_ALIASES[z];
+  // Jika dah ada "Zon " prefix, kekal
+  if(zon.startsWith("Zon ")) return zon;
+  // Cuba match tanpa "zon" prefix
+  const withoutZon = z.replace(/^zon\s+/,"");
+  if(ZON_ALIASES[withoutZon]) return ZON_ALIASES[withoutZon];
+  // Fallback: original
+  return zon;
+}
 const MASTER_KAMPUS_BY_ID = Object.freeze(
   Object.fromEntries(MASTER_KAMPUS.map(k => [k.id, k]))
 );
@@ -7435,8 +7461,9 @@ function renderKaunselorPage(c, enriched, kampusFilter){
 
   // Stats — guna _resolvedKid/_resolvedZon/_resolvedNama dari resolveKampusInfo()
   // Kira HANYA kaunselor aktif (bukan KOSONG)
+  // Guna normalizeZon() supaya 6 zon standard + IPGM sahaja dipaparkan
   const byZon = {};
-  staff.forEach(u => { const z = u._resolvedZon || resolveKampusInfo(u).zon || "—"; byZon[z] = (byZon[z]||0)+1; });
+  staff.forEach(u => { const z = normalizeZon(u._resolvedZon || resolveKampusInfo(u).zon || "—"); byZon[z] = (byZon[z]||0)+1; });
   const byKampus = {};
   staff.forEach(u => {
     const kid = u._resolvedKid || resolveKampusInfo(u).kampus_id || "—";
@@ -8484,7 +8511,7 @@ function filterKaunselor(){
   const neg = document.getElementById("kaun-negeri")?.value||"";
   let d = window._kaunData||[];
   if(q) d = d.filter(u=>(u.nama+u.jawatan+u._resolvedNama+u._resolvedZon+u._resolvedNegeri+u.noKaunselor+u.email+(u._resolvedKid||"")).toLowerCase().includes(q));
-  if(zon) d = d.filter(u=>(u._resolvedZon||resolveKampusInfo(u).zon)===zon);
+  if(zon) d = d.filter(u=>normalizeZon(u._resolvedZon||resolveKampusInfo(u).zon)===zon);
   if(jaw) d = d.filter(u=>(u.jawatan||"")===jaw);
   if(kam) d = d.filter(u=>(u._resolvedKid||resolveKampusInfo(u).kampus_id)===kam);
   if(neg) d = d.filter(u=>(u._resolvedNegeri||resolveKampusInfo(u).negeri)===neg);
@@ -9217,7 +9244,7 @@ function renderAkrabPage(c, data, kampusFilter) {
 
   // Statistik mengikut zon — guna resolved zon dari kodKampus
   const byZon = {};
-  data.forEach(d => { const z = d._resolvedZon || resolveKampusInfo(d).zon || "—"; byZon[z] = (byZon[z] || 0) + 1; });
+  data.forEach(d => { const z = normalizeZon(d._resolvedZon || resolveKampusInfo(d).zon || "—"); byZon[z] = (byZon[z] || 0) + 1; });
 
   // Statistik mengikut kampus — guna resolved kampus_id dari kodKampus
   const byKampus = {};
@@ -10164,7 +10191,7 @@ function filterAkrab(){
   const kam = document.getElementById("akrab-kampus")?.value||"";
   let d = window._akrabData||[];
   if(q) d = d.filter(x=>(x.namaPenuh+x.noMyKad+x.jawatan+x._resolvedNama+x._resolvedKid+x.noKeahlianAkrab).toLowerCase().includes(q));
-  if(zon) d = d.filter(x=>(x._resolvedZon||resolveKampusInfo(x).zon)===zon);
+  if(zon) d = d.filter(x=>normalizeZon(x._resolvedZon||resolveKampusInfo(x).zon)===zon);
   if(jaw) d = d.filter(x=>(x.jawatan||"")===jaw);
   if(kam) d = d.filter(x=>(x._resolvedKid||resolveKampusInfo(x).kampus_id)===kam);
   const tbl = document.getElementById("tbl-akrab-main");
@@ -10178,7 +10205,7 @@ function filterAkrab(){
       const docId=r._docId||"";
       const rk = r._resolvedKid || resolveKampusInfo(r).kampus_id || "—";
       const rn = r._resolvedNama || "";
-      const rz = r._resolvedZon || resolveKampusInfo(r).zon || "—";
+      const rz = normalizeZon(r._resolvedZon || resolveKampusInfo(r).zon || "—");
       h += "<tr id=\"akrab-row-"+i+"\"><td style=\"text-align:center;color:var(--muted);font-size:12px;\">"+(r.bil||i+1)+"</td><td><b>"+esc(r.namaPenuh)+"</b></td><td style=\"font-size:12px;font-family:monospace;\">"+esc(r.noMyKad)+"</td><td>"+jawatanBadge(r.jawatan)+"</td><td style=\"font-size:12px;\"><span style=\"font-weight:600;color:var(--pri);\">"+esc(rk)+"</span> "+(rn?"<br><span style=\"color:var(--muted);font-size:.65rem;\">"+esc(rn)+"</span>":"")+"</td><td style=\"font-size:12px;\"><span class=\"bdg bdg-pri\" style=\"font-size:.65rem;\">"+esc(rz)+"</span></td><td style=\"font-size:12px;\">"+(esc(r.noTelefon)||"—")+"</td><td style=\"font-size:12px;\">"+(esc(r.noKeahlianAkrab)||"—")+"</td>";
       if(canEdit&&isFS) h += "<td style=\"text-align:center;white-space:nowrap;\"><button class=\"btn btn-ghost btn-xs\" onclick=\"editAkrabRow("+i+")\" title=\"Edit\"><i class=\"fas fa-pen\" style=\"color:#0E7C61;\"></i></button><button class=\"btn btn-ghost btn-xs\" onclick=\"deleteAkrabRow("+i+",'"+docId+"')\" title=\"Padam\" style=\"margin-left:2px;\"><i class=\"fas fa-trash\" style=\"color:#DC2626;\"></i></button></td>";
       h += "</tr>";
@@ -10503,7 +10530,7 @@ function renderPRSDPage(c, data, kampusFilter) {
 
   // Statistik mengikut zon — guna resolved zon dari kodKampus
   const byZon = {};
-  data.forEach(d => { const z = d._resolvedZon || resolveKampusInfo(d).zon || "—"; byZon[z] = (byZon[z] || 0) + 1; });
+  data.forEach(d => { const z = normalizeZon(d._resolvedZon || resolveKampusInfo(d).zon || "—"); byZon[z] = (byZon[z] || 0) + 1; });
 
   // Statistik mengikut kampus — guna resolved kampus_id dari kodKampus
   const byKampus = {};
@@ -13724,7 +13751,7 @@ function akrabBuildCampusMap(data){
       const info = MASTER_KAMPUS_BY_ID[kod] || {};
       map[kod]={
         kod,nama:info.nama||record.ipgk||kod,
-        zon:info.zon||record.zon||"—",
+        zon:normalizeZon(info.zon||record.zon||record._resolvedZon||"—"),
         negeri:info.negeri||record.negeri||"—",
         ahli:[],penyelaras:""
       };
@@ -13749,7 +13776,7 @@ function renderAkrabPage(c,data,kampusFilter){
   const byZone = {};
   const byRole = {};
   completed.forEach(record=>{
-    const zone = record.zon || "Tidak ditetapkan";
+    const zone = normalizeZon(record.zon || record._resolvedZon || "—");
     byZone[zone]=(byZone[zone]||0)+1;
     const role = record.jawatan || "Tidak ditetapkan";
     byRole[role]=(byRole[role]||0)+1;
