@@ -12107,55 +12107,180 @@ function renderKesKewanganDashboard(c, kampusFilter){
   else tc.innerHTML = _renderPrestasiTab(_kkData.prestasi, kampusFilter, canEdit);
 }
 
+// ── Helper: normalize kewangan fields (support multiple field name variants) ──
+function _kkVal(d, ...keys){
+  for(const k of keys){
+    if(d[k] !== undefined && d[k] !== null && String(d[k]).trim() !== "") return d[k];
+  }
+  return "";
+}
+function _kkNum(d, ...keys){
+  const v = _kkVal(d, ...keys);
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
+}
+function _kkKampusNama(d){
+  const kid = _kkVal(d, "kodKampus", "kampus_id", "KodKampus");
+  const info = MASTER_KAMPUS_BY_ID[kid] || {};
+  return info.nama || kid || "—";
+}
+
+// ── Helper: render filter bar ──
+function _kkFilterBar(data, tab, canEdit, addLabel){
+  const kampusSet = new Set();
+  data.forEach(d=>{ const k=_kkVal(d,"kodKampus","kampus_id","KodKampus"); if(k) kampusSet.add(k); });
+  const kampusOpts = [...kampusSet].sort().map(k=>{
+    const info = MASTER_KAMPUS_BY_ID[k]||{};
+    return `<option value="${k}">${k} — ${info.nama||k}</option>`;
+  }).join("");
+  const zonSet = new Set();
+  data.forEach(d=>{
+    const k=_kkVal(d,"kodKampus","kampus_id","KodKampus");
+    const info = MASTER_KAMPUS_BY_ID[k]||{};
+    const z = normalizeZon(info.zon||d.zon||"");
+    if(z && z !== "—") zonSet.add(z);
+  });
+  const zonOpts = [...zonSet].sort().map(z=>`<option value="${z}">${z}</option>`).join("");
+
+  return `
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center;">
+    <input type="text" class="fi" id="kk-cari" style="max-width:220px;font-size:.82rem;" placeholder="Cari nama / No. KP..." oninput="_kkFilter('${tab}',${canEdit})">
+    <select class="fi" id="kk-f-kampus" style="width:auto;font-size:.82rem;" onchange="_kkFilter('${tab}',${canEdit})">
+      <option value="">Semua Kampus</option>
+      ${kampusOpts}
+    </select>
+    <select class="fi" id="kk-f-zon" style="width:auto;font-size:.82rem;" onchange="_kkFilter('${tab}',${canEdit})">
+      <option value="">Semua Zon</option>
+      ${zonOpts}
+    </select>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('kk-cari').value='';document.getElementById('kk-f-kampus').value='';document.getElementById('kk-f-zon').value='';_kkFilter('${tab}',${canEdit})"><i class="fas fa-rotate-left"></i></button>
+    ${canEdit?`<button class="btn btn-pri btn-sm" style="margin-left:auto;" onclick="${addLabel}"><i class="fas fa-plus"></i> Tambah</button>`:""}
+  </div>
+  <div id="kk-filtered-count" style="font-size:.72rem;color:var(--muted);margin-bottom:8px;">Menunjukkan ${data.length} daripada ${data.length} rekod</div>`;
+}
+
+// ── Helper: filter data based on filter bar ──
+function _kkGetFiltered(data){
+  const q = (document.getElementById("kk-cari")?.value||"").toLowerCase().trim();
+  const fk = document.getElementById("kk-f-kampus")?.value||"";
+  const fz = document.getElementById("kk-f-zon")?.value||"";
+  let filtered = data;
+  if(q) filtered = filtered.filter(d=>{
+    const nama = String(_kkVal(d,"namaPegawai","nama","Nama")||"").toLowerCase();
+    const nokp = String(_kkVal(d,"noKP","noKadPengenalan","NO KAD PENGENALAN")||"").toLowerCase();
+    return nama.includes(q) || nokp.includes(q);
+  });
+  if(fk) filtered = filtered.filter(d=>_kkVal(d,"kodKampus","kampus_id","KodKampus")===fk);
+  if(fz) filtered = filtered.filter(d=>{
+    const k=_kkVal(d,"kodKampus","kampus_id","KodKampus");
+    const info = MASTER_KAMPUS_BY_ID[k]||{};
+    return normalizeZon(info.zon||d.zon||"")===fz;
+  });
+  return filtered;
+}
+
+function _kkFilter(tab, canEdit){
+  const tc = document.getElementById("kk-tab-content");
+  if(!tc) return;
+  const data = tab==="keterhutangan" ? _kkData.kewangan : tab==="pool" ? _kkData.pool : _kkData.prestasi;
+  const filtered = _kkGetFiltered(data);
+  // Update count
+  const cntEl = document.getElementById("kk-filtered-count");
+  if(cntEl) cntEl.textContent = `Menunjukkan ${filtered.length} daripada ${data.length} rekod`;
+  // Re-render table only
+  const tableContainer = document.getElementById("kk-table-container");
+  if(tableContainer){
+    if(tab==="keterhutangan") tableContainer.innerHTML = _kkKeterhutanganTable(filtered, canEdit);
+    else if(tab==="pool") tableContainer.innerHTML = _kkPoolTable(filtered, canEdit);
+    else tableContainer.innerHTML = _kkPrestasiTable(filtered, canEdit);
+  }
+}
+
+// ── Helper: show stat detail modal ──
+function _kkShowStatDetail(title, records, canEdit, type){
+  document.getElementById("modal-wrap").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:1000px;padding:0;overflow:hidden;">
+      <div style="padding:18px 22px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;">
+        <div><h3 style="font-size:1.1rem;font-weight:800;color:var(--navy);">${esc(title)}</h3><div style="font-size:.75rem;color:var(--muted);margin-top:2px;">${records.length} rekod</div></div>
+        <button class="user-drawer-close" onclick="closeModal()">×</button>
+      </div>
+      <div style="padding:14px 22px;max-height:60vh;overflow:auto;">
+        <table class="tbl"><thead><tr><th>#</th><th>Nama</th><th>No. KP</th><th>Kampus</th>${type==="kewangan"?"<th>Pendapatan</th><th>Potongan</th><th>% Gaji</th>":type==="pool"?"<th>Kategori</th>":"<th>PMS</th>"}</tr></thead>
+        <tbody>${records.map((d,i)=>`<tr>
+          <td>${i+1}</td>
+          <td style="font-size:.82rem;font-weight:600;">${esc(_kkVal(d,"namaPegawai","nama","Nama")||"—")}</td>
+          <td style="font-size:.72rem;font-family:monospace;">${esc(_kkVal(d,"noKP","noKadPengenalan")||"—")}</td>
+          <td style="font-size:.72rem;">${esc(_kkVal(d,"kodKampus","kampus_id","KodKampus")||"—")}</td>
+          ${type==="kewangan"?`<td>RM ${_kkNum(d,"jumlahPendapatan","JUMLAH PENDAPATAN").toFixed(2)}</td><td style="color:#DC2626;">RM ${_kkNum(d,"jumlahPotongan","JUMLAH POTONGAN (RM)").toFixed(2)}</td><td>${_kkNum(d,"pctGajiBersih","% GAJI BERSIH").toFixed(1)}%</td>`:""}
+          ${type==="pool"?`<td>${esc(d.kategori||"—")}</td>`:""}
+          ${type==="prestasi"?`<td>${_kkNum(d,"myPerformance","MyPerformance_PMS").toFixed(2)}%</td>`:""}
+        </tr>`).join("")}</tbody></table>
+      </div>
+    </div>
+  </div>`;
+}
+
 // ── Tab: Keterhutangan Melampau ──
 function _renderKeterhutanganTab(data, kampusFilter, canEdit){
   const total = data.length;
-  const totalPotongan = data.reduce((s,d)=>s+(parseFloat(d.jumlahPotongan)||0),0);
-  const avgPct = total ? (data.reduce((s,d)=>s+(parseFloat(d.pctGajiBersih)||0),0)/total).toFixed(1) : 0;
+  const totalPotongan = data.reduce((s,d)=>s+_kkNum(d,"jumlahPotongan","JUMLAH POTONGAN (RM)"),0);
+  const totalPendapatan = data.reduce((s,d)=>s+_kkNum(d,"jumlahPendapatan","JUMLAH PENDAPATAN"),0);
+  const avgPct = total ? (data.reduce((s,d)=>s+_kkNum(d,"pctGajiBersih","% GAJI BERSIH"),0)/total).toFixed(1) : 0;
+  const kritikal = data.filter(d=>_kkNum(d,"pctGajiBersih","% GAJI BERSIH")<30).length;
   const byKampus = {};
-  data.forEach(d=>{ const k=d.kodKampus||"—"; byKampus[k]=(byKampus[k]||0)+1; });
-  const kampusList = Object.entries(byKampus).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  data.forEach(d=>{ const k=_kkVal(d,"kodKampus","kampus_id","KodKampus")||"—"; byKampus[k]=(byKampus[k]||0)+1; });
 
   return `
-  <!-- Stats -->
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
-    <div class="stat-card sc-pri"><div class="stat-val">${total}</div><div class="stat-lbl">Jumlah Klien</div></div>
-    <div class="stat-card sc-amb"><div class="stat-val">RM ${totalPotongan.toLocaleString("ms-MY",{maximumFractionDigits:0})}</div><div class="stat-lbl">Jumlah Potongan</div></div>
-    <div class="stat-card sc-navy"><div class="stat-val">${avgPct}%</div><div class="stat-lbl">Purata % Gaji Bersih</div></div>
-    <div class="stat-card sc-red"><div class="stat-val">${Object.keys(byKampus).length}</div><div class="stat-lbl">Kampus Terlibat</div></div>
+  <!-- Stats — clickable -->
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;">
+    <div class="stat-card sc-pri" style="cursor:pointer;" onclick="_kkShowStatDetail('Semua Klien Keterhutangan',${JSON.stringify(data.map(d=>({namaPegawai:d.namaPegawai||d.nama,noKP:d.noKP||d.noKadPengenalan,kodKampus:d.kodKampus||d.kampus_id,jumlahPendapatan:d.jumlahPendapatan||d['JUMLAH PENDAPATAN'],jumlahPotongan:d.jumlahPotongan||d['JUMLAH POTONGAN (RM)'],pctGajiBersih:d.pctGajiBersih||d['% GAJI BERSIH']}))).replace(/'/g,"&#39;")},${canEdit},'kewangan')">
+      <div class="stat-val">${total}</div><div class="stat-lbl">Jumlah Klien</div>
+      <div class="stat-sub text-gray-400">Klik untuk senarai penuh</div>
+    </div>
+    <div class="stat-card sc-amb" style="cursor:pointer;" onclick="_kkShowStatDetail('Klien Kritikal (< 30% Gaji)',${JSON.stringify(data.filter(d=>_kkNum(d,"pctGajiBersih","% GAJI BERSIH")<30).map(d=>({namaPegawai:d.namaPegawai||d.nama,noKP:d.noKP||d.noKadPengenalan,kodKampus:d.kodKampus||d.kampus_id,jumlahPendapatan:d.jumlahPendapatan||d['JUMLAH PENDAPATAN'],jumlahPotongan:d.jumlahPotongan||d['JUMLAH POTONGAN (RM)'],pctGajiBersih:d.pctGajiBersih||d['% GAJI BERSIH']}))).replace(/'/g,"&#39;")},${canEdit},'kewangan')">
+      <div class="stat-val" style="color:#DC2626;">${kritikal}</div><div class="stat-lbl">Klien Kritikal</div>
+      <div class="stat-sub" style="color:#DC2626;">% gaji bersih < 30%</div>
+    </div>
+    <div class="stat-card sc-navy"><div class="stat-val">RM ${totalPotongan.toLocaleString("ms-MY",{maximumFractionDigits:0})}</div><div class="stat-lbl">Jumlah Potongan</div><div class="stat-sub text-gray-400">Daripada RM ${totalPendapatan.toLocaleString("ms-MY",{maximumFractionDigits:0})} pendapatan</div></div>
+    <div class="stat-card sc-pri"><div class="stat-val">${avgPct}%</div><div class="stat-lbl">Purata % Gaji Bersih</div><div class="stat-sub text-gray-400">Purata baki selepas potongan</div></div>
+    <div class="stat-card sc-red"><div class="stat-val">${Object.keys(byKampus).length}</div><div class="stat-lbl">Kampus Terlibat</div><div class="stat-sub text-gray-400">Daripada 27 kampus IPG</div></div>
   </div>
+
+  ${_kkFilterBar(data, "keterhutangan", canEdit, "addKesKewanganRecord()")}
 
   <!-- Table -->
   <div class="card">
     <div class="card-head">
       <span class="card-title"><i class="fas fa-table text-pri-500 mr-2"></i>Senarai Klien Keterhutangan</span>
-      <div style="display:flex;gap:6px;">
-        ${canEdit?`<button class="btn btn-pri btn-sm" onclick="addKesKewanganRecord()"><i class="fas fa-plus"></i> Tambah</button>`:""}
-      </div>
     </div>
-    <div style="overflow:auto;max-height:500px;">
-      <table class="tbl">
-        <thead><tr><th>#</th><th>Nama</th><th>No. KP</th><th>Kampus</th><th>Jawatan</th><th>Gred</th><th>Pendapatan</th><th>Potongan</th><th>% Gaji</th>${canEdit?"<th>Aksi</th>":""}</tr></thead>
-        <tbody>
-          ${data.length ? data.map((d,i)=>`<tr>
-            <td>${i+1}</td>
-            <td style="font-weight:600;font-size:.82rem;">${esc(d.namaPegawai||d.nama||"—")}</td>
-            <td style="font-size:.72rem;font-family:monospace;">${esc(d.noKP||d.noKadPengenalan||"—")}</td>
-            <td style="font-size:.72rem;">${esc(d.kodKampus||"—")}</td>
-            <td style="font-size:.72rem;">${esc(d.jawatan||"—")}</td>
-            <td><span class="bdg bdg-navy" style="font-size:.62rem;">${esc(d.gredJawatan||d.gred||"—")}</span></td>
-            <td style="font-size:.75rem;">RM ${(parseFloat(d.jumlahPendapatan)||0).toFixed(2)}</td>
-            <td style="font-size:.75rem;color:#DC2626;">RM ${(parseFloat(d.jumlahPotongan)||0).toFixed(2)}</td>
-            <td><span class="bdg ${parseFloat(d.pctGajiBersih)<30?"bdg-red":parseFloat(d.pctGajiBersih)<50?"bdg-amber":"bdg-green"}" style="font-size:.62rem;">${parseFloat(d.pctGajiBersih||0).toFixed(1)}%</span></td>
-            ${canEdit?`<td style="white-space:nowrap;">
-              <button class="btn btn-ghost btn-xs" onclick="editKesKewanganRecord('${d._docId}')"><i class="fas fa-pen" style="color:#0E7C61;"></i></button>
-              <button class="btn btn-ghost btn-xs" onclick="deleteKesKewanganRecord('${d._docId}')"><i class="fas fa-trash" style="color:#DC2626;"></i></button>
-            </td>`:""}
-          </tr>`).join("") : `<tr><td colspan="${canEdit?10:9}" style="text-align:center;padding:20px;color:var(--muted);">Tiada data. ${canEdit?"Klik Tambah untuk rekod baharu atau muat naik Excel.":""}</td></tr>`}
-        </tbody>
-      </table>
+    <div id="kk-table-container" style="overflow:auto;max-height:500px;">
+      ${_kkKeterhutanganTable(data, canEdit)}
     </div>
   </div>`;
+}
+
+function _kkKeterhutanganTable(data, canEdit){
+  return `<table class="tbl">
+    <thead><tr><th>#</th><th>Nama</th><th>No. KP</th><th>Kampus</th><th>Jawatan</th><th>Gred</th><th>Pendapatan</th><th>Potongan</th><th>% Gaji</th>${canEdit?"<th>Aksi</th>":""}</tr></thead>
+    <tbody>
+      ${data.length ? data.map((d,i)=>{const pct=_kkNum(d,"pctGajiBersih","% GAJI BERSIH");return `<tr>
+        <td>${i+1}</td>
+        <td style="font-weight:600;font-size:.82rem;">${esc(_kkVal(d,"namaPegawai","nama","Nama")||"—")}</td>
+        <td style="font-size:.72rem;font-family:monospace;">${esc(_kkVal(d,"noKP","noKadPengenalan")||"—")}</td>
+        <td style="font-size:.72rem;">${esc(_kkVal(d,"kodKampus","kampus_id","KodKampus")||"—")}</td>
+        <td style="font-size:.72rem;">${esc(_kkVal(d,"jawatan","JAWATAN")||"—")}</td>
+        <td><span class="bdg bdg-navy" style="font-size:.62rem;">${esc(_kkVal(d,"gredJawatan","GRED JAWATAN","gred")||"—")}</span></td>
+        <td style="font-size:.75rem;">RM ${_kkNum(d,"jumlahPendapatan","JUMLAH PENDAPATAN").toFixed(2)}</td>
+        <td style="font-size:.75rem;color:#DC2626;">RM ${_kkNum(d,"jumlahPotongan","JUMLAH POTONGAN (RM)").toFixed(2)}</td>
+        <td><span class="bdg ${pct<30?"bdg-red":pct<50?"bdg-amber":"bdg-green"}" style="font-size:.62rem;">${pct.toFixed(1)}%</span></td>
+        ${canEdit?`<td style="white-space:nowrap;">
+          <button class="btn btn-ghost btn-xs" onclick="editKesKewanganRecord('${d._docId}')"><i class="fas fa-pen" style="color:#0E7C61;"></i></button>
+          <button class="btn btn-ghost btn-xs" onclick="deleteKesKewanganRecord('${d._docId}')"><i class="fas fa-trash" style="color:#DC2626;"></i></button>
+        </td>`:""}
+      </tr>`;}).join("") : `<tr><td colspan="${canEdit?10:9}" style="text-align:center;padding:20px;color:var(--muted);">Tiada data.</td></tr>`}
+    </tbody>
+  </table>`;
 }
 
 // ── Tab: Pool AKP ──
@@ -12163,78 +12288,107 @@ function _renderPoolTab(data, kampusFilter, canEdit){
   const total = data.length;
   const byKategori = {};
   data.forEach(d=>{ const k=d.kategori||"—"; byKategori[k]=(byKategori[k]||0)+1; });
+  const byKampus = {};
+  data.forEach(d=>{ const k=_kkVal(d,"kodKampus","kampus_id","KodKampus")||"—"; byKampus[k]=(byKampus[k]||0)+1; });
 
   return `
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
-    <div class="stat-card sc-pri"><div class="stat-val">${total}</div><div class="stat-lbl">Jumlah AKP</div></div>
-    <div class="stat-card sc-red"><div class="stat-val">${byKategori["DISYAKI MELAKUKAN KESALAHAN JENAYAH"]||0}</div><div class="stat-lbl">Kes Jenayah</div></div>
-    <div class="stat-card sc-amb"><div class="stat-val">${byKategori["MASALAH KESIHATAN"]||0}</div><div class="stat-lbl">Masalah Kesihatan</div></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+    <div class="stat-card sc-pri" style="cursor:pointer;" onclick="_kkShowStatDetail('Semua Pool AKP',${JSON.stringify(data.map(d=>({nama:d.nama,noKP:d.noKP,kodKampus:d.kodKampus||d.kampus_id,kategori:d.kategori}))).replace(/'/g,"&#39;")},${canEdit},'pool')">
+      <div class="stat-val">${total}</div><div class="stat-lbl">Jumlah AKP</div><div class="stat-sub text-gray-400">Klik untuk senarai penuh</div>
+    </div>
+    <div class="stat-card sc-red" style="cursor:pointer;" onclick="_kkShowStatDetail('Kes Jenayah',${JSON.stringify(data.filter(d=>(d.kategori||"").includes("JENAYAH")).map(d=>({nama:d.nama,noKP:d.noKP,kodKampus:d.kodKampus||d.kampus_id,kategori:d.kategori}))).replace(/'/g,"&#39;")},${canEdit},'pool')">
+      <div class="stat-val">${byKategori["DISYAKI MELAKUKAN KESALAHAN JENAYAH"]||0}</div><div class="stat-lbl">Kes Jenayah</div><div class="stat-sub text-gray-400">Disyaki kesalahan jenayah</div>
+    </div>
+    <div class="stat-card sc-amb" style="cursor:pointer;" onclick="_kkShowStatDetail('Masalah Kesihatan',${JSON.stringify(data.filter(d=>(d.kategori||"").includes("KESIHATAN")).map(d=>({nama:d.nama,noKP:d.noKP,kodKampus:d.kodKampus||d.kampus_id,kategori:d.kategori}))).replace(/'/g,"&#39;")},${canEdit},'pool')">
+      <div class="stat-val">${byKategori["MASALAH KESIHATAN"]||0}</div><div class="stat-lbl">Masalah Kesihatan</div><div class="stat-sub text-gray-400">Isu kesihatan</div>
+    </div>
+    <div class="stat-card sc-navy"><div class="stat-val">${Object.keys(byKampus).length}</div><div class="stat-lbl">Kampus Terlibat</div><div class="stat-sub text-gray-400">Daripada 27 kampus IPG</div></div>
   </div>
+
+  ${_kkFilterBar(data, "pool", canEdit, "addPoolRecord()")}
+
   <div class="card">
     <div class="card-head">
       <span class="card-title"><i class="fas fa-users-slash text-pri-500 mr-2"></i>Senarai Pool AKP</span>
-      ${canEdit?`<button class="btn btn-pri btn-sm" onclick="addPoolRecord()"><i class="fas fa-plus"></i> Tambah</button>`:""}
     </div>
-    <div style="overflow:auto;max-height:500px;">
-      <table class="tbl">
-        <thead><tr><th>#</th><th>Nama</th><th>No. KP</th><th>Jawatan</th><th>Kampus</th><th>Kategori</th><th>Tarikh Masuk</th>${canEdit?"<th>Aksi</th>":""}</tr></thead>
-        <tbody>
-          ${data.length ? data.map((d,i)=>`<tr>
-            <td>${i+1}</td>
-            <td style="font-weight:600;font-size:.82rem;">${esc(d.nama||"—")}</td>
-            <td style="font-size:.72rem;font-family:monospace;">${esc(d.noKP||"—")}</td>
-            <td style="font-size:.72rem;">${esc(d.jawatan||"—")}</td>
-            <td style="font-size:.72rem;">${esc(d.kodKampus||"—")}</td>
-            <td><span class="bdg ${d.kategori&&d.kategori.includes("JENAYAH")?"bdg-red":"bdg-amber"}" style="font-size:.62rem;">${esc(d.kategori||"—")}</span></td>
-            <td style="font-size:.72rem;">${esc(d.tarikhMasuk||"—")}</td>
-            ${canEdit?`<td style="white-space:nowrap;">
-              <button class="btn btn-ghost btn-xs" onclick="editPoolRecord('${d._docId}')"><i class="fas fa-pen" style="color:#0E7C61;"></i></button>
-              <button class="btn btn-ghost btn-xs" onclick="deletePoolRecord('${d._docId}')"><i class="fas fa-trash" style="color:#DC2626;"></i></button>
-            </td>`:""}
-          </tr>`).join("") : `<tr><td colspan="${canEdit?8:7}" style="text-align:center;padding:20px;color:var(--muted);">Tiada data.</td></tr>`}
-        </tbody>
-      </table>
+    <div id="kk-table-container" style="overflow:auto;max-height:500px;">
+      ${_kkPoolTable(data, canEdit)}
     </div>
   </div>`;
+}
+
+function _kkPoolTable(data, canEdit){
+  return `<table class="tbl">
+    <thead><tr><th>#</th><th>Nama</th><th>No. KP</th><th>Jawatan</th><th>Kampus</th><th>Kategori</th><th>Tarikh Masuk</th>${canEdit?"<th>Aksi</th>":""}</tr></thead>
+    <tbody>
+      ${data.length ? data.map((d,i)=>`<tr>
+        <td>${i+1}</td>
+        <td style="font-weight:600;font-size:.82rem;">${esc(d.nama||"—")}</td>
+        <td style="font-size:.72rem;font-family:monospace;">${esc(d.noKP||"—")}</td>
+        <td style="font-size:.72rem;">${esc(d.jawatan||"—")}</td>
+        <td style="font-size:.72rem;">${esc(_kkVal(d,"kodKampus","kampus_id","KodKampus")||"—")}</td>
+        <td><span class="bdg ${d.kategori&&d.kategori.includes("JENAYAH")?"bdg-red":"bdg-amber"}" style="font-size:.62rem;">${esc(d.kategori||"—")}</span></td>
+        <td style="font-size:.72rem;">${esc(d.tarikhMasuk||"—")}</td>
+        ${canEdit?`<td style="white-space:nowrap;">
+          <button class="btn btn-ghost btn-xs" onclick="editPoolRecord('${d._docId}')"><i class="fas fa-pen" style="color:#0E7C61;"></i></button>
+          <button class="btn btn-ghost btn-xs" onclick="deletePoolRecord('${d._docId}')"><i class="fas fa-trash" style="color:#DC2626;"></i></button>
+        </td>`:""}
+      </tr>`).join("") : `<tr><td colspan="${canEdit?8:7}" style="text-align:center;padding:20px;color:var(--muted);">Tiada data.</td></tr>`}
+    </tbody>
+  </table>`;
 }
 
 // ── Tab: Prestasi Sederhana ──
 function _renderPrestasiTab(data, kampusFilter, canEdit){
   const total = data.length;
-  const avgPMS = total ? (data.reduce((s,d)=>s+(parseFloat(d.myPerformance)||0),0)/total).toFixed(2) : 0;
+  const avgPMS = total ? (data.reduce((s,d)=>s+_kkNum(d,"myPerformance","MyPerformance_PMS"),0)/total).toFixed(2) : 0;
+  const below65 = data.filter(d=>_kkNum(d,"myPerformance","MyPerformance_PMS")<65).length;
+  const byKampus = {};
+  data.forEach(d=>{ const k=_kkVal(d,"kodKampus","kampus_id","KodKampus")||"—"; byKampus[k]=(byKampus[k]||0)+1; });
 
   return `
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
-    <div class="stat-card sc-pri"><div class="stat-val">${total}</div><div class="stat-lbl">Jumlah AKP</div></div>
-    <div class="stat-card sc-amb"><div class="stat-val">${avgPMS}%</div><div class="stat-lbl">Purata PMS</div></div>
-    <div class="stat-card sc-navy"><div class="stat-val">60-74.99%</div><div class="stat-lbl">Julat Prestasi</div></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+    <div class="stat-card sc-pri" style="cursor:pointer;" onclick="_kkShowStatDetail('Semua Prestasi Sederhana',${JSON.stringify(data.map(d=>({nama:d.nama||d.namaPemilik,noKP:d.noKP||d.noKadPengenalan,kodKampus:d.kodKampus||d.kampus_id,myPerformance:d.myPerformance||d.MyPerformance_PMS}))).replace(/'/g,"&#39;")},${canEdit},'prestasi')">
+      <div class="stat-val">${total}</div><div class="stat-lbl">Jumlah AKP</div><div class="stat-sub text-gray-400">Klik untuk senarai penuh</div>
+    </div>
+    <div class="stat-card sc-amb"><div class="stat-val">${avgPMS}%</div><div class="stat-lbl">Purata PMS</div><div class="stat-sub text-gray-400">Purata MyPerformance</div></div>
+    <div class="stat-card sc-red" style="cursor:pointer;" onclick="_kkShowStatDetail('Prestasi Rendah (< 65%)',${JSON.stringify(data.filter(d=>_kkNum(d,"myPerformance","MyPerformance_PMS")<65).map(d=>({nama:d.nama||d.namaPemilik,noKP:d.noKP||d.noKadPengenalan,kodKampus:d.kodKampus||d.kampus_id,myPerformance:d.myPerformance||d.MyPerformance_PMS}))).replace(/'/g,"&#39;")},${canEdit},'prestasi')">
+      <div class="stat-val" style="color:#DC2626;">${below65}</div><div class="stat-lbl">Prestasi Rendah</div><div class="stat-sub" style="color:#DC2626;">PMS < 65%</div>
+    </div>
+    <div class="stat-card sc-navy"><div class="stat-val">60-74.99%</div><div class="stat-lbl">Julat Prestasi</div><div class="stat-sub text-gray-400">Kategori sederhana</div></div>
   </div>
+
+  ${_kkFilterBar(data, "prestasi", canEdit, "addPrestasiRecord()")}
+
   <div class="card">
     <div class="card-head">
       <span class="card-title"><i class="fas fa-chart-line text-pri-500 mr-2"></i>Senarai Prestasi Sederhana</span>
-      ${canEdit?`<button class="btn btn-pri btn-sm" onclick="addPrestasiRecord()"><i class="fas fa-plus"></i> Tambah</button>`:""}
     </div>
-    <div style="overflow:auto;max-height:500px;">
-      <table class="tbl">
-        <thead><tr><th>#</th><th>Nama</th><th>No. KP</th><th>Kampus</th><th>Skim</th><th>Gred</th><th>PMS</th>${canEdit?"<th>Aksi</th>":""}</tr></thead>
-        <tbody>
-          ${data.length ? data.map((d,i)=>`<tr>
-            <td>${i+1}</td>
-            <td style="font-weight:600;font-size:.82rem;">${esc(d.nama||d.namaPemilik||"—")}</td>
-            <td style="font-size:.72rem;font-family:monospace;">${esc(d.noKP||d.noKadPengenalan||"—")}</td>
-            <td style="font-size:.72rem;">${esc(d.kodKampus||"—")}</td>
-            <td style="font-size:.72rem;">${esc(d.skimPerkhidmatan||"—")}</td>
-            <td><span class="bdg bdg-navy" style="font-size:.62rem;">${esc(d.gredGaji||"—")}</span></td>
-            <td><span class="bdg ${parseFloat(d.myPerformance)<65?"bdg-red":"bdg-amber"}" style="font-size:.62rem;">${parseFloat(d.myPerformance||0).toFixed(2)}%</span></td>
-            ${canEdit?`<td style="white-space:nowrap;">
-              <button class="btn btn-ghost btn-xs" onclick="editPrestasiRecord('${d._docId}')"><i class="fas fa-pen" style="color:#0E7C61;"></i></button>
-              <button class="btn btn-ghost btn-xs" onclick="deletePrestasiRecord('${d._docId}')"><i class="fas fa-trash" style="color:#DC2626;"></i></button>
-            </td>`:""}
-          </tr>`).join("") : `<tr><td colspan="${canEdit?8:7}" style="text-align:center;padding:20px;color:var(--muted);">Tiada data.</td></tr>`}
-        </tbody>
-      </table>
+    <div id="kk-table-container" style="overflow:auto;max-height:500px;">
+      ${_kkPrestasiTable(data, canEdit)}
     </div>
   </div>`;
+}
+
+function _kkPrestasiTable(data, canEdit){
+  return `<table class="tbl">
+    <thead><tr><th>#</th><th>Nama</th><th>No. KP</th><th>Kampus</th><th>Skim</th><th>Gred</th><th>PMS</th>${canEdit?"<th>Aksi</th>":""}</tr></thead>
+    <tbody>
+      ${data.length ? data.map((d,i)=>{const pms=_kkNum(d,"myPerformance","MyPerformance_PMS");return `<tr>
+        <td>${i+1}</td>
+        <td style="font-weight:600;font-size:.82rem;">${esc(_kkVal(d,"nama","namaPemilik","Nama Pemilik Kompetensi")||"—")}</td>
+        <td style="font-size:.72rem;font-family:monospace;">${esc(_kkVal(d,"noKP","noKadPengenalan","No Kad Pengenalan")||"—")}</td>
+        <td style="font-size:.72rem;">${esc(_kkVal(d,"kodKampus","kampus_id","KodKampus")||"—")}</td>
+        <td style="font-size:.72rem;">${esc(_kkVal(d,"skimPerkhidmatan","Skim Perkhidmatan")||"—")}</td>
+        <td><span class="bdg bdg-navy" style="font-size:.62rem;">${esc(_kkVal(d,"gredGaji","Gred Gaji")||"—")}</span></td>
+        <td><span class="bdg ${pms<65?"bdg-red":"bdg-amber"}" style="font-size:.62rem;">${pms.toFixed(2)}%</span></td>
+        ${canEdit?`<td style="white-space:nowrap;">
+          <button class="btn btn-ghost btn-xs" onclick="editPrestasiRecord('${d._docId}')"><i class="fas fa-pen" style="color:#0E7C61;"></i></button>
+          <button class="btn btn-ghost btn-xs" onclick="deletePrestasiRecord('${d._docId}')"><i class="fas fa-trash" style="color:#DC2626;"></i></button>
+        </td>`:""}
+      </tr>`;}).join("") : `<tr><td colspan="${canEdit?8:7}" style="text-align:center;padding:20px;color:var(--muted);">Tiada data.</td></tr>`}
+    </tbody>
+  </table>`;
 }
 
 // ── CRUD: Keterhutangan ──
