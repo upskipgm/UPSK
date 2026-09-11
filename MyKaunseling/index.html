@@ -997,6 +997,63 @@ h1,h2,h3,h4,h5,h6{font-family:"Outfit",sans-serif;}
         await setDoc(doc(db, "prsd", finalId), payload, { merge: true });
         return finalId;
       },
+      // ── Kes Kewangan Firestore CRUD (Keterhutangan Melampau) ──
+      listKesKewangan: async (kampusFilter) => {
+        const kod = canonicalKodKampus(kampusFilter);
+        if(kod && kod !== "IPGM"){
+          const exact = await getDocs(query(collection(db, "kes_kewangan"), where("kodKampus", "==", kod)));
+          if(!exact.empty) return exact.docs.map(d => ({ _docId:d.id, ...d.data() }));
+        }
+        const snap = await getDocs(collection(db, "kes_kewangan"));
+        return snap.docs.map(d => ({ _docId:d.id, ...d.data() }));
+      },
+      upsertKesKewangan: async (docId, data, adminUid) => {
+        const clean = { ...data }; delete clean._docId;
+        const payload = { ...withCanonicalKampus(clean), dikemasKiniOleh: adminUid || null, dikemasKiniPada: serverTimestamp() };
+        if(!docId){ payload.diciptaOleh = adminUid || null; payload.diciptaPada = serverTimestamp(); }
+        const finalId = docId || `kk_${data.kodKampus || "XX"}_${Date.now()}`;
+        await setDoc(doc(db, "kes_kewangan", finalId), payload, { merge: true });
+        return finalId;
+      },
+      deleteKesKewangan: async (docId) => { await deleteDoc(doc(db, "kes_kewangan", docId)); },
+      // ── Kes Kewangan Pool (AKP) ──
+      listKesKewanganPool: async (kampusFilter) => {
+        const kod = canonicalKodKampus(kampusFilter);
+        if(kod && kod !== "IPGM"){
+          const exact = await getDocs(query(collection(db, "kes_kewangan_pool"), where("kodKampus", "==", kod)));
+          if(!exact.empty) return exact.docs.map(d => ({ _docId:d.id, ...d.data() }));
+        }
+        const snap = await getDocs(collection(db, "kes_kewangan_pool"));
+        return snap.docs.map(d => ({ _docId:d.id, ...d.data() }));
+      },
+      upsertKesKewanganPool: async (docId, data, adminUid) => {
+        const clean = { ...data }; delete clean._docId;
+        const payload = { ...withCanonicalKampus(clean), dikemasKiniOleh: adminUid || null, dikemasKiniPada: serverTimestamp() };
+        if(!docId){ payload.diciptaOleh = adminUid || null; payload.diciptaPada = serverTimestamp(); }
+        const finalId = docId || `pool_${data.kodKampus || "XX"}_${Date.now()}`;
+        await setDoc(doc(db, "kes_kewangan_pool", finalId), payload, { merge: true });
+        return finalId;
+      },
+      deleteKesKewanganPool: async (docId) => { await deleteDoc(doc(db, "kes_kewangan_pool", docId)); },
+      // ── Kes Kewangan Prestasi Sederhana ──
+      listKesKewanganPrestasi: async (kampusFilter) => {
+        const kod = canonicalKodKampus(kampusFilter);
+        if(kod && kod !== "IPGM"){
+          const exact = await getDocs(query(collection(db, "kes_kewangan_prestasi"), where("kodKampus", "==", kod)));
+          if(!exact.empty) return exact.docs.map(d => ({ _docId:d.id, ...d.data() }));
+        }
+        const snap = await getDocs(collection(db, "kes_kewangan_prestasi"));
+        return snap.docs.map(d => ({ _docId:d.id, ...d.data() }));
+      },
+      upsertKesKewanganPrestasi: async (docId, data, adminUid) => {
+        const clean = { ...data }; delete clean._docId;
+        const payload = { ...withCanonicalKampus(clean), dikemasKiniOleh: adminUid || null, dikemasKiniPada: serverTimestamp() };
+        if(!docId){ payload.diciptaOleh = adminUid || null; payload.diciptaPada = serverTimestamp(); }
+        const finalId = docId || `ps_${data.kodKampus || "XX"}_${Date.now()}`;
+        await setDoc(doc(db, "kes_kewangan_prestasi", finalId), payload, { merge: true });
+        return finalId;
+      },
+      deleteKesKewanganPrestasi: async (docId) => { await deleteDoc(doc(db, "kes_kewangan_prestasi", docId)); },
       // ── Peruntukan Kewangan Firestore CRUD ──
       listPeruntukan: async (kampusFilter) => {
         const snap = await Promise.race([
@@ -11975,11 +12032,596 @@ function renderPengurusanDataPage(c, tajuk, ikon, skop, jenis){
     <div class="card-body text-center py-10"><i class="fas fa-database text-3xl text-gray-300 mb-3"></i><div class="font-semibold text-navy-800">Tiada data tersedia</div><div class="text-sm text-gray-400 mt-1">Muat naik fail CSV untuk memaparkan analisis.</div></div></div>`;
 }
 function pgAKTesihatanMental(c){renderPengurusanDataPage(c,"Data Kesihatan Mental","fa-notes-medical",SES.kampus,"mental")}
-function pgAKTesKewangan(c){renderPengurusanDataPage(c,"Data Kes Kewangan","fa-hand-holding-dollar",SES.kampus,"kewangan")}
+function pgAKTesKewangan(c){ loadKesKewanganDashboard(c, SES.kampus); }
 function pgAKBajetKampus(c){renderPeruntukanKewangan(c,"kampus")}
 function pgAUKesihatanMental(c){renderPengurusanDataPage(c,"Data Kesihatan Mental","fa-notes-medical",null,"mental")}
-function pgAUKesKewangan(c){renderPengurusanDataPage(c,"Data Kes Kewangan","fa-hand-holding-dollar",null,"kewangan")}
+function pgAUKesKewangan(c){ loadKesKewanganDashboard(c, null); }
 function pgAUBajetKampus(c){renderPeruntukanKewangan(c,"utama")}
+
+// ════════════════════════════════════════════════════════════════════════════
+// DASHBOARD KES KEWANGAN — 3 Tab: Keterhutangan, Pool AKP, Prestasi Sederhana
+// Data dari Firestore: kes_kewangan, kes_kewangan_pool, kes_kewangan_prestasi
+// Kaunselor & Admin Kampus boleh CRUD rekod kampus sendiri
+// ════════════════════════════════════════════════════════════════════════════
+
+let _kkData = { kewangan: [], pool: [], prestasi: [] };
+let _kkTab = "keterhutangan";
+
+async function loadKesKewanganDashboard(c, kampusFilter){
+  c.innerHTML = `<div style="padding:40px;text-align:center;color:var(--muted);">
+    <i class="fas fa-spinner fa-spin" style="font-size:28px;margin-bottom:14px;display:block;color:var(--pri);"></i>
+    <div style="font-size:14px;font-weight:500;">Memuatkan data kes kewangan dari Firestore...</div>
+  </div>`;
+  try {
+    await (window.MYFB_READY || Promise.resolve(true));
+    if(!window.__FS?.db) throw new Error("Firestore belum tersedia.");
+    const [kewangan, pool, prestasi] = await Promise.all([
+      window.MYFB.listKesKewangan(kampusFilter).catch(e=>{console.warn("KK load:",e);return[];}),
+      window.MYFB.listKesKewanganPool(kampusFilter).catch(e=>{console.warn("Pool load:",e);return[];}),
+      window.MYFB.listKesKewanganPrestasi(kampusFilter).catch(e=>{console.warn("Prestasi load:",e);return[];})
+    ]);
+    _kkData = { kewangan, pool, prestasi };
+    renderKesKewanganDashboard(c, kampusFilter);
+  } catch(err){
+    console.error("[KK]", err);
+    c.innerHTML = `<div class="card"><div class="card-body" style="padding:28px;color:#B91C1C;">
+      <b>Data gagal dimuatkan.</b><br><span style="font-size:.8rem;">${esc(err.message||String(err))}</span>
+    </div></div>`;
+  }
+}
+
+function renderKesKewanganDashboard(c, kampusFilter){
+  const kampusTxt = kampusFilter ? kNama(kampusFilter) : "Semua Kampus IPG Malaysia";
+  const canEdit = isAdmin() || isKampus();
+  const tab = _kkTab;
+
+  c.innerHTML = `
+  <div class="afu bg-gradient-to-br from-navy-800 to-pri-700 rounded-xl p-5 mb-5 text-white relative overflow-hidden">
+    <div class="absolute right-0 top-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/3 translate-x-1/4"></div>
+    <div class="relative z-10">
+      <div class="text-white/50 text-xs mb-1"><i class="fas fa-hand-holding-dollar mr-2"></i>PENGURUSAN KAUNSELING</div>
+      <div class="font-display font-800 text-xl">Data Kes Kewangan</div>
+      <div class="text-white/55 text-sm mt-1">${kampusTxt} · ${_kkData.kewangan.length + _kkData.pool.length + _kkData.prestasi.length} jumlah rekod</div>
+    </div>
+  </div>
+
+  <!-- Tab buttons -->
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+    <button class="btn ${tab==='keterhutangan'?'btn-pri':'btn-ghost'} btn-sm" onclick="_kkTab='keterhutangan';renderKesKewanganDashboard(document.getElementById('pg-body'),${kampusFilter?`'${kampusFilter}'`:'null'})">
+      <i class="fas fa-money-bill-wave"></i> Keterhutangan Melampau (${_kkData.kewangan.length})
+    </button>
+    <button class="btn ${tab==='pool'?'btn-pri':'btn-ghost'} btn-sm" onclick="_kkTab='pool';renderKesKewanganDashboard(document.getElementById('pg-body'),${kampusFilter?`'${kampusFilter}'`:'null'})">
+      <i class="fas fa-users-slash"></i> Pool AKP (${_kkData.pool.length})
+    </button>
+    <button class="btn ${tab==='prestasi'?'btn-pri':'btn-ghost'} btn-sm" onclick="_kkTab='prestasi';renderKesKewanganDashboard(document.getElementById('pg-body'),${kampusFilter?`'${kampusFilter}'`:'null'})">
+      <i class="fas fa-chart-line"></i> Prestasi Sederhana (${_kkData.prestasi.length})
+    </button>
+  </div>
+
+  <div id="kk-tab-content"></div>`;
+
+  const tc = document.getElementById("kk-tab-content");
+  if(!tc) return;
+  if(tab === "keterhutangan") tc.innerHTML = _renderKeterhutanganTab(_kkData.kewangan, kampusFilter, canEdit);
+  else if(tab === "pool") tc.innerHTML = _renderPoolTab(_kkData.pool, kampusFilter, canEdit);
+  else tc.innerHTML = _renderPrestasiTab(_kkData.prestasi, kampusFilter, canEdit);
+}
+
+// ── Tab: Keterhutangan Melampau ──
+function _renderKeterhutanganTab(data, kampusFilter, canEdit){
+  const total = data.length;
+  const totalPotongan = data.reduce((s,d)=>s+(parseFloat(d.jumlahPotongan)||0),0);
+  const avgPct = total ? (data.reduce((s,d)=>s+(parseFloat(d.pctGajiBersih)||0),0)/total).toFixed(1) : 0;
+  const byKampus = {};
+  data.forEach(d=>{ const k=d.kodKampus||"—"; byKampus[k]=(byKampus[k]||0)+1; });
+  const kampusList = Object.entries(byKampus).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  return `
+  <!-- Stats -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+    <div class="stat-card sc-pri"><div class="stat-val">${total}</div><div class="stat-lbl">Jumlah Klien</div></div>
+    <div class="stat-card sc-amb"><div class="stat-val">RM ${totalPotongan.toLocaleString("ms-MY",{maximumFractionDigits:0})}</div><div class="stat-lbl">Jumlah Potongan</div></div>
+    <div class="stat-card sc-navy"><div class="stat-val">${avgPct}%</div><div class="stat-lbl">Purata % Gaji Bersih</div></div>
+    <div class="stat-card sc-red"><div class="stat-val">${Object.keys(byKampus).length}</div><div class="stat-lbl">Kampus Terlibat</div></div>
+  </div>
+
+  <!-- Table -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="fas fa-table text-pri-500 mr-2"></i>Senarai Klien Keterhutangan</span>
+      <div style="display:flex;gap:6px;">
+        ${canEdit?`<button class="btn btn-pri btn-sm" onclick="addKesKewanganRecord()"><i class="fas fa-plus"></i> Tambah</button>`:""}
+      </div>
+    </div>
+    <div style="overflow:auto;max-height:500px;">
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Nama</th><th>No. KP</th><th>Kampus</th><th>Jawatan</th><th>Gred</th><th>Pendapatan</th><th>Potongan</th><th>% Gaji</th>${canEdit?"<th>Aksi</th>":""}</tr></thead>
+        <tbody>
+          ${data.length ? data.map((d,i)=>`<tr>
+            <td>${i+1}</td>
+            <td style="font-weight:600;font-size:.82rem;">${esc(d.namaPegawai||d.nama||"—")}</td>
+            <td style="font-size:.72rem;font-family:monospace;">${esc(d.noKP||d.noKadPengenalan||"—")}</td>
+            <td style="font-size:.72rem;">${esc(d.kodKampus||"—")}</td>
+            <td style="font-size:.72rem;">${esc(d.jawatan||"—")}</td>
+            <td><span class="bdg bdg-navy" style="font-size:.62rem;">${esc(d.gredJawatan||d.gred||"—")}</span></td>
+            <td style="font-size:.75rem;">RM ${(parseFloat(d.jumlahPendapatan)||0).toFixed(2)}</td>
+            <td style="font-size:.75rem;color:#DC2626;">RM ${(parseFloat(d.jumlahPotongan)||0).toFixed(2)}</td>
+            <td><span class="bdg ${parseFloat(d.pctGajiBersih)<30?"bdg-red":parseFloat(d.pctGajiBersih)<50?"bdg-amber":"bdg-green"}" style="font-size:.62rem;">${parseFloat(d.pctGajiBersih||0).toFixed(1)}%</span></td>
+            ${canEdit?`<td style="white-space:nowrap;">
+              <button class="btn btn-ghost btn-xs" onclick="editKesKewanganRecord('${d._docId}')"><i class="fas fa-pen" style="color:#0E7C61;"></i></button>
+              <button class="btn btn-ghost btn-xs" onclick="deleteKesKewanganRecord('${d._docId}')"><i class="fas fa-trash" style="color:#DC2626;"></i></button>
+            </td>`:""}
+          </tr>`).join("") : `<tr><td colspan="${canEdit?10:9}" style="text-align:center;padding:20px;color:var(--muted);">Tiada data. ${canEdit?"Klik Tambah untuk rekod baharu atau muat naik Excel.":""}</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ── Tab: Pool AKP ──
+function _renderPoolTab(data, kampusFilter, canEdit){
+  const total = data.length;
+  const byKategori = {};
+  data.forEach(d=>{ const k=d.kategori||"—"; byKategori[k]=(byKategori[k]||0)+1; });
+
+  return `
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
+    <div class="stat-card sc-pri"><div class="stat-val">${total}</div><div class="stat-lbl">Jumlah AKP</div></div>
+    <div class="stat-card sc-red"><div class="stat-val">${byKategori["DISYAKI MELAKUKAN KESALAHAN JENAYAH"]||0}</div><div class="stat-lbl">Kes Jenayah</div></div>
+    <div class="stat-card sc-amb"><div class="stat-val">${byKategori["MASALAH KESIHATAN"]||0}</div><div class="stat-lbl">Masalah Kesihatan</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="fas fa-users-slash text-pri-500 mr-2"></i>Senarai Pool AKP</span>
+      ${canEdit?`<button class="btn btn-pri btn-sm" onclick="addPoolRecord()"><i class="fas fa-plus"></i> Tambah</button>`:""}
+    </div>
+    <div style="overflow:auto;max-height:500px;">
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Nama</th><th>No. KP</th><th>Jawatan</th><th>Kampus</th><th>Kategori</th><th>Tarikh Masuk</th>${canEdit?"<th>Aksi</th>":""}</tr></thead>
+        <tbody>
+          ${data.length ? data.map((d,i)=>`<tr>
+            <td>${i+1}</td>
+            <td style="font-weight:600;font-size:.82rem;">${esc(d.nama||"—")}</td>
+            <td style="font-size:.72rem;font-family:monospace;">${esc(d.noKP||"—")}</td>
+            <td style="font-size:.72rem;">${esc(d.jawatan||"—")}</td>
+            <td style="font-size:.72rem;">${esc(d.kodKampus||"—")}</td>
+            <td><span class="bdg ${d.kategori&&d.kategori.includes("JENAYAH")?"bdg-red":"bdg-amber"}" style="font-size:.62rem;">${esc(d.kategori||"—")}</span></td>
+            <td style="font-size:.72rem;">${esc(d.tarikhMasuk||"—")}</td>
+            ${canEdit?`<td style="white-space:nowrap;">
+              <button class="btn btn-ghost btn-xs" onclick="editPoolRecord('${d._docId}')"><i class="fas fa-pen" style="color:#0E7C61;"></i></button>
+              <button class="btn btn-ghost btn-xs" onclick="deletePoolRecord('${d._docId}')"><i class="fas fa-trash" style="color:#DC2626;"></i></button>
+            </td>`:""}
+          </tr>`).join("") : `<tr><td colspan="${canEdit?8:7}" style="text-align:center;padding:20px;color:var(--muted);">Tiada data.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ── Tab: Prestasi Sederhana ──
+function _renderPrestasiTab(data, kampusFilter, canEdit){
+  const total = data.length;
+  const avgPMS = total ? (data.reduce((s,d)=>s+(parseFloat(d.myPerformance)||0),0)/total).toFixed(2) : 0;
+
+  return `
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
+    <div class="stat-card sc-pri"><div class="stat-val">${total}</div><div class="stat-lbl">Jumlah AKP</div></div>
+    <div class="stat-card sc-amb"><div class="stat-val">${avgPMS}%</div><div class="stat-lbl">Purata PMS</div></div>
+    <div class="stat-card sc-navy"><div class="stat-val">60-74.99%</div><div class="stat-lbl">Julat Prestasi</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title"><i class="fas fa-chart-line text-pri-500 mr-2"></i>Senarai Prestasi Sederhana</span>
+      ${canEdit?`<button class="btn btn-pri btn-sm" onclick="addPrestasiRecord()"><i class="fas fa-plus"></i> Tambah</button>`:""}
+    </div>
+    <div style="overflow:auto;max-height:500px;">
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Nama</th><th>No. KP</th><th>Kampus</th><th>Skim</th><th>Gred</th><th>PMS</th>${canEdit?"<th>Aksi</th>":""}</tr></thead>
+        <tbody>
+          ${data.length ? data.map((d,i)=>`<tr>
+            <td>${i+1}</td>
+            <td style="font-weight:600;font-size:.82rem;">${esc(d.nama||d.namaPemilik||"—")}</td>
+            <td style="font-size:.72rem;font-family:monospace;">${esc(d.noKP||d.noKadPengenalan||"—")}</td>
+            <td style="font-size:.72rem;">${esc(d.kodKampus||"—")}</td>
+            <td style="font-size:.72rem;">${esc(d.skimPerkhidmatan||"—")}</td>
+            <td><span class="bdg bdg-navy" style="font-size:.62rem;">${esc(d.gredGaji||"—")}</span></td>
+            <td><span class="bdg ${parseFloat(d.myPerformance)<65?"bdg-red":"bdg-amber"}" style="font-size:.62rem;">${parseFloat(d.myPerformance||0).toFixed(2)}%</span></td>
+            ${canEdit?`<td style="white-space:nowrap;">
+              <button class="btn btn-ghost btn-xs" onclick="editPrestasiRecord('${d._docId}')"><i class="fas fa-pen" style="color:#0E7C61;"></i></button>
+              <button class="btn btn-ghost btn-xs" onclick="deletePrestasiRecord('${d._docId}')"><i class="fas fa-trash" style="color:#DC2626;"></i></button>
+            </td>`:""}
+          </tr>`).join("") : `<tr><td colspan="${canEdit?8:7}" style="text-align:center;padding:20px;color:var(--muted);">Tiada data.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ── CRUD: Keterhutangan ──
+function _kkFindRecord(docId, type){
+  const arr = type==="kewangan" ? _kkData.kewangan : type==="pool" ? _kkData.pool : _kkData.prestasi;
+  return arr.find(r=>r._docId===docId);
+}
+
+function addKesKewanganRecord(){
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  const allowedCampuses = isAdmin()
+    ? MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus")
+    : MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus" && k.id===ownCampus);
+  const campusOptions = allowedCampuses.sort(compareMasterKampus)
+    .map(k=>`<option value="${k.id}">${esc(k.nama)}</option>`).join("");
+  const defaultKod = !isAdmin() ? ownCampus : (allowedCampuses[0]?.id || "");
+
+  document.getElementById("modal-wrap").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:720px;">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-700 text-lg text-navy-800"><i class="fas fa-user-plus text-pri-500 mr-2"></i>Tambah Rekod Keterhutangan</h3>
+        <button onclick="closeModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+        <div style="grid-column:span 2;"><label class="fl">IPG Kampus *</label><select class="fi" id="kk-add-kampus">${campusOptions}</select></div>
+        <div style="grid-column:span 2;"><label class="fl">Nama Pegawai *</label><input class="fi" id="kk-add-nama" placeholder="Nama penuh"></div>
+        <div><label class="fl">No. Kad Pengenalan</label><input class="fi" id="kk-add-nokp" placeholder="xxxxxx-xx-xxxx"></div>
+        <div><label class="fl">No. Gaji</label><input class="fi" id="kk-add-nogaji" placeholder="No. gaji"></div>
+        <div><label class="fl">Jawatan</label><input class="fi" id="kk-add-jawatan" placeholder="Jawatan"></div>
+        <div><label class="fl">Gred Jawatan</label><input class="fi" id="kk-add-gred" placeholder="cth: DG14"></div>
+        <div><label class="fl">Jumlah Pendapatan (RM)</label><input class="fi" id="kk-add-pendapatan" type="number" step="0.01" placeholder="0.00"></div>
+        <div><label class="fl">Jumlah Potongan (RM)</label><input class="fi" id="kk-add-potongan" type="number" step="0.01" placeholder="0.00"></div>
+        <div><label class="fl">% Gaji Bersih</label><input class="fi" id="kk-add-pct" type="number" step="0.01" placeholder="0.00"></div>
+        <div><label class="fl">Jumlah Simpanan</label><input class="fi" id="kk-add-simpanan" type="number" step="0.01" placeholder="0.00"></div>
+        <div><label class="fl">Emel</label><input class="fi" id="kk-add-emel" placeholder="email@gmail.com"></div>
+        <div><label class="fl">Jantina</label><select class="fi" id="kk-add-jantina"><option value="">—</option><option>Lelaki</option><option>Perempuan</option></select></div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button class="btn btn-pri" onclick="saveNewKesKewangan()"><i class="fas fa-save mr-1"></i>Simpan</button>
+      </div>
+    </div>
+  </div>`;
+  const sel = document.getElementById("kk-add-kampus");
+  if(sel && defaultKod) sel.value = defaultKod;
+}
+
+async function saveNewKesKewangan(){
+  const kod = canonicalKodKampusGlobal(document.getElementById("kk-add-kampus")?.value);
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && kod !== ownCampus){ toast("Anda hanya boleh tambah rekod kampus sendiri","err"); return; }
+  const nama = (document.getElementById("kk-add-nama")?.value||"").trim();
+  if(!nama){ toast("Nama diperlukan","err"); return; }
+  const info = MASTER_KAMPUS_BY_ID[kod] || {};
+  const rec = {
+    kodKampus: kod, kampus_id: kod,
+    zon: normalizeZon(info?.zon||""), negeri: info?.negeri||"",
+    namaPegawai: nama, nama: nama,
+    noKP: (document.getElementById("kk-add-nokp")?.value||"").trim(),
+    noGaji: (document.getElementById("kk-add-nogaji")?.value||"").trim(),
+    jawatan: (document.getElementById("kk-add-jawatan")?.value||"").trim(),
+    gredJawatan: (document.getElementById("kk-add-gred")?.value||"").trim(),
+    jumlahPendapatan: parseFloat(document.getElementById("kk-add-pendapatan")?.value||"0")||0,
+    jumlahPotongan: parseFloat(document.getElementById("kk-add-potongan")?.value||"0")||0,
+    pctGajiBersih: parseFloat(document.getElementById("kk-add-pct")?.value||"0")||0,
+    jumlahSimpanan: parseFloat(document.getElementById("kk-add-simpanan")?.value||"0")||0,
+    alamatEmel: (document.getElementById("kk-add-emel")?.value||"").trim(),
+    jantina: (document.getElementById("kk-add-jantina")?.value||"").trim(),
+    diciptaOleh: SES.uid || "", diciptaPada: new Date().toISOString(), aktif: true
+  };
+  try {
+    if(!window.MYFB?.upsertKesKewangan) throw new Error("Firestore tidak tersedia.");
+    const newId = await window.MYFB.upsertKesKewangan("", rec, SES.uid);
+    rec._docId = newId; _kkData.kewangan.push(rec);
+    closeModal(); toast("Rekod keterhutangan ditambah","ok");
+    renderKesKewanganDashboard(document.getElementById("pg-body"), isKampus()?SES.kampus:null);
+  } catch(err){ toast("Gagal: "+err.message,"err"); }
+}
+
+function editKesKewanganRecord(docId){
+  const d = _kkFindRecord(docId, "kewangan");
+  if(!d) return;
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && canonicalKodKampusGlobal(d.kodKampus) !== ownCampus){ toast("Anda hanya boleh edit rekod kampus sendiri","err"); return; }
+  document.getElementById("modal-wrap").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:720px;">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-700 text-lg text-navy-800"><i class="fas fa-pen text-pri-500 mr-2"></i>Kemaskini Keterhutangan</h3>
+        <button onclick="closeModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
+      </div>
+      <input type="hidden" id="kk-edit-docid" value="${esc(docId)}">
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+        <div style="grid-column:span 2;"><label class="fl">Nama Pegawai *</label><input class="fi" id="kk-edit-nama" value="${esc(d.namaPegawai||d.nama||"")}"></div>
+        <div><label class="fl">No. KP</label><input class="fi" id="kk-edit-nokp" value="${esc(d.noKP||d.noKadPengenalan||"")}"></div>
+        <div><label class="fl">No. Gaji</label><input class="fi" id="kk-edit-nogaji" value="${esc(d.noGaji||"")}"></div>
+        <div><label class="fl">Jawatan</label><input class="fi" id="kk-edit-jawatan" value="${esc(d.jawatan||"")}"></div>
+        <div><label class="fl">Gred</label><input class="fi" id="kk-edit-gred" value="${esc(d.gredJawatan||d.gred||"")}"></div>
+        <div><label class="fl">Pendapatan (RM)</label><input class="fi" id="kk-edit-pendapatan" type="number" step="0.01" value="${parseFloat(d.jumlahPendapatan||0)}"></div>
+        <div><label class="fl">Potongan (RM)</label><input class="fi" id="kk-edit-potongan" type="number" step="0.01" value="${parseFloat(d.jumlahPotongan||0)}"></div>
+        <div><label class="fl">% Gaji Bersih</label><input class="fi" id="kk-edit-pct" type="number" step="0.01" value="${parseFloat(d.pctGajiBersih||0)}"></div>
+        <div><label class="fl">Simpanan</label><input class="fi" id="kk-edit-simpanan" type="number" step="0.01" value="${parseFloat(d.jumlahSimpanan||0)}"></div>
+        <div><label class="fl">Emel</label><input class="fi" id="kk-edit-emel" value="${esc(d.alamatEmel||d.emel||"")}"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-danger" onclick="deleteKesKewanganRecord('${esc(docId)}')"><i class="fas fa-trash mr-1"></i>Padam</button>
+        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button class="btn btn-pri" onclick="saveEditKesKewangan()"><i class="fas fa-save mr-1"></i>Simpan</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function saveEditKesKewangan(){
+  const docId = document.getElementById("kk-edit-docid")?.value;
+  const d = _kkFindRecord(docId, "kewangan");
+  if(!d) return;
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && canonicalKodKampusGlobal(d.kodKampus) !== ownCampus){ toast("Anda hanya boleh edit rekod kampus sendiri","err"); return; }
+  const updates = {
+    namaPegawai: (document.getElementById("kk-edit-nama")?.value||"").trim(),
+    nama: (document.getElementById("kk-edit-nama")?.value||"").trim(),
+    noKP: (document.getElementById("kk-edit-nokp")?.value||"").trim(),
+    noGaji: (document.getElementById("kk-edit-nogaji")?.value||"").trim(),
+    jawatan: (document.getElementById("kk-edit-jawatan")?.value||"").trim(),
+    gredJawatan: (document.getElementById("kk-edit-gred")?.value||"").trim(),
+    jumlahPendapatan: parseFloat(document.getElementById("kk-edit-pendapatan")?.value||"0")||0,
+    jumlahPotongan: parseFloat(document.getElementById("kk-edit-potongan")?.value||"0")||0,
+    pctGajiBersih: parseFloat(document.getElementById("kk-edit-pct")?.value||"0")||0,
+    jumlahSimpanan: parseFloat(document.getElementById("kk-edit-simpanan")?.value||"0")||0,
+    alamatEmel: (document.getElementById("kk-edit-emel")?.value||"").trim()
+  };
+  try {
+    if(!window.MYFB?.upsertKesKewangan) throw new Error("Firestore tidak tersedia.");
+    await window.MYFB.upsertKesKewangan(docId, { ...d, ...updates }, SES.uid);
+    Object.assign(d, updates); closeModal();
+    toast("Rekod dikemaskini","ok");
+    renderKesKewanganDashboard(document.getElementById("pg-body"), isKampus()?SES.kampus:null);
+  } catch(err){ toast("Gagal: "+err.message,"err"); }
+}
+
+async function deleteKesKewanganRecord(docId){
+  const d = _kkFindRecord(docId, "kewangan");
+  if(!d) return;
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && canonicalKodKampusGlobal(d.kodKampus) !== ownCampus){ toast("Anda hanya boleh padam rekod kampus sendiri","err"); return; }
+  if(!confirm(`Padam rekod keterhutangan?\n\nNama: ${d.namaPegawai||d.nama||"—"}\nKampus: ${d.kodKampus||"—"}`)) return;
+  try {
+    await window.MYFB.deleteKesKewangan(docId);
+    _kkData.kewangan = _kkData.kewangan.filter(r=>r._docId!==docId);
+    closeModal(); toast("Rekod dipadam","ok");
+    renderKesKewanganDashboard(document.getElementById("pg-body"), isKampus()?SES.kampus:null);
+  } catch(err){ toast("Gagal padam: "+err.message,"err"); }
+}
+
+// ── CRUD: Pool AKP (simplified — same pattern) ──
+function addPoolRecord(){
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  const allowedCampuses = isAdmin()
+    ? MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus")
+    : MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus" && k.id===ownCampus);
+  const campusOptions = allowedCampuses.sort(compareMasterKampus).map(k=>`<option value="${k.id}">${esc(k.nama)}</option>`).join("");
+  const defaultKod = !isAdmin() ? ownCampus : (allowedCampuses[0]?.id || "");
+  document.getElementById("modal-wrap").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:620px;">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-700 text-lg text-navy-800"><i class="fas fa-user-plus text-pri-500 mr-2"></i>Tambah Rekod Pool AKP</h3>
+        <button onclick="closeModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+        <div style="grid-column:span 2;"><label class="fl">IPG Kampus *</label><select class="fi" id="pool-add-kampus">${campusOptions}</select></div>
+        <div style="grid-column:span 2;"><label class="fl">Nama *</label><input class="fi" id="pool-add-nama" placeholder="Nama penuh"></div>
+        <div><label class="fl">No. KP</label><input class="fi" id="pool-add-nokp" placeholder="xxxxxx-xx-xxxx"></div>
+        <div><label class="fl">Jawatan</label><input class="fi" id="pool-add-jawatan" placeholder="Jawatan"></div>
+        <div><label class="fl">Kategori</label><select class="fi" id="pool-add-kategori"><option value="">— Pilih —</option><option>DISYAKI MELAKUKAN KESALAHAN JENAYAH</option><option>MASALAH KESIHATAN</option></select></div>
+        <div><label class="fl">Tarikh Masuk</label><input class="fi" id="pool-add-tarikh" placeholder="cth: 1.10.2026"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button class="btn btn-pri" onclick="saveNewPool()"><i class="fas fa-save mr-1"></i>Simpan</button>
+      </div>
+    </div>
+  </div>`;
+  const sel = document.getElementById("pool-add-kampus");
+  if(sel && defaultKod) sel.value = defaultKod;
+}
+
+async function saveNewPool(){
+  const kod = canonicalKodKampusGlobal(document.getElementById("pool-add-kampus")?.value);
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && kod !== ownCampus){ toast("Anda hanya boleh tambah rekod kampus sendiri","err"); return; }
+  const nama = (document.getElementById("pool-add-nama")?.value||"").trim();
+  if(!nama){ toast("Nama diperlukan","err"); return; }
+  const info = MASTER_KAMPUS_BY_ID[kod] || {};
+  const rec = {
+    kodKampus: kod, kampus_id: kod, zon: normalizeZon(info?.zon||""), negeri: info?.negeri||"",
+    nama, noKP: (document.getElementById("pool-add-nokp")?.value||"").trim(),
+    jawatan: (document.getElementById("pool-add-jawatan")?.value||"").trim(),
+    kategori: (document.getElementById("pool-add-kategori")?.value||"").trim(),
+    tarikhMasuk: (document.getElementById("pool-add-tarikh")?.value||"").trim(),
+    diciptaOleh: SES.uid || "", diciptaPada: new Date().toISOString(), aktif: true
+  };
+  try {
+    if(!window.MYFB?.upsertKesKewanganPool) throw new Error("Firestore tidak tersedia.");
+    const newId = await window.MYFB.upsertKesKewanganPool("", rec, SES.uid);
+    rec._docId = newId; _kkData.pool.push(rec);
+    closeModal(); toast("Rekod Pool AKP ditambah","ok");
+    renderKesKewanganDashboard(document.getElementById("pg-body"), isKampus()?SES.kampus:null);
+  } catch(err){ toast("Gagal: "+err.message,"err"); }
+}
+
+function editPoolRecord(docId){
+  const d = _kkFindRecord(docId, "pool");
+  if(!d) return;
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && canonicalKodKampusGlobal(d.kodKampus) !== ownCampus){ toast("Anda hanya boleh edit rekod kampus sendiri","err"); return; }
+  document.getElementById("modal-wrap").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:620px;">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-700 text-lg text-navy-800"><i class="fas fa-pen text-pri-500 mr-2"></i>Kemaskini Pool AKP</h3>
+        <button onclick="closeModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
+      </div>
+      <input type="hidden" id="pool-edit-docid" value="${esc(docId)}">
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+        <div style="grid-column:span 2;"><label class="fl">Nama</label><input class="fi" id="pool-edit-nama" value="${esc(d.nama||"")}"></div>
+        <div><label class="fl">No. KP</label><input class="fi" id="pool-edit-nokp" value="${esc(d.noKP||"")}"></div>
+        <div><label class="fl">Jawatan</label><input class="fi" id="pool-edit-jawatan" value="${esc(d.jawatan||"")}"></div>
+        <div><label class="fl">Kategori</label><select class="fi" id="pool-edit-kategori"><option value="">—</option><option ${d.kategori==="DISYAKI MELAKUKAN KESALAHAN JENAYAH"?"selected":""}>DISYAKI MELAKUKAN KESALAHAN JENAYAH</option><option ${d.kategori==="MASALAH KESIHATAN"?"selected":""}>MASALAH KESIHATAN</option></select></div>
+        <div><label class="fl">Tarikh Masuk</label><input class="fi" id="pool-edit-tarikh" value="${esc(d.tarikhMasuk||"")}"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-danger" onclick="deletePoolRecord('${esc(docId)}')"><i class="fas fa-trash mr-1"></i>Padam</button>
+        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button class="btn btn-pri" onclick="saveEditPool()"><i class="fas fa-save mr-1"></i>Simpan</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function saveEditPool(){
+  const docId = document.getElementById("pool-edit-docid")?.value;
+  const d = _kkFindRecord(docId, "pool"); if(!d) return;
+  const updates = {
+    nama: (document.getElementById("pool-edit-nama")?.value||"").trim(),
+    noKP: (document.getElementById("pool-edit-nokp")?.value||"").trim(),
+    jawatan: (document.getElementById("pool-edit-jawatan")?.value||"").trim(),
+    kategori: (document.getElementById("pool-edit-kategori")?.value||"").trim(),
+    tarikhMasuk: (document.getElementById("pool-edit-tarikh")?.value||"").trim()
+  };
+  try {
+    await window.MYFB.upsertKesKewanganPool(docId, { ...d, ...updates }, SES.uid);
+    Object.assign(d, updates); closeModal(); toast("Rekod dikemaskini","ok");
+    renderKesKewanganDashboard(document.getElementById("pg-body"), isKampus()?SES.kampus:null);
+  } catch(err){ toast("Gagal: "+err.message,"err"); }
+}
+
+async function deletePoolRecord(docId){
+  const d = _kkFindRecord(docId, "pool"); if(!d) return;
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && canonicalKodKampusGlobal(d.kodKampus) !== ownCampus){ toast("Anda hanya boleh padam rekod kampus sendiri","err"); return; }
+  if(!confirm(`Padam rekod Pool AKP?\n\nNama: ${d.nama||"—"}`)) return;
+  try {
+    await window.MYFB.deleteKesKewanganPool(docId);
+    _kkData.pool = _kkData.pool.filter(r=>r._docId!==docId);
+    closeModal(); toast("Rekod dipadam","ok");
+    renderKesKewanganDashboard(document.getElementById("pg-body"), isKampus()?SES.kampus:null);
+  } catch(err){ toast("Gagal padam: "+err.message,"err"); }
+}
+
+// ── CRUD: Prestasi Sederhana (same pattern) ──
+function addPrestasiRecord(){
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  const allowedCampuses = isAdmin() ? MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus") : MASTER_KAMPUS.filter(k=>k.kategori==="IPG Kampus" && k.id===ownCampus);
+  const campusOptions = allowedCampuses.sort(compareMasterKampus).map(k=>`<option value="${k.id}">${esc(k.nama)}</option>`).join("");
+  const defaultKod = !isAdmin() ? ownCampus : (allowedCampuses[0]?.id || "");
+  document.getElementById("modal-wrap").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:620px;">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-700 text-lg text-navy-800"><i class="fas fa-user-plus text-pri-500 mr-2"></i>Tambah Rekod Prestasi Sederhana</h3>
+        <button onclick="closeModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+        <div style="grid-column:span 2;"><label class="fl">IPG Kampus *</label><select class="fi" id="ps-add-kampus">${campusOptions}</select></div>
+        <div style="grid-column:span 2;"><label class="fl">Nama *</label><input class="fi" id="ps-add-nama" placeholder="Nama penuh"></div>
+        <div><label class="fl">No. KP</label><input class="fi" id="ps-add-nokp" placeholder="xxxxxx-xx-xxxx"></div>
+        <div><label class="fl">Skim Perkhidmatan</label><input class="fi" id="ps-add-skim" placeholder="Skim"></div>
+        <div><label class="fl">Gred Gaji</label><input class="fi" id="ps-add-gred" placeholder="cth: N1"></div>
+        <div><label class="fl">MyPerformance PMS (%)</label><input class="fi" id="ps-add-pms" type="number" step="0.01" placeholder="60.00-74.99"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button class="btn btn-pri" onclick="saveNewPrestasi()"><i class="fas fa-save mr-1"></i>Simpan</button>
+      </div>
+    </div>
+  </div>`;
+  const sel = document.getElementById("ps-add-kampus");
+  if(sel && defaultKod) sel.value = defaultKod;
+}
+
+async function saveNewPrestasi(){
+  const kod = canonicalKodKampusGlobal(document.getElementById("ps-add-kampus")?.value);
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && kod !== ownCampus){ toast("Anda hanya boleh tambah rekod kampus sendiri","err"); return; }
+  const nama = (document.getElementById("ps-add-nama")?.value||"").trim();
+  if(!nama){ toast("Nama diperlukan","err"); return; }
+  const info = MASTER_KAMPUS_BY_ID[kod] || {};
+  const rec = {
+    kodKampus: kod, kampus_id: kod, zon: normalizeZon(info?.zon||""), negeri: info?.negeri||"",
+    nama, namaPemilik: nama,
+    noKP: (document.getElementById("ps-add-nokp")?.value||"").trim(),
+    skimPerkhidmatan: (document.getElementById("ps-add-skim")?.value||"").trim(),
+    gredGaji: (document.getElementById("ps-add-gred")?.value||"").trim(),
+    myPerformance: parseFloat(document.getElementById("ps-add-pms")?.value||"0")||0,
+    diciptaOleh: SES.uid || "", diciptaPada: new Date().toISOString(), aktif: true
+  };
+  try {
+    if(!window.MYFB?.upsertKesKewanganPrestasi) throw new Error("Firestore tidak tersedia.");
+    const newId = await window.MYFB.upsertKesKewanganPrestasi("", rec, SES.uid);
+    rec._docId = newId; _kkData.prestasi.push(rec);
+    closeModal(); toast("Rekod prestasi ditambah","ok");
+    renderKesKewanganDashboard(document.getElementById("pg-body"), isKampus()?SES.kampus:null);
+  } catch(err){ toast("Gagal: "+err.message,"err"); }
+}
+
+function editPrestasiRecord(docId){
+  const d = _kkFindRecord(docId, "prestasi"); if(!d) return;
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && canonicalKodKampusGlobal(d.kodKampus) !== ownCampus){ toast("Anda hanya boleh edit rekod kampus sendiri","err"); return; }
+  document.getElementById("modal-wrap").innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box" style="max-width:620px;">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-700 text-lg text-navy-800"><i class="fas fa-pen text-pri-500 mr-2"></i>Kemaskini Prestasi Sederhana</h3>
+        <button onclick="closeModal()" class="text-gray-400"><i class="fas fa-times"></i></button>
+      </div>
+      <input type="hidden" id="ps-edit-docid" value="${esc(docId)}">
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+        <div style="grid-column:span 2;"><label class="fl">Nama</label><input class="fi" id="ps-edit-nama" value="${esc(d.nama||d.namaPemilik||"")}"></div>
+        <div><label class="fl">No. KP</label><input class="fi" id="ps-edit-nokp" value="${esc(d.noKP||"")}"></div>
+        <div><label class="fl">Skim</label><input class="fi" id="ps-edit-skim" value="${esc(d.skimPerkhidmatan||"")}"></div>
+        <div><label class="fl">Gred</label><input class="fi" id="ps-edit-gred" value="${esc(d.gredGaji||"")}"></div>
+        <div><label class="fl">PMS (%)</label><input class="fi" id="ps-edit-pms" type="number" step="0.01" value="${parseFloat(d.myPerformance||0)}"></div>
+      </div>
+      <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-danger" onclick="deletePrestasiRecord('${esc(docId)}')"><i class="fas fa-trash mr-1"></i>Padam</button>
+        <button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+        <button class="btn btn-pri" onclick="saveEditPrestasi()"><i class="fas fa-save mr-1"></i>Simpan</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function saveEditPrestasi(){
+  const docId = document.getElementById("ps-edit-docid")?.value;
+  const d = _kkFindRecord(docId, "prestasi"); if(!d) return;
+  const updates = {
+    nama: (document.getElementById("ps-edit-nama")?.value||"").trim(),
+    namaPemilik: (document.getElementById("ps-edit-nama")?.value||"").trim(),
+    noKP: (document.getElementById("ps-edit-nokp")?.value||"").trim(),
+    skimPerkhidmatan: (document.getElementById("ps-edit-skim")?.value||"").trim(),
+    gredGaji: (document.getElementById("ps-edit-gred")?.value||"").trim(),
+    myPerformance: parseFloat(document.getElementById("ps-edit-pms")?.value||"0")||0
+  };
+  try {
+    await window.MYFB.upsertKesKewanganPrestasi(docId, { ...d, ...updates }, SES.uid);
+    Object.assign(d, updates); closeModal(); toast("Rekod dikemaskini","ok");
+    renderKesKewanganDashboard(document.getElementById("pg-body"), isKampus()?SES.kampus:null);
+  } catch(err){ toast("Gagal: "+err.message,"err"); }
+}
+
+async function deletePrestasiRecord(docId){
+  const d = _kkFindRecord(docId, "prestasi"); if(!d) return;
+  const ownCampus = canonicalKodKampusGlobal(SES.kampus || "");
+  if(!isAdmin() && canonicalKodKampusGlobal(d.kodKampus) !== ownCampus){ toast("Anda hanya boleh padam rekod kampus sendiri","err"); return; }
+  if(!confirm(`Padam rekod prestasi?\n\nNama: ${d.nama||"—"}`)) return;
+  try {
+    await window.MYFB.deleteKesKewanganPrestasi(docId);
+    _kkData.prestasi = _kkData.prestasi.filter(r=>r._docId!==docId);
+    closeModal(); toast("Rekod dipadam","ok");
+    renderKesKewanganDashboard(document.getElementById("pg-body"), isKampus()?SES.kampus:null);
+  } catch(err){ toast("Gagal padam: "+err.message,"err"); }
+}
+
 
 // ══════════════════════════════════════════
 // PERUNTUKAN KEWANGAN — PAGE RENDERER
