@@ -69,8 +69,9 @@
                 <form id="addProgramForm" class="mb-8 p-4 border border-gray-200 rounded-lg space-y-4">
                     <h3 class="text-lg font-semibold text-gray-800">Tambah Program Baharu</h3>
                     <div><label for="newProgramName" class="block text-sm font-medium text-gray-700">Nama Program</label><input type="text" id="newProgramName" placeholder="Cth: Bengkel Pengurusan Stress" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label for="newProgramDate" class="block text-sm font-medium text-gray-700">Tarikh</label><input type="date" id="newProgramDate" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div><label for="newProgramDateStart" class="block text-sm font-medium text-gray-700">Tarikh Mula</label><input type="date" id="newProgramDateStart" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></div>
+                        <div><label for="newProgramDateEnd" class="block text-sm font-medium text-gray-700">Tarikh Tamat</label><input type="date" id="newProgramDateEnd" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></div>
                         <div><label for="newProgramVenue" class="block text-sm font-medium text-gray-700">Tempat</label><input type="text" id="newProgramVenue" placeholder="Cth: Dewan Utama IPGM" required class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"></div>
                     </div>
                     <div class="space-y-2 pt-2">
@@ -148,8 +149,17 @@
         ];
 
         // --- Fungsi Bantuan untuk Format Tarikh ---
+        // Menyokong tarikh tunggal ("2026-09-24") mahupun julat tarikh ("2026-09-24|2026-09-26")
         function formatDateMY(dateString) {
             if (!dateString) return '';
+            // Jika julat tarikh (mengandungi pemisah '|')
+            if (dateString.includes('|')) {
+                const [start, end] = dateString.split('|');
+                const [sy, sm, sd] = start.split('-');
+                const [ey, em, ed] = end.split('-');
+                return `${sd}/${sm}/${sy} - ${ed}/${em}/${ey}`;
+            }
+            // Tarikh tunggal (backward-compatible)
             const [year, month, day] = dateString.split('-');
             return `${day}/${month}/${year}`;
         }
@@ -341,9 +351,18 @@
                 document.getElementById('newPenceramah3').value.trim()
             ].filter(name => name !== '');
 
+            const dateStart = document.getElementById('newProgramDateStart').value;
+            const dateEnd = document.getElementById('newProgramDateEnd').value;
+
+            // Tentukan tarikh yang lebih awal sebagai tarikh mula
+            let finalDate = dateStart;
+            if (dateStart && dateEnd) {
+                finalDate = (dateStart <= dateEnd) ? `${dateStart}|${dateEnd}` : `${dateEnd}|${dateStart}`;
+            }
+
             const newProgram = {
                 name: document.getElementById('newProgramName').value.trim(),
-                date: document.getElementById('newProgramDate').value,
+                date: finalDate,
                 venue: document.getElementById('newProgramVenue').value.trim(),
                 penceramah: penceramahNames,
                 createdAt: serverTimestamp()
