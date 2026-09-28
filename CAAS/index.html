@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Soal Selidik — Kesejahteraan Psikologi & Kerjaya Guru Baharu</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Tailwind custom config (emerald/teal palette only — NO blue/indigo)
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: {
+            50:  '#ecfdf5',
+            100: '#d1fae5',
+            200: '#a7f3d0',
+            300: '#6ee7b7',
+            400: '#34d399',
+            500: '#10b981',
+            600: '#059669',
+            700: '#047857',
+            800: '#065f46',
+            900: '#064e3b',
+          },
+          teal2: {
+            400:'#2dd4bf', 500:'#14b8a6', 600:'#0d9488', 700:'#0f766e',
+          },
+        },
+        fontFamily: {
+          sans: ['system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        },
+        animation: {
+          'fade-in':   'fadeIn 0.4s ease-out',
+          'slide-in':  'slideIn 0.4s ease-out',
+          'pop-in':    'popIn 0.25s ease-out',
+        },
+        keyframes: {
+          fadeIn:  { '0%': { opacity: 0 }, '100%': { opacity: 1 } },
+          slideIn: { '0%': { opacity: 0, transform: 'translateY(8px)' }, '100%': { opacity: 1, transform: 'translateY(0)' } },
+          popIn:   { '0%': { opacity: 0, transform: 'scale(0.95)' }, '100%': { opacity: 1, transform: 'scale(1)' } },
+        },
+      },
+    },
+  };
+</script>
+<style>
+  html { scroll-behavior: smooth; }
+  body { font-feature-settings: "cv02","cv03","cv04","cv11"; }
+  /* Custom scrollbar */
+  .scroll-area::-webkit-scrollbar { width: 8px; }
+  .scroll-area::-webkit-scrollbar-track { background: transparent; }
+  .scroll-area::-webkit-scrollbar-thumb { background: #6ee7b7; border-radius: 9999px; }
+  .scroll-area::-webkit-scrollbar-thumb:hover { background: #10b981; }
+  /* Likert pill transitions */
+  .pill { transition: all 0.15s ease; }
+  .pill:hover:not(.pill-active) { transform: translateY(-1px); border-color: #34d399; }
+  /* Hide number input arrows */
+  input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+</style>
+</head>
+<body class="bg-gradient-to-br from-emerald-50 via-white to-teal-50 min-h-screen text-slate-800 antialiased">
+
+<!-- Toast container -->
+<div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+<!-- App mount -->
+<main id="app" class="min-h-screen flex flex-col"></main>
+
+<script>
+/* ============================================================================
+   SOAL SELIDIK — STANDALONE HTML (no backend)
+   Kajian: Kesejahteraan Psikologi, Identiti Profesional, Panggilan Kerjaya &
+   Resiliens terhadap Efikasi Kendiri Kerjaya Guru Baharu.
+   Sasaran: guru berkhidmat kurang daripada 3 tahun.
+   ========================================================================== */
+
+/* ---------------------------- SCALE LABELS -------------------------------- */
+const SCALE_LABELS = {
+  setuju: {
+    points: ["Sangat Tidak Setuju","Tidak Setuju","Agak Tidak Setuju","Tidak Pasti","Agak Setuju","Setuju","Sangat Setuju"],
+    low: "Sangat Tidak Setuju",
+    high: "Sangat Setuju",
+  },
+  betul: {
+    points: ["Tidak Benar Langsung Bagi Saya","Sedikit Benar","Agak Tidak Benar","Tidak Pasti","Agak Benar","Kebanyakannya Benar","Benar Sepenuhnya Bagi Saya"],
+    low: "Tidak Benar Langsung",
+    high: "Benar Sepenuhnya",
+  },
+  kebarangkalian: {
+    points: ["Sangat Tidak Mungkin","Tidak Mungkin","Agak Tidak Mungkin","Tidak Pasti","Agak Mungkin","Mungkin","Sangat Mungkin"],
+    low: "Sangat Tidak Mungkin",
+    high: "Sangat Mungkin",
+  },
+  kuat: {
+    points: ["Sangat Tidak Kuat","Tidak Kuat","Agak Tidak Kuat","Sederhana","Agak Kuat","Kuat","Sangat Kuat"],
+    low: "Sangat Tidak Kuat",
+    high: "Sangat Kuat",
+  },
+};
+
+/* --------------------------- IPG KAMPUS OPTIONS --------------------------- */
+const IPG_KAMPUS_OPTIONS = [
+  "IPGK Temenggong Ibrahim","IPGK Tun Hussein Onn","IPGK Perempuan Melayu","IPGK Raja Melewar",
+  "IPGK Pendidikan Teknik","IPGK Pendidikan Islam","IPGK Ilmu Khas","IPGK Bahasa Melayu",
+  "IPGK Bahasa Antarabangsa","IPGK Ipoh","IPGK Darul Aman","IPGK Perlis",
+  "IPGK Pulau Pinang","IPGK Tuanku Bainun","IPGK Tengku Ampuan Afzan","IPGK Dato' Razali Ismail",
+  "IPGK Sultan Mizan","IPGK Kota Bharu","IPGK Rajang","IPGK Kent",
+  "IPGK Batu Lintang","IPGK Tawau","IPGK Keningau","IPGK Tun Abdul Razak",
+  "IPGK Sultan Abdul Halim","IPGK Gaya","IPGK Sarawak",
+];
+
+/* --------------------------- UNIVERSITI OPTIONS --------------------------- */
+// Public + private Malaysian universities (combined with IPG_KAMPUS_OPTIONS
+// for A5 "Nama institusi"). "Lain-lain (nyatakan)" is the last entry so the
+// hasOther follow-up text input triggers when it is selected.
+const UNIVERSITI_OPTIONS = [
+  "Universiti Malaya (UM)","Universiti Sains Malaysia (USM)","Universiti Kebangsaan Malaysia (UKM)",
+  "Universiti Putra Malaysia (UPM)","Universiti Teknologi Malaysia (UTM)","Universiti Utara Malaysia (UUM)",
+  "Universiti Pendidikan Sultan Idris (UPSI)","Universiti Teknologi MARA (UiTM)",
+  "Universiti Malaysia Kelantan (UMK)","Universiti Malaysia Pahang Al-Sultan Abdullah (UMPSA)",
+  "Universiti Malaysia Perlis (UniMAP)","Universiti Malaysia Terengganu (UMT)",
+  "Universiti Sultan Zainal Abidin (UniSZA)","Universiti Tun Hussein Onn Malaysia (UTHM)",
+  "Universiti Teknikal Malaysia Melaka (UTeM)","Universiti Malaysia Sarawak (UNIMAS)",
+  "Universiti Malaysia Sabah (UMS)","Universiti Pertahanan Nasional Malaysia (UPNM)",
+  "Universiti Sains Islam Malaysia (USIM)","Universiti Islam Antarabangsa Malaysia (IIUM)",
+  "Universiti Teknologi Petronas (UTP)","Universiti Multimedia (MMU)","Universiti Tenaga Nasional (UNITEN)",
+  "Universiti Tunku Abdul Rahman (UTAR)","Universiti Sunway","Universiti HELP","Universiti SEGi",
+  "Universiti Taylor's","Universiti INTI","Lain-lain (nyatakan)",
+];
+
+const BIDANG_OPTIONS = [
+  "Bahasa Melayu","Bahasa Inggeris (TESL)","Sains","Matematik","Sejarah",
+  "Pendidikan Islam","Bahasa Cina","Bahasa Tamil","Bimbingan dan Kaunseling",
+  "Reka Bentuk dan Teknologi (RBT)","Pendidikan Awal Kanak-Kanak","Pendidikan Khas",
+  "Pendidikan Muzik","Pendidikan Jasmani","Pendidikan Seni Visual","Pedagogi","Lain-lain",
+];
+
+/* ----------------------------- DEMOGRAPHICS ------------------------------- */
+// 9 questions A1..A9 (v5 — simplified structure).
+// A4 is now a plain text field (ijazah sarjana muda lepasan).
+// A5 is a simple select combining IPG kampus + universiti options (no
+// conditionalOn). The last option is "Lain-lain (nyatakan)" which triggers
+// the hasOther follow-up text input.
+const DEMOGRAPHICS = [
+  { code:"A1", question:"Jantina", type:"radio",
+    options:[{key:"Lelaki",label:"Lelaki"},{key:"Perempuan",label:"Perempuan"}] },
+  { code:"A2", question:"Umur (tahun)", type:"radio",
+    options:[{key:"22-24",label:"22–24"},{key:"25-27",label:"25–27"},{key:"28-30",label:"28–30"},{key:"31+",label:"31 tahun ke atas"}] },
+  { code:"A3", question:"Tempoh perkhidmatan sebagai guru (sejak tarikh lantikan)", type:"radio",
+    options:[{key:"1-6 bulan",label:"1–6 bulan"},{key:"7-12 bulan",label:"7–12 bulan"},{key:"13-18 bulan",label:"13–18 bulan"},{key:"19-24 bulan",label:"19–24 bulan"},{key:"24-36 bulan",label:"24–36 bulan"},{key:"36+ bulan",label:"36 bulan ke atas"}] },
+  { code:"A4", question:"Ijazah Sarjana Muda Lepasan", type:"text",
+    placeholder:"nyatakan ijazah sarjana muda anda" },
+  { code:"A5", question:"Nama institusi", type:"select", hasOther:true,
+    options: [...IPG_KAMPUS_OPTIONS, ...UNIVERSITI_OPTIONS].map(k=>({key:k,label:k})) },
+  { code:"A6", question:"Bidang pengajian / opsyen", type:"select", hasOther:true,
+    options: BIDANG_OPTIONS.map(k=>({key:k,label:k})) },
+  { code:"A7", question:"Status penempatan mengajar", type:"radio",
+    options:[{key:"Dalam opsyen sepenuhnya",label:"Dalam bidang opsyen sepenuhnya"},{key:"Sebahagian luar",label:"Sebahagian luar bidang opsyen"},{key:"Sepenuhnya luar",label:"Sepenuhnya luar bidang opsyen (out-of-field)"}] },
+  { code:"A8", question:"Jenis sekolah bertugas", type:"radio", hasOther:true,
+    options:[{key:"SK",label:"Sekolah Kebangsaan (SK)"},{key:"SJK(C)",label:"SJK(C)"},{key:"SJK(T)",label:"SJK(T)"},{key:"SMK",label:"Sekolah Menengah Kebangsaan (SMK)"},{key:"SBP",label:"Sekolah Berasrama Penuh (SBP)"},{key:"Lain-lain",label:"Lain-lain (nyatakan)"}] },
+  { code:"A9", question:"Lokasi sekolah", type:"radio",
+    options:[{key:"Bandar",label:"Bandar"},{key:"Luar Bandar",label:"Luar Bandar"},{key:"Pedalaman",label:"Pedalaman"}] },
+];
+
+// Helper: detect "Lain-lain" follow-up trigger for the hasOther mechanism.
+// A5 uses "Lain-lain (nyatakan)" (last UNIVERSITI option); A6 & A8 use "Lain-lain".
+function isLainLainChoice(v){
+  return v === "Lain-lain" || v === "Lain-lain (nyatakan)";
+}
+
+/* ------------------------------ VIGNETTE D -------------------------------- */
+const VIGNETTE_D =
+  "“Anda baru menerima laporan pemerhatian pengajaran (PdP) terkini daripada Pengetua/Guru Besar anda, dan penilaiannya adalah ‘tidak memuaskan.’ Dua sesi pemerhatian pengajaran anda yang lain sebelum ini turut mendapat penilaian yang lebih rendah daripada yang anda harapkan, sedangkan anda amat berazam untuk cemerlang dalam kerjaya keguruan kerana anda mempunyai matlamat kerjaya yang jelas dan tidak mahu mengecewakan keluarga anda. Maklum balas daripada Pengetua/Guru Besar mengenai sesi pengajaran tersebut agak kritikal, termasuk sebutan tentang ‘penguasaan isi kandungan yang lemah’ dan ‘pengurusan bilik darjah yang kurang berkesan,’ tetapi ia turut menyertakan cara-cara bagaimana pengajaran anda boleh diperbaiki. Ulasan yang serupa turut dibuat oleh penyelia/mentor yang menilai dua sesi pengajaran anda yang lain.”";
+
+/* ------------------------------- SECTIONS --------------------------------- */
+// 5 Likert sections B..F
+const SECTIONS = [
+  {
+    id:"B", bahagian:"BAHAGIAN B", title:"Identiti Profesional Guru",
+    source:"Zeng & Liu (2024) — PLoS ONE 19(3) e0293156. Skala asal 5-mata, diselaraskan kepada 7-mata. Tiada item songsang.",
+    instruction:"Sila nyatakan tahap persetujuan anda terhadap setiap pernyataan di bawah. Tandakan satu jawapan yang paling menggambarkan pandangan anda.",
+    scaleKind:"setuju", scaleLabels: SCALE_LABELS.setuju,
+    subscales:[
+      { title:"Efikasi Kendiri Profesional",
+        items:[
+          {code:"PS1", text:"Saya percaya bahawa saya boleh bersikap profesional dalam kerjaya saya sebagai seorang guru."},
+          {code:"PS2", text:"Saya bersedia sepenuhnya untuk profesion keguruan."},
+          {code:"PS3", text:"Saya percaya bahawa saya dapat bergaul, bekerjasama, dan berkomunikasi dengan mudah bersama bakal rakan sekerja saya."},
+          {code:"PS4", text:"Saya percaya bahawa saya boleh berjaya dalam kerjaya keguruan saya."},
+          {code:"PS5", text:"Saya tidak ragu-ragu bahawa saya boleh menguasai semua kemahiran untuk profesion keguruan."},
+        ]},
+      { title:"Pengetahuan tentang Profesion",
+        items:[
+          {code:"KPP1", text:"Saya memahami sifat profesion keguruan."},
+          {code:"KPP2", text:"Saya tahu jenis orang yang ingin saya bekerjasama pada masa hadapan."},
+          {code:"KPP3", text:"Saya mempunyai pemahaman yang baik tentang peranan dan tanggungjawab seorang guru."},
+          {code:"KPP4", text:"Saya tahu aplikasi, alat, dan peranti yang perlu digunakan sebagai seorang guru."},
+        ]},
+      { title:"Komitmen Profesional",
+        items:[
+          {code:"PC1", text:"Saya dapat mengenal pasti diri saya secara positif dengan warga profesion keguruan."},
+          {code:"PC2", text:"Penting bagi saya untuk menjadi anggota profesion keguruan."},
+          {code:"PC3", text:"Saya berkongsi nilai-nilai profesion keguruan."},
+          {code:"PC4", text:"Saya berharap untuk menjadi seorang guru pada masa hadapan."},
+        ]},
+    ],
+  },
+  {
+    id:"C", bahagian:"BAHAGIAN C", title:"Panggilan Kerjaya Guru",
+    source:"Dik, Eldridge, Steger & Duffy (2012) — CVQ. Skala asal 4-mata, diselaraskan kepada 7-mata. Satu item songsang: P3.",
+    instruction:"Sila nyatakan sejauh mana setiap pernyataan di bawah adalah benar bagi diri anda. Tandakan satu jawapan yang paling menggambarkan pandangan anda.",
+    scaleKind:"betul", scaleLabels: SCALE_LABELS.betul,
+    subscales:[
+      { title:"Komponen 1: Kehadiran Panggilan — Seruan Transenden",
+        items:[
+          {code:"P1", text:"Saya percaya bahawa saya telah dipanggil untuk menceburi profesion keguruan ini."},
+          {code:"P2", text:"Saya tertarik untuk menceburi profesion keguruan ini oleh sesuatu yang lebih besar daripada diri saya sendiri."},
+          {code:"P3", text:"Saya tidak percaya bahawa ada kuasa di luar diri saya yang telah membimbing saya menceburi kerjaya ini.", negative:true},
+          {code:"P4", text:"Saya menceburi profesion keguruan ini kerana saya percaya bahawa saya terpanggil untuk berbuat demikian."},
+        ]},
+      { title:"Komponen 1: Kehadiran Panggilan — Kerja Bertujuan",
+        items:[
+          {code:"P5", text:"Kerja saya sebagai guru membantu saya menghayati tujuan hidup saya."},
+          {code:"P6", text:"Saya melihat kerjaya keguruan saya sebagai satu jalan ke arah tujuan hidup."},
+          {code:"P7", text:"Kerjaya keguruan saya merupakan sebahagian penting daripada makna hidup saya."},
+          {code:"P8", text:"Saya cuba menghayati tujuan hidup saya semasa saya mengajar."},
+        ]},
+      { title:"Komponen 1: Kehadiran Panggilan — Orientasi Prososial",
+        items:[
+          {code:"P9", text:"Aspek paling penting dalam kerjaya keguruan saya ialah peranannya membantu memenuhi keperluan orang lain."},
+          {code:"P10", text:"Membuat perbezaan kepada orang lain adalah motivasi utama dalam kerjaya keguruan saya."},
+          {code:"P11", text:"Kerja saya sebagai guru menyumbang kepada kebaikan bersama."},
+          {code:"P12", text:"Saya sentiasa cuba menilai sejauh mana kerja saya sebagai guru bermanfaat kepada orang lain."},
+        ]},
+      { title:"Komponen 2: Pencarian Panggilan — Seruan Transenden",
+        items:[
+          {code:"S1", text:"Saya sedang mencari panggilan jiwa saya dalam kerjaya keguruan ini."},
+          {code:"S2", text:"Saya amat mendambakan penghayatan panggilan jiwa dalam kerjaya keguruan saya."},
+          {code:"S3", text:"Saya sedang berusaha untuk mengenal pasti apakah sebenarnya panggilan jiwa saya dalam konteks kerjaya keguruan ini."},
+          {code:"S4", text:"Saya sedang berusaha untuk mengenal pasti bidang kerja yang sememangnya ditakdirkan untuk saya ceburi."},
+        ]},
+      { title:"Komponen 2: Pencarian Panggilan — Kerja Bertujuan",
+        items:[
+          {code:"S5", text:"Saya sedang meneliti sama ada kerjaya keguruan ini dapat membantu saya menghayati tujuan hidup saya."},
+          {code:"S6", text:"Saya berhasrat membina kerjaya keguruan yang akan memberi makna kepada hidup saya."},
+          {code:"S7", text:"Akhirnya, saya berharap kerjaya keguruan saya akan selari dengan tujuan hidup saya."},
+          {code:"S8", text:"Saya mahu menceburi kerjaya yang benar-benar selaras dengan tujuan kewujudan diri saya."},
+        ]},
+      { title:"Komponen 2: Pencarian Panggilan — Orientasi Prososial",
+        items:[
+          {code:"S9", text:"Saya sedang berusaha mencari kerjaya yang pada akhirnya mampu menjadikan dunia ini lebih baik."},
+          {code:"S10", text:"Saya mahu memastikan kerjaya keguruan saya memenuhi sebahagian keperluan masyarakat."},
+          {code:"S11", text:"Saya sedang berusaha membina kerjaya keguruan yang memberi manfaat kepada masyarakat."},
+          {code:"S12", text:"Saya sedang menilai sama ada kerjaya keguruan saya jelas memberi manfaat kepada orang lain."},
+        ]},
+    ],
+  },
+  {
+    id:"D", bahagian:"BAHAGIAN D", title:"Resiliensi",
+    source:"Cassidy (2016) — ARS-30, Frontiers in Psychology 7:1787. Skala asal 5-mata, diselaraskan kepada 7-mata. 10 item negatif: 1, 3, 5, 6, 7, 12, 14, 15, 19, 28.",
+    instruction:"Sila baca senario di bawah, kemudian bayangkan diri anda sebagai guru dalam situasi tersebut sebelum menjawab kesemua 30 item.",
+    vignette: VIGNETTE_D,
+    scaleKind:"kebarangkalian", scaleLabels: SCALE_LABELS.kebarangkalian,
+    subscales:[
+      { title:"Ketekunan / Perseverance (14 item)",
+        items:[
+          {code:"D1", text:"Saya tidak akan menerima maklum balas Pengetua/Guru Besar.", negative:true},
+          {code:"D2", text:"Saya akan menggunakan maklum balas itu untuk memperbaiki kerja saya."},
+          {code:"D3", text:"Saya hanya akan berputus asa.", negative:true},
+          {code:"D4", text:"Saya akan menggunakan situasi ini untuk memotivasikan diri saya."},
+          {code:"D5", text:"Saya akan menukar rancangan kerjaya saya.", negative:true},
+          {code:"D8", text:"Saya akan melihat situasi ini sebagai satu cabaran."},
+          {code:"D9", text:"Saya akan berusaha sedaya upaya untuk berhenti berfikir secara negatif."},
+          {code:"D10", text:"Saya akan melihat situasi ini sebagai sementara."},
+          {code:"D11", text:"Saya akan berusaha lebih gigih."},
+          {code:"D13", text:"Saya akan cuba memikirkan penyelesaian baharu."},
+          {code:"D15", text:"Saya akan menyalahkan Pengetua/Guru Besar.", negative:true},
+          {code:"D16", text:"Saya akan terus berusaha."},
+          {code:"D17", text:"Saya tidak akan menukar matlamat dan cita-cita jangka panjang saya."},
+          {code:"D30", text:"Saya akan menantikan peluang untuk menunjukkan bahawa saya boleh memperbaiki prestasi pengajaran saya."},
+        ]},
+      { title:"Refleksi & Bantuan Adaptif / Reflecting and Adaptive Help-Seeking (9 item)",
+        items:[
+          {code:"D18", text:"Saya akan menggunakan kejayaan lampau saya untuk membantu memotivasikan diri saya."},
+          {code:"D20", text:"Saya akan mula memantau dan menilai pencapaian serta usaha saya."},
+          {code:"D21", text:"Saya akan mendapatkan bantuan daripada Pengetua/Guru Besar atau mentor saya."},
+          {code:"D22", text:"Saya akan memberi semangat kepada diri saya sendiri."},
+          {code:"D24", text:"Saya akan mencuba pelbagai cara untuk mengajar."},
+          {code:"D25", text:"Saya akan menetapkan matlamat pencapaian saya sendiri."},
+          {code:"D26", text:"Saya akan mendapatkan sokongan semangat daripada keluarga dan rakan-rakan saya."},
+          {code:"D27", text:"Saya akan cuba memikirkan dengan lebih mendalam tentang kekuatan dan kelemahan saya untuk membantu saya bekerja dengan lebih baik."},
+          {code:"D29", text:"Saya akan mula memberi ganjaran atau hukuman kepada diri saya sendiri bergantung kepada prestasi saya."},
+        ]},
+      { title:"Afek Negatif / Negative Affect and Emotional Response (7 item)",
+        items:[
+          {code:"D6", text:"Saya mungkin akan berasa jengkel (rasa terganggu atau kurang senang).", negative:true},
+          {code:"D7", text:"Saya akan mula berfikir bahawa peluang saya untuk berjaya dalam kerjaya keguruan adalah tipis.", negative:true},
+          {code:"D12", text:"Saya mungkin akan berasa tertekan.", negative:true},
+          {code:"D14", text:"Saya akan berasa sangat kecewa.", negative:true},
+          {code:"D19", text:"Saya akan mula berfikir bahawa peluang saya untuk disahkan dalam perkhidmatan/kekal dalam profesion keguruan adalah tipis.", negative:true},
+          {code:"D23", text:"Saya akan menahan diri daripada panik."},
+          {code:"D28", text:"Saya akan berasa seolah-olah semuanya musnah dan menjadi tidak menentu.", negative:true},
+        ]},
+    ],
+  },
+  {
+    id:"E", bahagian:"BAHAGIAN E", title:"Kesejahteraan Psikologi",
+    source:"Ryff & Keyes (1995) — Ryff 18-item (MIDUS II). Skala asal 7-mata, tiada perubahan skala. 8 item negatif: 4, 5, 6, 7, 10, 14, 15, 16.",
+    instruction:"Sila nyatakan tahap persetujuan anda terhadap setiap pernyataan di bawah yang menggambarkan perasaan dan pandangan anda tentang diri sendiri. Tandakan satu jawapan yang paling menggambarkan pandangan anda.",
+    scaleKind:"setuju", scaleLabels: SCALE_LABELS.setuju,
+    subscales:[
+      { title:"Penerimaan Kendiri (item 1, 2, 5)",
+        items:[
+          {code:"E1", text:"Saya menyukai kebanyakan aspek personaliti saya."},
+          {code:"E2", text:"Apabila saya melihat kembali kisah hidup saya, saya berpuas hati dengan cara segalanya berlaku setakat ini."},
+          {code:"E5", text:"Dalam banyak hal, saya berasa kecewa dengan pencapaian saya dalam hidup.", negative:true},
+        ]},
+      { title:"Tujuan Hidup (item 3, 7, 10)",
+        items:[
+          {code:"E3", text:"Sesetengah orang mengharungi hidup tanpa hala tuju, tetapi saya bukan salah seorang daripada mereka."},
+          {code:"E7", text:"Saya menjalani hidup sehari demi sehari dan tidak begitu memikirkan tentang masa depan.", negative:true},
+          {code:"E10", text:"Saya kadangkala berasa seolah-olah saya telah melakukan semua yang perlu dilakukan dalam hidup.", negative:true},
+        ]},
+      { title:"Penguasaan Persekitaran (item 4, 8, 9)",
+        items:[
+          {code:"E4", text:"Tuntutan kehidupan seharian sering membuatkan saya rasa tertekan.", negative:true},
+          {code:"E8", text:"Secara umum, saya berasa saya mengawal situasi kehidupan saya."},
+          {code:"E9", text:"Saya pandai menguruskan tanggungjawab kehidupan seharian."},
+        ]},
+      { title:"Hubungan Positif dengan Orang Lain (item 6, 13, 16)",
+        items:[
+          {code:"E6", text:"Mengekalkan hubungan rapat merupakan sesuatu yang sukar dan menekan bagi saya.", negative:true},
+          {code:"E13", text:"Orang lain akan menggambarkan saya sebagai seorang yang pemurah dan sanggup berkongsi masa dengan orang lain."},
+          {code:"E16", text:"Saya tidak banyak mengalami hubungan yang mesra dan saling mempercayai dengan orang lain.", negative:true},
+        ]},
+      { title:"Pertumbuhan Peribadi (item 11, 12, 14)",
+        items:[
+          {code:"E11", text:"Bagi saya, hidup merupakan proses berterusan untuk belajar, berubah, dan berkembang."},
+          {code:"E12", text:"Saya rasa penting untuk mempunyai pengalaman baharu yang mencabar cara saya berfikir tentang diri saya dan dunia."},
+          {code:"E14", text:"Saya sudah lama berhenti berusaha membuat penambahbaikan atau perubahan besar dalam hidup saya.", negative:true},
+        ]},
+      { title:"Autonomi (item 15, 17, 18)",
+        items:[
+          {code:"E15", text:"Saya cenderung dipengaruhi oleh orang yang mempunyai pendapat yang kuat.", negative:true},
+          {code:"E17", text:"Saya mempunyai keyakinan terhadap pendapat saya sendiri, walaupun ia berbeza daripada cara kebanyakan orang lain berfikir."},
+          {code:"E18", text:"Saya menilai diri saya berdasarkan apa yang saya anggap penting, bukan berdasarkan nilai yang dianggap penting oleh orang lain."},
+        ]},
+    ],
+  },
+  {
+    id:"F", bahagian:"BAHAGIAN F", title:"Efikasi Kendiri Kerjaya",
+    source:"Savickas & Porfeli (2012); Maggiori, Rossier & Savickas (2017) — CAAS-SF. Skala asal 5-mata, diselaraskan kepada 7-mata. Tiada item songsang. DRAF terjemahan BM — gantikan dengan set rasmi Malay-CAAS12 (Hamzah et al., 2022) sebelum edaran sebenar.",
+    instruction:"Setiap individu menggunakan kekuatan yang berbeza untuk membina kerjaya mereka. Tiada seorang pun yang cekap dalam semua perkara — setiap orang lebih menonjol dalam sesetengah kekuatan berbanding yang lain. Sila nilai sejauh mana anda telah membina setiap kebolehan di bawah.",
+    scaleKind:"kuat", scaleLabels: SCALE_LABELS.kuat,
+    subscales:[
+      { title:"Concern / Kerisauan (C1, C3, C4)",
+        items:[
+          {code:"C4", text:"Menyedari pilihan pendidikan dan kerjaya yang perlu saya buat."},
+          {code:"C3", text:"Bersedia untuk masa depan."},
+          {code:"C1", text:"Membayangkan bentuk masa depan saya."},
+        ]},
+      { title:"Control / Kawalan (K8, K9, K11)",
+        items:[
+          {code:"K11", text:"Bergantung pada diri sendiri."},
+          {code:"K9", text:"Bertanggungjawab terhadap tindakan saya."},
+          {code:"K8", text:"Membuat keputusan sendiri."},
+        ]},
+      { title:"Curiosity / Ingin Tahu (I14, I15, I16)",
+        items:[
+          {code:"I16", text:"Memerhati pelbagai cara melakukan sesuatu."},
+          {code:"I15", text:"Meneliti pilihan sebelum membuat keputusan."},
+          {code:"I14", text:"Mencari peluang untuk berkembang sebagai seorang individu."},
+        ]},
+      { title:"Confidence / Keyakinan (Y20, Y21, Y22)",
+        items:[
+          {code:"Y22", text:"Bekerja sehingga ke tahap kebolehan saya."},
+          {code:"Y21", text:"Mempelajari kemahiran baharu."},
+          {code:"Y20", text:"Berhati-hati melakukan sesuatu dengan baik."},
+        ]},
+    ],
+  },
+];
+
+/* ------------------------ Helper: all likert codes ------------------------ */
+const ALL_ITEMS = SECTIONS.flatMap(s => s.subscales.flatMap(sub => sub.items.map(it => ({...it, sectionId: s.id}))));
+const ITEM_MAP = ALL_ITEMS.reduce((acc, it) => { acc[it.code] = it; return acc; }, {});
+const TOTAL_LIKERT_ITEMS = ALL_ITEMS.length;
+const STEP_IDS = ["intro","A","B","C","D","E","F","done"];
+
+/* -------------------------- Scoring functions ----------------------------- */
+function reverseScore(raw){ return 8 - raw; }
+
+function sectionGlobalRange(sectionId){
+  const sec = SECTIONS.find(s => s.id === sectionId);
+  const total = sec.subscales.reduce((a,sub)=>a+sub.items.length, 0);
+  return [total, total*7];
+}
+
+function computeScores(responses){
+  const sections = [];
+  for (const section of SECTIONS){
+    const subscaleResults = [];
+    let secTotal = 0, secCount = 0;
+    for (const sub of section.subscales){
+      let st=0, sc=0;
+      for (const item of sub.items){
+        const raw = responses[item.code];
+        if (raw == null || Number.isNaN(raw)) continue;
+        const scored = item.negative ? reverseScore(raw) : raw;
+        st += scored; sc += 1;
+      }
+      subscaleResults.push({
+        title: sub.title, total: st, itemCount: sc,
+        range: [sub.items.length, sub.items.length*7],
+        mean: sc>0 ? st/sc : 0,
+      });
+      secTotal += st; secCount += sc;
+    }
+    const [min,max] = sectionGlobalRange(section.id);
+    sections.push({
+      sectionId: section.id, title: section.title,
+      total: secTotal, itemCount: secCount, range:[min,max],
+      mean: secCount>0 ? secTotal/secCount : 0,
+      subscales: subscaleResults,
+    });
+  }
+  const grandTotal = sections.reduce((a,s)=>a+s.total, 0);
+  const grandItemCount = sections.reduce((a,s)=>a+s.itemCount, 0);
+  return { sections, grandTotal, grandItemCount };
+}
+
+function levelFromMean(mean){
+  if (mean >= 6)     return { label:"Tinggi",            color:"text-emerald-700", bg:"bg-emerald-100 border-emerald-300" };
+  if (mean >= 5)     return { label:"Sederhana Tinggi",  color:"text-emerald-600", bg:"bg-emerald-50 border-emerald-200" };
+  if (mean >= 4)     return { label:"Sederhana",         color:"text-teal-700",    bg:"bg-teal-50 border-teal-200" };
+  if (mean >= 3)     return { label:"Sederhana Rendah",  color:"text-amber-700",   bg:"bg-amber-50 border-amber-200" };
+  if (mean > 0)      return { label:"Rendah",            color:"text-rose-700",    bg:"bg-rose-50 border-rose-200" };
+  return { label:"Tidak Dijawab", color:"text-slate-500", bg:"bg-slate-50 border-slate-200" };
+}
+
+/* ------------------------- Slip Keputusan (PDF) --------------------------- */
+// Mirrors src/lib/slip.ts — opens a self-contained HTML slip in a new window
+// and triggers window.print() so the user can "Save as PDF".
+// Reuses computeScores() + levelFromMean() + DEMOGRAPHICS + SECTIONS — no scoring duplication.
+const SLIP_SECTION_SHORT = {
+  B: "Identiti Profesional Guru",
+  C: "Panggilan Kerjaya Guru",
+  D: "Resiliensi (ARS-30)",
+  E: "Kesejahteraan Psikologi",
+  F: "Efikasi Kendiri Kerjaya",
+};
+
+function slipLevelColor(mean){
+  if (mean >= 4.5) return "#059669"; // emerald-600
+  if (mean >= 3.5) return "#d97706"; // amber-600
+  return "#dc2626";                  // rose-600
+}
+
+function slipFormatDate(d){
+  const pad = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+}
+
+function buildSlipHTML(demographics, responses, submissionId){
+  const { sections, grandTotal, grandItemCount } = computeScores(responses);
+  const grandMax = sections.reduce((a, s) => a + s.range[1], 0);
+  const grandMean = grandItemCount > 0 ? grandTotal / grandItemCount : 0;
+  const now = new Date();
+  const refId = submissionId ? submissionId.slice(-8).toUpperCase() : "—";
+
+  // Demographic rows (A1..A9). If hasOther + Lain-lain chosen, append ": <other>".
+  const demoRows = DEMOGRAPHICS.map(q => {
+    let val = (demographics[q.code] || "").trim();
+    if (q.hasOther && isLainLainChoice(val)){
+      const other = (demographics[q.code + "_other"] || "").trim();
+      if (other) val = val + ": " + other;
+    }
+    const v = val || "—";
+    return '<tr><td class="code">' + q.code + '</td><td class="label">' + escapeHtml(q.question) + '</td><td class="value">' + escapeHtml(v) + '</td></tr>';
+  }).join("");
+
+  // Section + subscale rows
+  const sectionRows = sections.map(s => {
+    const level = levelFromMean(s.mean).label;
+    const color = slipLevelColor(s.mean);
+    const subscaleRows = s.subscales.map(sub => {
+      const subLevel = levelFromMean(sub.mean).label;
+      const subColor = slipLevelColor(sub.mean);
+      return '<tr class="sub"><td></td><td>' + escapeHtml(sub.title) + '</td><td>' + sub.total + '/' + sub.range[1] + '</td><td>' + sub.mean.toFixed(2) + '</td><td style="color:' + subColor + ';">' + subLevel + '</td></tr>';
+    }).join("");
+    const shortTitle = SLIP_SECTION_SHORT[s.sectionId] || s.title;
+    return '<tr class="sec"><td>' + s.sectionId + '</td>'
+      + '<td><strong>' + escapeHtml(shortTitle) + '</strong><br><span class="muted">' + s.itemCount + ' item</span></td>'
+      + '<td><strong>' + s.total + '</strong>/' + s.range[1] + '</td>'
+      + '<td><strong>' + s.mean.toFixed(2) + '</strong></td>'
+      + '<td style="color:' + color + ';font-weight:bold;">' + level + '</td></tr>'
+      + subscaleRows;
+  }).join("");
+
+  const grandLevel = levelFromMean(grandMean).label;
+  const grandColor = slipLevelColor(grandMean);
+  const grandPct = grandMax > 0 ? Math.round((grandTotal / grandMax) * 100) : 0;
+
+  return '<!DOCTYPE html>\n'
+    + '<html lang="ms">\n<head>\n'
+    + '<meta charset="UTF-8">\n'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+    + '<title>Slip Keputusan Soal Selidik · ' + refId + '</title>\n'
+    + '<style>\n'
+    + '  * { margin:0; padding:0; box-sizing:border-box; }\n'
+    + '  body { font-family: \'Segoe UI\', system-ui, -apple-system, sans-serif; color:#1f2937; padding:24px; max-width:800px; margin:0 auto; }\n'
+    + '  .header { text-align:center; padding:24px 0; border-bottom:3px solid #10b981; margin-bottom:20px; }\n'
+    + '  .header h1 { font-size:20px; color:#047857; margin-bottom:4px; }\n'
+    + '  .header .subtitle { font-size:13px; color:#6b7280; }\n'
+    + '  .header .ref { display:inline-block; margin-top:10px; padding:4px 14px; background:#d1fae5; border-radius:20px; font-size:12px; font-weight:bold; color:#047857; }\n'
+    + '  .meta { display:flex; justify-content:space-between; font-size:11px; color:#6b7280; margin-bottom:16px; }\n'
+    + '  h2 { font-size:14px; color:#047857; border-left:4px solid #10b981; padding-left:8px; margin:20px 0 10px; }\n'
+    + '  table { width:100%; border-collapse:collapse; font-size:12px; }\n'
+    + '  td { padding:6px 8px; border-bottom:1px solid #e5e7eb; }\n'
+    + '  td.code { font-weight:bold; color:#047857; width:40px; }\n'
+    + '  td.label { color:#6b7280; }\n'
+    + '  td.value { font-weight:500; }\n'
+    + '  .sec td { border-bottom:2px solid #d1fae5; padding:8px; }\n'
+    + '  .sub td { color:#6b7280; font-size:11px; }\n'
+    + '  .sub td:first-child { width:40px; }\n'
+    + '  .grand { margin-top:20px; padding:20px; background:linear-gradient(135deg,#d1fae5,#ccfbf1); border-radius:12px; text-align:center; }\n'
+    + '  .grand .label { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#047857; font-weight:bold; }\n'
+    + '  .grand .score { font-size:36px; font-weight:bold; color:#1f2937; }\n'
+    + '  .grand .score span { font-size:16px; color:#6b7280; }\n'
+    + '  .grand .mean { font-size:14px; color:#374151; margin-top:4px; }\n'
+    + '  .grand .level { display:inline-block; margin-left:8px; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:bold; }\n'
+    + '  .bar { height:10px; background:#e5e7eb; border-radius:5px; margin-top:10px; overflow:hidden; }\n'
+    + '  .bar-fill { height:100%; background:linear-gradient(90deg,#10b981,#14b8a6); border-radius:5px; }\n'
+    + '  .footer { margin-top:24px; padding-top:12px; border-top:1px solid #e5e7eb; font-size:10px; color:#9ca3af; text-align:center; }\n'
+    + '  .muted { font-weight:normal; font-size:10px; color:#9ca3af; }\n'
+    + '  @media print { body { padding:0; max-width:none; } .header { page-break-after:avoid; } }\n'
+    + '</style>\n</head>\n<body>\n\n'
+    + '<div class="header">\n'
+    + '  <h1>SLIP KEPUTUSAN SOAL SELIDIK</h1>\n'
+    + '  <div class="subtitle">Kajian: Kesejahteraan Psikologi, Identiti Profesional, Panggilan Kerjaya<br>&amp; Resiliens terhadap Efikasi Kendiri Kerjaya Guru Baharu</div>\n'
+    + '  <div class="ref">Rujukan: ' + refId + '</div>\n'
+    + '</div>\n\n'
+    + '<div class="meta">\n'
+    + '  <span>Tarikh: ' + slipFormatDate(now) + '</span>\n'
+    + '  <span>Jumlah item dijawab: ' + grandItemCount + ' / ' + grandItemCount + '</span>\n'
+    + '</div>\n\n'
+    + '<h2>Bahagian A — Maklumat Demografi</h2>\n<table>\n  ' + demoRows + '\n</table>\n\n'
+    + '<h2>Bahagian B–F — Skor per Konstruk</h2>\n<table>\n'
+    + '  <thead>\n'
+    + '    <tr style="font-weight:bold;color:#047857;border-bottom:2px solid #10b981;">\n'
+    + '      <td style="width:40px;">Kod</td>\n'
+    + '      <td>Bahagian / Subskala</td>\n'
+    + '      <td style="width:80px;">Skor</td>\n'
+    + '      <td style="width:60px;">Purata</td>\n'
+    + '      <td style="width:120px;">Tahap</td>\n'
+    + '    </tr>\n'
+    + '  </thead>\n'
+    + '  <tbody>\n'
+    + '    ' + sectionRows + '\n'
+    + '  </tbody>\n</table>\n\n'
+    + '<div class="grand">\n'
+    + '  <div class="label">Skor Keseluruhan</div>\n'
+    + '  <div class="score">' + grandTotal + ' <span>/ ' + grandMax + '</span></div>\n'
+    + '  <div class="mean">Purata item: ' + grandMean.toFixed(2) + ' / 7\n'
+    + '    <span class="level" style="background:' + grandColor + ';color:white;">' + grandLevel + '</span>\n'
+    + '  </div>\n'
+    + '  <div class="bar"><div class="bar-fill" style="width:' + grandPct + '%;"></div></div>\n'
+    + '</div>\n\n'
+    + '<div class="footer">\n'
+    + '  <p>Skor dikira mengikut manual pengiraan rasmi instrumen.</p>\n'
+    + '  <p>Slip ini dijana secara automatik pada ' + slipFormatDate(now) + '.</p>\n'
+    + '</div>\n\n'
+    + '</body>\n</html>';
+}
+
+function downloadSlip(){
+  try {
+    const html = buildSlipHTML(state.demographics, state.responses, state.submissionId);
+    const win = window.open("", "_blank");
+    if (!win){
+      alert("Sila benarkan tetingkap pop-up untuk memuat turun slip keputusan.");
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    // Slight delay to ensure content is rendered before printing
+    setTimeout(() => { try { win.print(); } catch(e){} }, 500);
+  } catch(err){
+    alert("Gagal menjana slip keputusan: " + (err && err.message ? err.message : String(err)));
+  }
+}
+
+/* ------------------------- Webhook / Sheet sync --------------------------- */
+const DEFAULT_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwsiwC9PwTB4jvku39WSBI_0eRcDrumI_sQmxRtVCx4G6RSYplzxWtQoCowXsgdFD1cRA/exec";
+const LS_WEBHOOK_KEY = "soal-selidik-webhook-url-v4";
+function getWebhookUrl(){
+  try {
+    const v = localStorage.getItem(LS_WEBHOOK_KEY);
+    return (v && v.trim()) ? v.trim() : DEFAULT_WEBHOOK_URL;
+  } catch(e){ return DEFAULT_WEBHOOK_URL; }
+}
+function setWebhookUrl(url){
+  try { if (url && url.trim()) localStorage.setItem(LS_WEBHOOK_KEY, url.trim()); } catch(e){}
+}
+function clearWebhookUrl(){
+  try { localStorage.removeItem(LS_WEBHOOK_KEY); } catch(e){}
+}
+
+/* 115 columns: ["Timestamp","SubmissionID", A1-A9 (9), 97 item codes,
+   Total_B..F (5), "GrandTotal","GrandMean"] */
+function buildSheetColumns(){
+  const cols = ["Timestamp","SubmissionID"];
+  for (const d of DEMOGRAPHICS) cols.push(d.code);
+  for (const it of ALL_ITEMS) cols.push(it.code);
+  for (const s of SECTIONS) cols.push("Total_" + s.id);
+  cols.push("GrandTotal","GrandMean");
+  return cols; // 2 + 9 + 97 + 5 + 2 = 115
+}
+
+function buildSheetRow(submissionId, demographics, responses){
+  const row = [];
+  row.push(new Date().toISOString());
+  row.push(submissionId);
+  for (const d of DEMOGRAPHICS){
+    let v = demographics[d.code] || "";
+    if (d.hasOther && isLainLainChoice(v)){
+      const o = demographics[d.code + "_other"];
+      if (o) v = v + ": " + o;
+    }
+    row.push(v);
+  }
+  for (const it of ALL_ITEMS){
+    const raw = responses[it.code];
+    if (raw == null) { row.push(""); continue; }
+    row.push(it.negative ? reverseScore(raw) : raw);
+  }
+  const scores = computeScores(responses);
+  for (const s of SECTIONS){
+    const sec = scores.sections.find(x => x.sectionId === s.id);
+    row.push(sec ? sec.total : 0);
+  }
+  row.push(scores.grandTotal);
+  const gm = scores.grandItemCount>0 ? (scores.grandTotal/scores.grandItemCount).toFixed(3) : "0";
+  row.push(gm);
+  return row; // 115 values
+}
+
+async function syncToSheet(submissionId, demographics, responses){
+  const url = getWebhookUrl();
+  if (!url) return { ok:false, error:"URL webhook tidak ditetapkan." };
+  const headers = buildSheetColumns();
+  const row = buildSheetRow(submissionId, demographics, responses);
+  try {
+    await fetch(url, {
+      method:"POST",
+      mode:"no-cors",
+      headers: { "Content-Type":"text/plain;charset=utf-8" },
+      body: JSON.stringify({ headers, row }),
+    });
+    return { ok:true };
+  } catch(e){
+    return { ok:false, error: String(e) };
+  }
+}
+
+/* ------------------------------ State ------------------------------------- */
+const LS_PROGRESS_KEY = "soal-selidik-progress-v5";
+let state = {
+  step: "intro",
+  demographics: {},
+  responses: {},
+  submissionId: null,
+  synced: false,
+};
+
+function loadState(){
+  try {
+    const raw = localStorage.getItem(LS_PROGRESS_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    state = Object.assign({}, state, parsed);
+  } catch(e){}
+}
+function saveState(){
+  try { localStorage.setItem(LS_PROGRESS_KEY, JSON.stringify(state)); } catch(e){}
+}
+function resetState(){
+  try { localStorage.removeItem(LS_PROGRESS_KEY); } catch(e){}
+  state = { step:"intro", demographics:{}, responses:{}, submissionId:null, synced:false };
+}
+
+function newSubmissionId(){
+  return "SUB-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2,7).toUpperCase();
+}
+
+/* ------------------------------ Icons ------------------------------------- */
+function svgIcon(name, cls="w-5 h-5"){
+  const map = {
+    bookOpen:    '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+    shieldCheck: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+    clock:       '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    fileText:    '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    arrowRight:  '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+    arrowLeft:   '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
+    check:       '<path d="M20 6 9 17l-5-5"/>',
+    send:        '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.102 1.102z"/><path d="m21.854 2.147-10 10"/>',
+    checkCircle: '<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>',
+    award:       '<path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/>',
+    trendingUp:  '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+    settings:    '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+    alertTriangle:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    sparkles:    '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
+    rotateCcw:   '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+    externalLink:'<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+    download:    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+    xCircle:     '<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>',
+    save:        '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3h4"/>',
+    trash:       '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+    x:           '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  };
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="'+cls+'">' + (map[name]||"") + '</svg>';
+}
+
+/* ------------------------------ Toasts ------------------------------------ */
+function toast(msg, type="info"){
+  const el = document.createElement("div");
+  const colors = {
+    info:    "bg-slate-800 text-white",
+    success: "bg-emerald-600 text-white",
+    warn:    "bg-amber-500 text-white",
+    error:   "bg-rose-600 text-white",
+  };
+  const icon = {
+    info: svgIcon("alertTriangle","w-5 h-5 shrink-0"),
+    success: svgIcon("checkCircle","w-5 h-5 shrink-0"),
+    warn: svgIcon("alertTriangle","w-5 h-5 shrink-0"),
+    error: svgIcon("xCircle","w-5 h-5 shrink-0"),
+  }[type] || "";
+  el.className = "pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-lg " + (colors[type]||colors.info) + " animate-pop-in";
+  el.innerHTML = icon + '<span class="text-sm font-medium">' + msg + '</span>';
+  document.getElementById("toast-container").appendChild(el);
+  setTimeout(() => {
+    el.style.transition = "opacity 0.3s, transform 0.3s";
+    el.style.opacity = "0";
+    el.style.transform = "translateY(-8px)";
+    setTimeout(()=>el.remove(), 300);
+  }, 4000);
+}
+
+/* ----------------------- Stepper & progress helpers ----------------------- */
+function sectionItemCount(sectionId){
+  const sec = SECTIONS.find(s=>s.id===sectionId);
+  if (!sec) return 0;
+  return sec.subscales.reduce((a,sub)=>a+sub.items.length, 0);
+}
+function sectionAnsweredCount(sectionId){
+  const sec = SECTIONS.find(s=>s.id===sectionId);
+  if (!sec) return 0;
+  let n = 0;
+  for (const sub of sec.subscales) for (const it of sub.items) if (state.responses[it.code] != null) n++;
+  return n;
+}
+function totalAnsweredCount(){ return Object.keys(state.responses).filter(k => state.responses[k] != null).length; }
+
+function demographicsAnsweredCount(){
+  let n = 0;
+  for (const d of DEMOGRAPHICS){
+    if (state.demographics[d.code] != null && state.demographics[d.code] !== "") n++;
+  }
+  return n;
+}
+
+function isDemographicComplete(){
+  for (const d of DEMOGRAPHICS){
+    const v = state.demographics[d.code];
+    if (v == null || v === "") return false;
+    if (d.hasOther && isLainLainChoice(v)){
+      const o = state.demographics[d.code + "_other"];
+      if (!o || !o.trim()) return false;
+    }
+  }
+  return true;
+}
+function isSectionComplete(sectionId){
+  return sectionAnsweredCount(sectionId) === sectionItemCount(sectionId);
+}
+
+/* ============================================================================
+   RENDERING
+   ========================================================================== */
+
+function render(){
+  const app = document.getElementById("app");
+  if (state.step === "intro"){ renderIntro(app); return; }
+  if (state.step === "done"){ renderThankYou(app); return; }
+  renderSurvey(app);
+}
+
+/* ------------------------------ Intro screen ------------------------------ */
+function renderIntro(app){
+  const hasProgress = totalAnsweredCount() > 0 || demographicsAnsweredCount() > 0;
+  app.innerHTML = `
+    <div class="flex-1 flex items-center justify-center px-4 py-10 sm:py-16 animate-fade-in">
+      <div class="max-w-4xl w-full">
+        <!-- Hero -->
+        <div class="text-center mb-10">
+          <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg mb-6 animate-pop-in">
+            ${svgIcon("bookOpen","w-10 h-10")}
+          </div>
+          <div class="inline-block px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold tracking-wider uppercase mb-4">Soal Selidik Akademik</div>
+          <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 leading-tight mb-3">
+            Kesejahteraan Psikologi, Identiti Profesional, Panggilan Kerjaya &amp; Resiliens terhadap Efikasi Kendiri Kerjaya Guru Baharu
+          </h1>
+          <p class="text-slate-600 text-base sm:text-lg max-w-2xl mx-auto">
+            Kajian ini ditujukan kepada <span class="font-semibold text-emerald-700">guru berkhidmat kurang daripada 3 tahun</span>. Pengambilan masa anggaran 20–30 minit.
+          </p>
+        </div>
+
+        <!-- Feature cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          <div class="bg-white rounded-xl border border-emerald-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">${svgIcon("fileText","w-5 h-5")}</div>
+            <h3 class="font-semibold text-slate-900 text-sm mb-1">6 Bahagian</h3>
+            <p class="text-xs text-slate-500">A (demografi) + B–F (skala Likert 7-mata).</p>
+          </div>
+          <div class="bg-white rounded-xl border border-emerald-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div class="w-10 h-10 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center mb-3">${svgIcon("shieldCheck","w-5 h-5")}</div>
+            <h3 class="font-semibold text-slate-900 text-sm mb-1">Auto-Simpan</h3>
+            <p class="text-xs text-slate-500">Kemajuan disimpan dalam pelayar anda secara automatik.</p>
+          </div>
+          <div class="bg-white rounded-xl border border-emerald-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">${svgIcon("clock","w-5 h-5")}</div>
+            <h3 class="font-semibold text-slate-900 text-sm mb-1">~25 Minit</h3>
+            <p class="text-xs text-slate-500">Tiada had masa; anda boleh menjawab mengikut keselesaan.</p>
+          </div>
+          <div class="bg-white rounded-xl border border-emerald-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div class="w-10 h-10 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center mb-3">${svgIcon("award","w-5 h-5")}</div>
+            <h3 class="font-semibold text-slate-900 text-sm mb-1">Skor Rasmi</h3>
+            <p class="text-xs text-slate-500">Pengiraan mengikut manual instrumen asal.</p>
+          </div>
+        </div>
+
+        <!-- Notice -->
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8 flex gap-3">
+          <div class="text-amber-600 shrink-0">${svgIcon("alertTriangle","w-5 h-5")}</div>
+          <div class="text-sm text-amber-800">
+            <strong>Perhatian:</strong> Item Bahagian F (CAAS-SF) ialah draf terjemahan sementara. Set rasmi Malay-CAAS12 (Hamzah et al., 2022) perlu menggantikan draf ini sebelum edaran sebenar.
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="flex flex-col items-center gap-4">
+          <button id="btn-start" class="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold text-base shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.99] transition-all">
+            ${svgIcon("arrowRight","w-5 h-5")} Mula Soal Selidik
+          </button>
+          ${hasProgress ? `
+          <button id="btn-continue" class="text-sm text-emerald-700 hover:text-emerald-800 font-medium underline-offset-4 hover:underline">
+            Teruskan dari mana anda berhenti (${totalAnsweredCount()}/${TOTAL_LIKERT_ITEMS} item dijawab)
+          </button>
+          <button id="btn-reset-intro" class="text-xs text-rose-600 hover:text-rose-700 font-medium">
+            ${svgIcon("rotateCcw","w-3.5 h-3.5 inline -mt-0.5")} Padam kemajuan &amp; mula baharu
+          </button>` : ""}
+        </div>
+
+        <p class="text-center text-xs text-slate-400 mt-10">Penyertaan anda adalah sukarela dan semua maklumat dirawat sulit.</p>
+      </div>
+    </div>
+  `;
+  document.getElementById("btn-start").onclick = () => {
+    // Start always goes to A (fresh or continue from A onward if has progress)
+    if (hasProgress && state.step && state.step !== "intro"){
+      goToStep(state.step);
+    } else {
+      goToStep("A");
+    }
+  };
+  if (hasProgress){
+    const c = document.getElementById("btn-continue");
+    if (c) c.onclick = () => goToStep(state.step && state.step !== "intro" ? state.step : "A");
+    const r = document.getElementById("btn-reset-intro");
+    if (r) r.onclick = () => {
+      if (confirm("Padam semua kemajuan dan mula semula? Tindakan ini tidak boleh diundur.")){
+        resetState();
+        toast("Kemajuan dipadam.","success");
+        render();
+      }
+    };
+  }
+  mountSettingsButton();
+}
+
+/* ------------------------- Survey (header + body + footer) ---------------- */
+function renderSurvey(app){
+  const stepIdx = STEP_IDS.indexOf(state.step);
+  const totalSteps = STEP_IDS.length - 2; // exclude intro & done
+  const isDemog = state.step === "A";
+  const section = isDemog ? null : SECTIONS.find(s => s.id === state.step);
+
+  // Header progress = (answered across everything so far)
+  const totalQ = TOTAL_LIKERT_ITEMS + DEMOGRAPHICS.length;
+  const answeredQ = totalAnsweredCount() + demographicsAnsweredCount();
+  const pct = Math.round((answeredQ / totalQ) * 100);
+
+  app.innerHTML = `
+    <div class="flex-1 flex flex-col">
+      <!-- Sticky header -->
+      <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-emerald-100 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 py-3">
+          <div class="flex items-center justify-between gap-3 mb-2">
+            <div class="min-w-0 flex-1">
+              <div class="text-[11px] font-semibold tracking-wider text-emerald-700 uppercase">
+                ${isDemog ? "BAHAGIAN A" : (section ? section.bahagian : "")}
+              </div>
+              <h2 class="text-base sm:text-lg font-bold text-slate-900 truncate">
+                ${isDemog ? "Maklumat Demografi" : (section ? section.title : "")}
+              </h2>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="hidden sm:inline text-xs text-slate-500">Langkah ${stepIdx}/${totalSteps}</span>
+              <button id="btn-reset-header" title="Mula semula" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition">
+                ${svgIcon("rotateCcw","w-4 h-4")}
+              </button>
+              <button id="btn-settings" title="Tetapan" class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-slate-600 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition">
+                ${svgIcon("settings","w-4 h-4")}
+              </button>
+            </div>
+          </div>
+          <!-- Progress bar -->
+          <div class="h-1.5 bg-emerald-100 rounded-full overflow-hidden">
+            <div id="header-progress" class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300" style="width:${pct}%"></div>
+          </div>
+          <!-- Section stepper B..F -->
+          <div id="stepper" class="flex items-center gap-1.5 mt-3 overflow-x-auto scroll-area">
+            <button data-step="A" class="stepper-chip shrink-0 px-2.5 py-1 rounded-md text-[11px] font-semibold border transition ${state.step==='A' ? 'bg-emerald-600 text-white border-emerald-600' : isDemographicComplete() ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-slate-500 border-slate-200'}">A · ${demographicsAnsweredCount()}/${DEMOGRAPHICS.length}</button>
+            ${SECTIONS.map(s => {
+              const n = sectionAnsweredCount(s.id), t = sectionItemCount(s.id);
+              const done = n===t;
+              const cur = state.step === s.id;
+              const cls = cur ? 'bg-emerald-600 text-white border-emerald-600' : done ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-white text-slate-500 border-slate-200';
+              return `<button data-step="${s.id}" class="stepper-chip shrink-0 px-2.5 py-1 rounded-md text-[11px] font-semibold border transition ${cls}">${s.id} · ${n}/${t}</button>`;
+            }).join("")}
+          </div>
+        </div>
+      </header>
+
+      <!-- Body -->
+      <main class="flex-1 w-full max-w-5xl mx-auto px-4 py-6 pb-36">
+        <div id="step-body" class="animate-slide-in">
+          ${isDemog ? renderDemographicsBody() : renderLikertBody(section)}
+        </div>
+      </main>
+
+      <!-- Sticky footer -->
+      <footer class="sticky bottom-0 z-40 bg-white/95 backdrop-blur border-t border-emerald-100 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+          <button id="btn-prev" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-700 hover:bg-slate-100 font-medium text-sm transition ${state.step==='A' ? 'invisible' : ''}">
+            ${svgIcon("arrowLeft","w-4 h-4")} <span class="hidden sm:inline">Sebelumnya</span>
+          </button>
+          <div class="text-xs text-slate-500 hidden sm:block">
+            ${isDemog ? `${demographicsAnsweredCount()}/${DEMOGRAPHICS.length} dijawab` :
+              (section ? `${sectionAnsweredCount(section.id)}/${sectionItemCount(section.id)} item dijawab` : "")}
+          </div>
+          ${state.step === 'F'
+            ? `<button id="btn-submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transition">${svgIcon("send","w-4 h-4")} Hantar</button>`
+            : `<button id="btn-next" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transition">Seterusnya ${svgIcon("arrowRight","w-4 h-4")}</button>`}
+        </div>
+      </footer>
+    </div>
+  `;
+
+  // Wire stepper clicks
+  document.querySelectorAll(".stepper-chip").forEach(b => {
+    b.onclick = () => {
+      const s = b.getAttribute("data-step");
+      if (s) goToStep(s);
+    };
+  });
+  document.getElementById("btn-prev").onclick = () => {
+    const idx = STEP_IDS.indexOf(state.step);
+    if (idx > 1) goToStep(STEP_IDS[idx-1]);
+    else if (idx === 1) goToStep("intro");
+  };
+  const next = document.getElementById("btn-next");
+  if (next) next.onclick = () => goNext();
+  const submit = document.getElementById("btn-submit");
+  if (submit) submit.onclick = () => submitSurvey();
+  document.getElementById("btn-reset-header").onclick = () => {
+    if (confirm("Padam semua kemajuan dan mula semula? Tindakan ini tidak boleh diundur.")){
+      resetState();
+      toast("Kemajuan dipadam.","success");
+      goToStep("intro");
+    }
+  };
+  document.getElementById("btn-settings").onclick = openSettings;
+  mountSettingsButton();
+}
+
+/* --------------------------- Demographics body ---------------------------- */
+function renderDemographicsBody(){
+  let html = `
+    <div class="bg-white rounded-xl border border-emerald-100 shadow-sm p-5 sm:p-6 mb-4">
+      <div class="flex gap-3 mb-4">
+        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">${svgIcon("fileText","w-5 h-5")}</div>
+        <div>
+          <h3 class="font-semibold text-slate-900">Maklumat Demografi</h3>
+          <p class="text-sm text-slate-500">Sila lengkapkan semua maklumat di bawah. Jawapan anda dirahsiakan.</p>
+        </div>
+      </div>
+    </div>
+  `;
+  for (const d of DEMOGRAPHICS){
+    html += renderDemographicQuestion(d);
+  }
+  return html;
+}
+
+function renderDemographicQuestion(d){
+  const v = state.demographics[d.code] || "";
+  const otherV = state.demographics[d.code + "_other"] || "";
+  let control = "";
+
+  if (d.type === "radio"){
+    control = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${d.options.map(o => {
+      const active = v === o.key;
+      return `<button type="button" data-demo-radio="${d.code}" data-value="${o.key}" class="radio-card text-left px-3.5 py-2.5 rounded-lg border text-sm transition ${active ? 'bg-emerald-50 border-emerald-400 ring-2 ring-emerald-100 text-emerald-800' : 'bg-white border-slate-200 hover:border-emerald-300 text-slate-700'}">
+        <span class="flex items-center gap-2">
+          <span class="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${active ? 'border-emerald-500' : 'border-slate-300'}">
+            ${active ? '<span class="w-2 h-2 rounded-full bg-emerald-500"></span>' : ''}
+          </span>
+          <span>${o.label}</span>
+        </span>
+      </button>`;
+    }).join("")}</div>`;
+  } else if (d.type === "select"){
+    const opts = (d.options||[]).map(o => `<option value="${o.key}" ${v===o.key?"selected":""}>${o.label}</option>`).join("");
+    control = `<select data-demo="${d.code}" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none text-sm bg-white"><option value="">— Sila pilih —</option>${opts}</select>`;
+  } else {
+    control = `<input type="text" data-demo="${d.code}" value="${escapeHtml(v)}" placeholder="${d.placeholder||""}" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none text-sm" />`;
+  }
+
+  let other = "";
+  if (d.hasOther && isLainLainChoice(v)){
+    other = `<div class="mt-2"><input type="text" data-demo="${d.code}_other" value="${escapeHtml(otherV)}" placeholder="Sila nyatakan" class="w-full px-3 py-2.5 rounded-lg border border-amber-200 bg-amber-50/40 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none text-sm" /></div>`;
+  }
+
+  return `
+    <div class="bg-white rounded-xl border border-emerald-100 shadow-sm p-5 mb-3" data-demo-block="${d.code}">
+      <div class="flex items-start gap-2 mb-3">
+        <span class="inline-flex items-center justify-center w-7 h-7 rounded-md bg-emerald-600 text-white text-xs font-bold shrink-0">${d.code.slice(1)}</span>
+        <label class="block text-sm font-semibold text-slate-800 pt-0.5">${d.question}</label>
+      </div>
+      ${control}
+      ${other}
+    </div>
+  `;
+}
+
+/* ------------------------------ Likert body ------------------------------- */
+function renderLikertBody(section){
+  const sl = section.scaleLabels;
+  let html = "";
+
+  // Instruction box
+  html += `
+    <div class="bg-white rounded-xl border border-emerald-100 shadow-sm p-5 sm:p-6 mb-4">
+      <div class="flex gap-3 mb-2">
+        <div class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">${svgIcon("sparkles","w-5 h-5")}</div>
+        <div class="min-w-0">
+          <h3 class="font-semibold text-slate-900">${section.title}</h3>
+          <p class="text-sm text-slate-600 mt-1">${section.instruction}</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Vignette (Section D)
+  if (section.vignette){
+    html += `
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-4 flex gap-3 animate-fade-in">
+        <div class="text-amber-600 shrink-0 mt-0.5">${svgIcon("alertTriangle","w-5 h-5")}</div>
+        <div>
+          <div class="text-xs font-semibold tracking-wider text-amber-700 uppercase mb-1">Senario</div>
+          <p class="text-sm text-amber-900 leading-relaxed">${section.vignette}</p>
+        </div>
+      </div>
+    `;
+  }
+
+  // Full 7-point scale legend
+  html += `
+    <div class="bg-emerald-50/60 border border-emerald-100 rounded-xl p-4 mb-5">
+      <div class="text-xs font-semibold tracking-wider text-emerald-700 uppercase mb-3">Skala 7-Mata</div>
+      <div class="grid grid-cols-7 gap-1.5 text-center">
+        ${sl.points.map((p,i) => `
+          <div class="bg-white rounded-md border border-emerald-100 p-2">
+            <div class="text-base font-bold text-emerald-700">${i+1}</div>
+            <div class="text-[10px] sm:text-[11px] leading-tight text-slate-600 mt-1">${p}</div>
+          </div>
+        `).join("")}
+      </div>
+      <div class="flex justify-between text-[11px] text-slate-500 mt-2">
+        <span>${sl.low}</span><span>${sl.high}</span>
+      </div>
+    </div>
+  `;
+
+  // Subscale blocks
+  for (const sub of section.subscales){
+    html += `
+      <div class="bg-white rounded-xl border border-emerald-100 shadow-sm p-4 sm:p-5 mb-4">
+        <h4 class="text-sm font-semibold text-emerald-800 border-b border-emerald-50 pb-2 mb-3">${sub.title}</h4>
+        <div class="space-y-3">
+          ${sub.items.map(it => renderItemRow(it, section)).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  // Source citation
+  if (section.source){
+    html += `
+      <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 text-xs text-slate-500 flex gap-2">
+        ${svgIcon("fileText","w-4 h-4 shrink-0 mt-0.5")}
+        <span><strong>Sumber:</strong> ${section.source}</span>
+      </div>
+    `;
+  }
+
+  return html;
+}
+
+function renderItemRow(it, section){
+  const v = state.responses[it.code];
+  const points = section.scaleLabels.points;
+  return `
+    <div class="likert-item" data-item-code="${it.code}">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:gap-4">
+        <div class="flex-1 min-w-0 mb-2 sm:mb-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="inline-flex items-center justify-center min-w-[2.25rem] px-2 h-6 rounded bg-slate-100 text-slate-600 text-[11px] font-bold">${it.code}</span>
+            ${it.negative ? `<span class="inline-flex items-center px-1.5 h-6 rounded bg-rose-100 text-rose-700 text-[10px] font-semibold">(*R)</span>` : ""}
+          </div>
+          <p class="text-sm text-slate-700 mt-1 leading-relaxed">${it.text}</p>
+        </div>
+        <div class="grid grid-cols-7 gap-1 sm:w-[280px] sm:shrink-0">
+          ${points.map((_,i) => {
+            const val = i+1;
+            const active = v === val;
+            return `<button type="button" class="pill ${active ? 'pill-active bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'} border rounded-md h-9 text-xs font-semibold flex items-center justify-center" data-pill="${it.code}" data-value="${val}">${val}</button>`;
+          }).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* ------------------------------ Thank You --------------------------------- */
+function renderThankYou(app){
+  const scores = computeScores(state.responses);
+  const grandMean = scores.grandItemCount > 0 ? scores.grandTotal / scores.grandItemCount : 0;
+  const lvl = levelFromMean(grandMean);
+
+  app.innerHTML = `
+    <div class="flex-1 flex items-center justify-center px-4 py-10 animate-fade-in">
+      <div class="max-w-3xl w-full">
+        <!-- Success hero -->
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 mb-4 animate-pop-in">
+            ${svgIcon("checkCircle","w-12 h-12")}
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Terima Kasih!</h1>
+          <p class="text-slate-600">Jawapan anda telah berjaya direkodkan.</p>
+          <p class="text-xs text-slate-400 mt-2">ID Penyerahan: <span class="font-mono">${state.submissionId || "-"}</span></p>
+          ${state.synced ? `<div class="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">${svgIcon("check","w-3.5 h-3.5")} Disegerakkan ke Google Sheet</div>` : `<div class="inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">${svgIcon("alertTriangle","w-3.5 h-3.5")} Disimpan secara setempat</div>`}
+        </div>
+
+        <!-- Grand total card -->
+        <div class="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-xl mb-6">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <div class="text-xs font-semibold tracking-wider uppercase text-emerald-100 mb-1">Skor Keseluruhan</div>
+              <div class="text-4xl sm:text-5xl font-bold">${scores.grandTotal}</div>
+              <div class="text-sm text-emerald-100 mt-1">daripada ${scores.grandItemCount * 7} (${scores.grandItemCount} item)</div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs font-semibold tracking-wider uppercase text-emerald-100 mb-1">Min Keseluruhan</div>
+              <div class="text-4xl sm:text-5xl font-bold">${grandMean.toFixed(2)}</div>
+              <div class="inline-block mt-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur text-xs font-semibold">${lvl.label}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Per-section expandable cards -->
+        <div class="space-y-3 mb-6">
+          ${scores.sections.map(s => {
+            const sl = levelFromMean(s.mean);
+            const [mn,mx] = s.range;
+            return `
+              <div class="bg-white rounded-xl border border-emerald-100 shadow-sm overflow-hidden">
+                <button type="button" class="acc-toggle w-full text-left p-4 flex items-center justify-between gap-3 hover:bg-emerald-50/30 transition">
+                  <div class="min-w-0">
+                    <div class="text-[11px] font-semibold tracking-wider text-emerald-700 uppercase">Bahagian ${s.sectionId}</div>
+                    <div class="font-semibold text-slate-900 text-sm truncate">${s.title}</div>
+                  </div>
+                  <div class="flex items-center gap-3 shrink-0">
+                    <div class="text-right">
+                      <div class="text-base font-bold text-slate-900">${s.total}/${mx}</div>
+                      <div class="text-[11px] text-slate-500">min ${s.mean.toFixed(2)}</div>
+                    </div>
+                    <span class="inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold border ${sl.bg} ${sl.color}">${sl.label}</span>
+                    <span class="acc-arrow text-slate-400 transition-transform">${svgIcon("arrowRight","w-4 h-4")}</span>
+                  </div>
+                </button>
+                <div class="acc-body hidden border-t border-emerald-50 px-4 py-3 bg-slate-50/40">
+                  <div class="space-y-2">
+                    ${s.subscales.map(ss => {
+                      const [smn,smx] = ss.range;
+                      const sml = levelFromMean(ss.mean);
+                      return `
+                      <div class="flex items-center justify-between gap-2 text-xs">
+                        <div class="text-slate-700 min-w-0 truncate" title="${ss.title}">${ss.title}</div>
+                        <div class="flex items-center gap-2 shrink-0">
+                          <span class="font-mono text-slate-600">${ss.total}/${smx}</span>
+                          <span class="text-slate-400">·</span>
+                          <span class="text-slate-700">min ${ss.mean.toFixed(2)}</span>
+                          <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold border ${sml.bg} ${sml.color}">${sml.label}</span>
+                        </div>
+                      </div>`;
+                    }).join("")}
+                  </div>
+                </div>
+              </div>`;
+          }).join("")}
+        </div>
+
+        <!-- Methodology note -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 flex gap-3">
+          <div class="text-slate-400 shrink-0">${svgIcon("fileText","w-5 h-5")}</div>
+          <p class="text-xs text-slate-600 leading-relaxed">
+            <strong class="text-slate-700">Nota kaedah:</strong> Skor dikira mengikut manual pengiraan rasmi instrumen. Item negatif (*R) disongsangkan (8 − nilai asal) sebelum dijumlahkan. Min dihitung sebagai jumlah skor dibahagi bilangan item.
+          </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+          <button onclick="downloadSlip()" class="flex items-center gap-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-emerald-500/30 hover:from-emerald-600 hover:to-teal-700 transition">
+            ${svgIcon("download","w-4 h-4")} Muat Turun Slip Keputusan
+          </button>
+          <button id="btn-done-restart" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border border-emerald-200 text-emerald-700 font-medium text-sm hover:bg-emerald-50 transition">
+            ${svgIcon("rotateCcw","w-4 h-4")} Mula Soal Selidik Baharu
+          </button>
+          <button id="btn-done-resync" class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 text-white font-medium text-sm hover:bg-emerald-700 transition">
+            ${svgIcon("externalLink","w-4 h-4")} Cuba Segarkan Segerakan ke Sheet
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById("btn-done-restart").onclick = () => {
+    resetState();
+    goToStep("intro");
+  };
+  document.getElementById("btn-done-resync").onclick = async () => {
+    if (!state.submissionId) { toast("Tiada data penyerahan untuk disegerakkan.","warn"); return; }
+    toast("Menyegarkan semula…","info");
+    const r = await syncToSheet(state.submissionId, state.demographics, state.responses);
+    if (r.ok){ state.synced = true; saveState(); toast("Berjaya disegerakkan.","success"); render(); }
+    else toast("Gagal: " + (r.error||""), "error");
+  };
+  // Wire accordions
+  document.querySelectorAll(".acc-toggle").forEach(b => {
+    b.onclick = () => {
+      const body = b.parentElement.querySelector(".acc-body");
+      const arrow = b.querySelector(".acc-arrow");
+      if (body.classList.contains("hidden")){
+        body.classList.remove("hidden");
+        if (arrow) arrow.style.transform = "rotate(90deg)";
+      } else {
+        body.classList.add("hidden");
+        if (arrow) arrow.style.transform = "rotate(0deg)";
+      }
+    };
+  });
+  mountSettingsButton();
+}
+
+/* ============================================================================
+   INTERACTION (setResp / setDemo) — targeted DOM updates to preserve scroll
+   ========================================================================== */
+
+function setResp(code, value){
+  state.responses[code] = value;
+  saveState();
+  updateItemPills(code, value);
+  updateHeaderProgress();
+  updateStepperCounts();
+}
+
+function updateItemPills(code, value){
+  const row = document.querySelector('[data-item-code="'+code+'"]');
+  if (!row) return;
+  row.querySelectorAll('[data-pill]').forEach(btn => {
+    const v = parseInt(btn.getAttribute("data-value"), 10);
+    if (v === value){
+      btn.classList.add("pill-active","bg-emerald-600","text-white","border-emerald-600");
+      btn.classList.remove("bg-white","text-slate-600","border-slate-200");
+    } else {
+      btn.classList.remove("pill-active","bg-emerald-600","text-white","border-emerald-600");
+      btn.classList.add("bg-white","text-slate-600","border-slate-200");
+    }
+  });
+}
+
+function setDemo(code, value){
+  state.demographics[code] = value;
+  saveState();
+  updateHeaderProgress();
+  updateStepperCounts();
+  const d = DEMOGRAPHICS.find(x => x.code === code);
+  if (!d) return;
+
+  // For radio/select with hasOther: toggle "Lain-lain" follow-up input
+  if (d.hasOther){
+    const block = document.querySelector('[data-demo-block="'+code+'"]');
+    if (block){
+      const existing = block.querySelector('[data-demo="'+code+'_other"]');
+      if (isLainLainChoice(value) && !existing){
+        const wrap = document.createElement("div");
+        wrap.className = "mt-2";
+        wrap.innerHTML = `<input type="text" data-demo="${code}_other" value="" placeholder="Sila nyatakan" class="w-full px-3 py-2.5 rounded-lg border border-amber-200 bg-amber-50/40 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none text-sm" />`;
+        block.appendChild(wrap);
+        wrap.querySelector("input").focus();
+        wireDemoInputs(wrap);
+      } else if (!isLainLainChoice(value) && existing){
+        existing.parentElement.remove();
+        state.demographics[code + "_other"] = "";
+        saveState();
+      }
+    }
+  }
+}
+
+function updateRadioCards(code){
+  const block = document.querySelector('[data-demo-block="'+code+'"]');
+  if (!block) return;
+  const v = state.demographics[code];
+  block.querySelectorAll('[data-demo-radio]').forEach(btn => {
+    const val = btn.getAttribute("data-value");
+    const dot = btn.querySelector("span > span");
+    if (val === v){
+      btn.classList.add("bg-emerald-50","border-emerald-400","ring-2","ring-emerald-100","text-emerald-800");
+      btn.classList.remove("bg-white","border-slate-200","text-slate-700");
+      if (dot){
+        dot.classList.remove("border-slate-300");
+        dot.classList.add("border-emerald-500");
+        dot.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span>';
+      }
+    } else {
+      btn.classList.remove("bg-emerald-50","border-emerald-400","ring-2","ring-emerald-100","text-emerald-800");
+      btn.classList.add("bg-white","border-slate-200","text-slate-700");
+      if (dot){
+        dot.classList.add("border-slate-300");
+        dot.classList.remove("border-emerald-500");
+        dot.innerHTML = '';
+      }
+    }
+  });
+}
+
+function updateHeaderProgress(){
+  const totalQ = TOTAL_LIKERT_ITEMS + DEMOGRAPHICS.length;
+  const answeredQ = totalAnsweredCount() + demographicsAnsweredCount();
+  const pct = Math.round((answeredQ / totalQ) * 100);
+  const bar = document.getElementById("header-progress");
+  if (bar) bar.style.width = pct + "%";
+}
+
+function updateStepperCounts(){
+  const aChip = document.querySelector('.stepper-chip[data-step="A"]');
+  if (aChip){
+    const aDone = demographicsAnsweredCount();
+    aChip.textContent = "A · " + aDone + "/" + DEMOGRAPHICS.length;
+    if (state.step !== 'A'){
+      aChip.className = "stepper-chip shrink-0 px-2.5 py-1 rounded-md text-[11px] font-semibold border transition " + (isDemographicComplete() ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-white text-slate-500 border-slate-200");
+    }
+  }
+  for (const s of SECTIONS){
+    const chip = document.querySelector('.stepper-chip[data-step="'+s.id+'"]');
+    if (!chip) continue;
+    const n = sectionAnsweredCount(s.id), t = sectionItemCount(s.id);
+    chip.textContent = s.id + " · " + n + "/" + t;
+    if (state.step === s.id) continue; // don't override active styling
+    const done = n===t;
+    chip.className = "stepper-chip shrink-0 px-2.5 py-1 rounded-md text-[11px] font-semibold border transition " + (done ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-white text-slate-500 border-slate-200");
+  }
+  // Footer count text
+  const footerText = document.querySelector("footer .text-xs.text-slate-500");
+  if (footerText){
+    if (state.step === 'A'){
+      footerText.textContent = demographicsAnsweredCount() + "/" + DEMOGRAPHICS.length + " dijawab";
+    } else {
+      const sec = SECTIONS.find(s => s.id === state.step);
+      if (sec) footerText.textContent = sectionAnsweredCount(sec.id) + "/" + sectionItemCount(sec.id) + " item dijawab";
+    }
+  }
+}
+
+/* -------------------------- Event delegation ------------------------------ */
+function wireDemoInputs(root){
+  root = root || document;
+  // text/select inputs
+  root.querySelectorAll('[data-demo]').forEach(el => {
+    const code = el.getAttribute("data-demo");
+    if (el.tagName === "SELECT"){
+      el.onchange = () => setDemo(code, el.value);
+    } else {
+      el.oninput = () => {
+        state.demographics[code] = el.value;
+        saveState();
+        updateHeaderProgress();
+      };
+    }
+  });
+  // radio cards
+  root.querySelectorAll('[data-demo-radio]').forEach(btn => {
+    const code = btn.getAttribute("data-demo-radio");
+    const val = btn.getAttribute("data-value");
+    btn.onclick = () => {
+      setDemo(code, val);
+      updateRadioCards(code);
+    };
+  });
+  // likert pills
+  root.querySelectorAll('[data-pill]').forEach(btn => {
+    const code = btn.getAttribute("data-pill");
+    const val = parseInt(btn.getAttribute("data-value"), 10);
+    btn.onclick = () => setResp(code, val);
+  });
+}
+
+/* --------------------------- Navigation ----------------------------------- */
+function goToStep(step){
+  state.step = step;
+  saveState();
+  render();
+  wireDemoInputs();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function goNext(){
+  if (state.step === "A"){
+    if (!isDemographicComplete()){
+      toast("Sila lengkapkan semua maklumat demografi terlebih dahulu.","warn");
+      return;
+    }
+    goToStep("B"); return;
+  }
+  if (state.step === "F"){
+    // submit handled separately
+    return;
+  }
+  // Section B..E -> next section
+  const idx = SECTIONS.findIndex(s => s.id === state.step);
+  if (idx >= 0 && idx < SECTIONS.length - 1){
+    // Warn if section incomplete but allow forward
+    if (!isSectionComplete(state.step)){
+      const n = sectionAnsweredCount(state.step), t = sectionItemCount(state.step);
+      if (!confirm("Bahagian ini belum lengkap (" + n + "/" + t + " item). Teruskan ke bahagian seterusnya?")){
+        return;
+      }
+    }
+    goToStep(SECTIONS[idx+1].id);
+  }
+}
+
+async function submitSurvey(){
+  if (!isDemographicComplete()){
+    toast("Demografi belum lengkap.","warn");
+    goToStep("A"); return;
+  }
+  for (const s of SECTIONS){
+    if (!isSectionComplete(s.id)){
+      if (!confirm("Bahagian " + s.id + " belum lengkap. Hantar jawapan seperti adanya?")) return;
+    }
+  }
+  if (!state.submissionId) state.submissionId = newSubmissionId();
+  saveState();
+  toast("Menyimpan jawapan…","info");
+  const r = await syncToSheet(state.submissionId, state.demographics, state.responses);
+  state.synced = r.ok;
+  saveState();
+  if (r.ok) toast("Jawapan dihantar ke Google Sheet.","success");
+  else toast("Disimpan secara setempat. Anda boleh cuba segarkan semula nanti.","warn");
+  goToStep("done");
+}
+
+/* ------------------------------ Settings ---------------------------------- */
+function mountSettingsButton(){
+  // Floating gear — only on intro/done (header has its own on survey screens)
+  if (document.getElementById("floating-settings")) return;
+  if (state.step === "intro" || state.step === "done"){
+    const fab = document.createElement("button");
+    fab.id = "floating-settings";
+    fab.className = "fixed top-4 right-4 z-50 w-10 h-10 rounded-full bg-white border border-slate-200 shadow-md text-slate-600 hover:text-emerald-600 hover:border-emerald-300 transition flex items-center justify-center";
+    fab.title = "Tetapan webhook";
+    fab.innerHTML = svgIcon("settings","w-5 h-5");
+    fab.onclick = openSettings;
+    document.body.appendChild(fab);
+  } else {
+    const existing = document.getElementById("floating-settings");
+    if (existing) existing.remove();
+  }
+}
+
+function openSettings(){
+  let modal = document.getElementById("settings-modal");
+  if (modal){ modal.remove(); return; }
+  const url = getWebhookUrl();
+  const isDefault = url === DEFAULT_WEBHOOK_URL;
+  modal = document.createElement("div");
+  modal.id = "settings-modal";
+  modal.className = "fixed inset-0 z-[90] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in";
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto scroll-area animate-pop-in">
+      <div class="flex items-center justify-between p-4 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">${svgIcon("settings","w-4 h-4")}</div>
+          <h3 class="font-semibold text-slate-900">Tetapan Segerakan Google Sheet</h3>
+        </div>
+        <button id="settings-close" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 flex items-center justify-center">${svgIcon("x","w-4 h-4")}</button>
+      </div>
+      <div class="p-4 space-y-4">
+        <!-- Status -->
+        <div class="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50">
+          <span class="text-sm text-slate-600">Status webhook</span>
+          <span id="settings-status" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${isDefault ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">
+            ${isDefault ? svgIcon("alertTriangle","w-3.5 h-3.5") + "Default" : svgIcon("checkCircle","w-3.5 h-3.5") + "Tersuai"}
+          </span>
+        </div>
+        <!-- URL input -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">URL Webhook (Google Apps Script)</label>
+          <input id="settings-url" type="url" value="${escapeHtml(url)}" class="w-full px-3 py-2.5 rounded-lg border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none text-sm font-mono" placeholder="https://script.google.com/macros/s/.../exec" />
+          <p class="text-[11px] text-slate-500 mt-1">Biarkan kosong untuk menggunakan URL lalai.</p>
+        </div>
+        <!-- Action buttons -->
+        <div class="grid grid-cols-3 gap-2">
+          <button id="settings-save" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition">${svgIcon("save","w-4 h-4")} Simpan</button>
+          <button id="settings-test" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition">${svgIcon("send","w-4 h-4")} Uji</button>
+          <button id="settings-delete" class="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-white border border-rose-200 text-rose-600 text-sm font-medium hover:bg-rose-50 transition">${svgIcon("trash","w-4 h-4")} Padam</button>
+        </div>
+        <!-- Expandable setup instructions -->
+        <details class="border border-slate-200 rounded-lg">
+          <summary class="px-3 py-2 text-sm font-medium text-slate-700 cursor-pointer hover:bg-slate-50 select-none">Arahan pemasangan Google Sheet</summary>
+          <div class="px-3 pb-3 text-xs text-slate-600 space-y-2 leading-relaxed">
+            <ol class="list-decimal list-inside space-y-1.5">
+              <li>Buka Google Sheet baharu atau sedia ada.</li>
+              <li>Pergi ke <span class="font-mono">Sambungan → Apps Script</span>.</li>
+              <li>Tampal fungsi <span class="font-mono">doPost(e)</span> yang menerima JSON <span class="font-mono">{headers, row}</span> dan menambah baris baru menggunakan <span class="font-mono">sheet.appendRow(row)</span>.</li>
+              <li>Pilih <span class="font-mono">Deploy → New deployment → Web app</span>.</li>
+              <li>Tetapkan <em>Execute as: Me</em> dan <em>Who has access: Anyone</em>.</li>
+              <li>Salin URL <span class="font-mono">/exec</span> dan tampal di ruangan di atas.</li>
+            </ol>
+            <div class="bg-slate-900 text-slate-100 p-3 rounded-md font-mono text-[10px] overflow-x-auto scroll-area">
+function doPost(e){<br>
+&nbsp;&nbsp;const data = JSON.parse(e.postData.contents);<br>
+&nbsp;&nbsp;const ss = SpreadsheetApp.getActiveSpreadsheet();<br>
+&nbsp;&nbsp;let sheet = ss.getSheetByName("Responses");<br>
+&nbsp;&nbsp;if(!sheet) sheet = ss.insertSheet("Responses");<br>
+&nbsp;&nbsp;if(sheet.getLastRow() === 0) sheet.appendRow(data.headers);<br>
+&nbsp;&nbsp;sheet.appendRow(data.row);<br>
+&nbsp;&nbsp;return ContentService.createTextOutput("ok");<br>
+}
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  document.getElementById("settings-close").onclick = () => modal.remove();
+  document.getElementById("settings-save").onclick = () => {
+    const v = document.getElementById("settings-url").value.trim();
+    if (v) setWebhookUrl(v); else clearWebhookUrl();
+    toast("Webhook disimpan.","success");
+    modal.remove();
+  };
+  document.getElementById("settings-test").onclick = async () => {
+    const v = document.getElementById("settings-url").value.trim();
+    if (v) setWebhookUrl(v);
+    toast("Menghantar ujian…","info");
+    const testDemo = { A1:"Lelaki", A2:"22-24", A3:"1-6 bulan", A4:"Ijazah Sarjana Muda Perguruan", A5:"IPGK Gaya", A6:"Sains", A7:"Dalam opsyen sepenuhnya", A8:"SK", A9:"Bandar" };
+    const testResp = {}; for (const it of ALL_ITEMS) testResp[it.code] = 4;
+    const r = await syncToSheet("TEST-" + Date.now().toString(36), testDemo, testResp);
+    if (r.ok) toast("Ujian dihantar. (Mod no-cors — semak Sheet anda.)","success");
+    else toast("Ujian gagal: " + (r.error||""), "error");
+  };
+  document.getElementById("settings-delete").onclick = () => {
+    clearWebhookUrl();
+    document.getElementById("settings-url").value = DEFAULT_WEBHOOK_URL;
+    const st = document.getElementById("settings-status");
+    st.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700";
+    st.innerHTML = svgIcon("alertTriangle","w-3.5 h-3.5") + "Default";
+    toast("Tetapan tersuai dipadam. Menggunakan URL lalai.","warn");
+  };
+}
+
+/* ------------------------------ Utils ------------------------------------- */
+function escapeHtml(s){
+  if (s == null) return "";
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+}
+
+/* ------------------------------ Boot -------------------------------------- */
+loadState();
+render();
+wireDemoInputs();
+mountSettingsButton();
+
+// Expose a few helpers for debugging
+window.__survey = { state, SECTIONS, DEMOGRAPHICS, SCALE_LABELS, computeScores, buildSheetColumns, buildSheetRow, getWebhookUrl, syncToSheet, downloadSlip, buildSlipHTML };
+window.downloadSlip = downloadSlip;
+</script>
+</body>
+</html>
