@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Pemetaan Amalan Semasa Pengurusan Kesihatan Mental Pelajar IPG KPM</title>
+
+<style>
+:root {
+    --primary: #123c69;
+    --secondary: #1d5f8a;
+    --accent: #2b8a9a;
+    --light: #f4f7fa;
+    --border: #dce4ea;
+    --text: #263238;
+    --muted: #607d8b;
+    --success: #2e7d32;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #eef3f7;
+    color: var(--text);
+    line-height: 1.6;
+}
+
+.header {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    padding: 38px 20px;
+    text-align: center;
+}
+
+.header h1 {
+    margin: 0 auto 10px;
+    max-width: 950px;
+    font-size: 28px;
+}
+
+.header p {
+    margin: 5px 0;
+}
+
+.container {
+    max-width: 950px;
+    margin: 30px auto;
+    padding: 0 18px;
+}
+
+.intro {
+    background: white;
+    border-left: 5px solid var(--accent);
+    padding: 22px;
+    margin-bottom: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.05);
+}
+
+.section {
+    background: white;
+    margin-bottom: 24px;
+    padding: 28px;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+}
+
+.section-title {
+    color: var(--primary);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 10px;
+    margin-top: 0;
+}
+
+.question {
+    margin: 24px 0;
+}
+
+.question label.title {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.required {
+    color: #c62828;
+}
+
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #bccbd5;
+    border-radius: 6px;
+    font-size: 15px;
+    background: white;
+}
+
+textarea {
+    min-height: 110px;
+    resize: vertical;
+}
+
+.option {
+    display: block;
+    margin: 8px 0;
+}
+
+.option input {
+    margin-right: 8px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+
+th, td {
+    border: 1px solid var(--border);
+    padding: 12px;
+    vertical-align: top;
+}
+
+th {
+    background: var(--light);
+    color: var(--primary);
+}
+
+table textarea {
+    min-height: 80px;
+}
+
+.note {
+    background: #eef7f8;
+    border-left: 4px solid var(--accent);
+    padding: 15px;
+    margin: 15px 0;
+    font-size: 14px;
+}
+
+.submit-area {
+    text-align: center;
+    padding: 15px 0 40px;
+}
+
+button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    font-size: 17px;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: var(--secondary);
+}
+
+.footer {
+    text-align: center;
+    padding: 25px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+@media(max-width: 600px) {
+    .header h1 {
+        font-size: 21px;
+    }
+
+    .section {
+        padding: 20px;
+    }
+
+    table {
+        font-size: 13px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header class="header">
+    <h1>PEMETAAN AMALAN SEMASA PENGURUSAN KESIHATAN MENTAL PELAJAR IPG KPM</h1>
+    <p>Unit Psikologi dan Kaunseling</p>
+    <p>Institut Pendidikan Guru Malaysia</p>
+</header>
+
+<main class="container">
+
+<div class="intro">
+    <strong>Tujuan Pemetaan</strong>
+    <p>
+        Pemetaan ini bertujuan mendapatkan gambaran menyeluruh mengenai
+        amalan semasa pengesanan, saringan, intervensi, rujukan, susulan,
+        dokumentasi dan pelaporan berkaitan pengurusan kesihatan mental
+        pelajar di IPG Kampus/ELTC.
+    </p>
+
+    <p>
+        Dapatan pemetaan akan digunakan sebagai asas untuk mengenal pasti
+        amalan baik, jurang pelaksanaan serta perkara yang perlu diselaraskan
+        dalam pembangunan Kerangka Pengurusan Kesihatan Mental Pelajar IPG KPM.
+    </p>
+</div>
+
+<form id="mentalHealthForm">
+
+<!-- BAHAGIAN A -->
+
+<section class="section">
+<h2 class="section-title">Bahagian A — Maklumat Kampus</h2>
+
+<div class="question">
+<label class="title">A1. Nama IPG Kampus / ELTC <span class="required">*</span></label>
+
+<select name="kampus" required>
+<option value="">-- Sila pilih --</option>
+<option>IPG Kampus Bahasa Antarabangsa</option>
+<option>IPG Kampus Bahasa Melayu</option>
+<option>IPG Kampus Ilmu Khas</option>
+<option>IPG Kampus Pendidikan Islam</option>
+<option>IPG Kampus Pendidikan Teknik</option>
+<option>IPG Kampus Raja Melewar</option>
+<option>IPG Kampus Perempuan Melayu</option>
+<option>IPG Kampus Darulaman</option>
+<option>IPG Kampus Sultan Abdul Halim</option>
+<option>IPG Kampus Tuanku Bainun</option>
+<option>IPG Kampus Tengku Ampuan Afzan</option>
+<option>IPG Kampus Tun Hussein Onn</option>
+<option>IPG Kampus Temenggong Ibrahim</option>
+<option>IPG Kampus Sarawak</option>
+<option>IPG Kampus Rajang</option>
+<option>IPG Kampus Tun Abdul Razak</option>
+<option>IPG Kampus Kota Bharu</option>
+<option>IPG Kampus Kent</option>
+<option>IPG Kampus Dato' Razali Ismail</option>
+<option>IPG Kampus Sultan Mizan</option>
+<option>IPG Kampus Tawau</option>
+<option>IPG Kampus Keningau</option>
+<option>IPG Kampus Gaya</option>
+<option>IPG Kampus Ipoh</option>
+<option>IPG Kampus Perlis</option>
+<option>IPG Kampus Pulau Pinang</option>
+<option>IPG Kampus Batu Lintang</option>
+<option>English Language Teaching Centre (ELTC)</option>
+</select>
+</div>
+
+<div class="question">
+<label class="title">A2. Bilangan Kaunselor Pendidikan</label>
+<input type="number" name="bilanganKaunselor" min="0">
+</div>
+
+<div class="question">
+<label class="title">A3. Anggaran jumlah pelajar semasa</label>
+<input type="number" name="jumlahPelajar" min="0">
+</div>
+
+<div class="question">
+<label class="title">A4. Nama pegawai yang memberikan maklum balas</label>
+<input type="text" name="namaPegawai">
+</div>
+
+<div class="question">
+<label class="title">A5. Jawatan</label>
+<input type="text" name="jawatan">
+</div>
+
+</section>
+
+
+<!-- BAHAGIAN B -->
+
+<section class="section">
+<h2 class="section-title">Bahagian B — Pengesanan Awal dan Saringan</h2>
+
+<div class="question">
+<label class="title">B1. Adakah kampus melaksanakan saringan kesihatan mental pelajar secara berkala?</label>
+
+<label class="option"><input type="radio" name="saringanBerkala" value="Ya"> Ya</label>
+<label class="option"><input type="radio" name="saringanBerkala" value="Tidak"> Tidak</label>
+<label class="option"><input type="radio" name="saringanBerkala" value="Mengikut keperluan"> Mengikut keperluan sahaja</label>
+</div>
+
+
+<div class="question">
+<label class="title">B2. Kumpulan yang menjalani saringan</label>
+
+<label class="option"><input type="checkbox" name="sasaran" value="Semua pelajar"> Semua pelajar</label>
+<label class="option"><input type="checkbox" name="sasaran" value="Pelajar baharu"> Pelajar baharu</label>
+<label class="option"><input type="checkbox" name="sasaran" value="Pelajar berisiko"> Pelajar dikenal pasti berisiko</label>
+<label class="option"><input type="checkbox" name="sasaran" value="Pelajar dirujuk"> Pelajar yang dirujuk kepada UPsK</label>
+<label class="option"><input type="checkbox" name="sasaran" value="Sukarela"> Pelajar yang hadir secara sukarela</label>
+</div>
+
+
+<div class="question">
+<label class="title">B3. Instrumen yang sedang digunakan</label>
+
+<label class="option"><input type="checkbox" name="instrumen" value="IKPsi"> IKPsi</label>
+<label class="option"><input type="checkbox" name="instrumen" value="DASS-21"> DASS-21</label>
+<label class="option"><input type="checkbox" name="instrumen" value="PHQ-9"> PHQ-9</label>
+<label class="option"><input type="checkbox" name="instrumen" value="GAD-7"> GAD-7</label>
+
+<input type="text" name="instrumenLain" placeholder="Instrumen lain, jika ada">
+</div>
+
+
+<div class="question">
+<label class="title">B4. Berapa kali saringan dilaksanakan dalam setahun?</label>
+<input type="text" name="kekerapanSaringan">
+</div>
+
+
+<div class="question">
+<label class="title">B5. Kaedah lain pengesanan pelajar berisiko</label>
+
+<label class="option"><input type="checkbox" name="pengesanan" value="Pensyarah"> Rujukan pensyarah</label>
+<label class="option"><input type="checkbox" name="pengesanan" value="HEP"> Rujukan HEP / pengurusan</label>
+<label class="option"><input type="checkbox" name="pengesanan" value="PRSD"> Rujukan rakan / PRSD</label>
+<label class="option"><input type="checkbox" name="pengesanan" value="Kendiri"> Aduan kendiri</label>
+<label class="option"><input type="checkbox" name="pengesanan" value="Kaunselor"> Pemerhatian kaunselor</label>
+<label class="option"><input type="checkbox" name="pengesanan" value="Waris"> Waris / keluarga</label>
+</div>
+
+</section>
+
+
+<!-- BAHAGIAN C -->
+
+<section class="section">
+
+<h2 class="section-title">Bahagian C — Pengurusan Selepas Saringan</h2>
+
+<div class="question">
+<label class="title">C1. Adakah kampus mempunyai prosedur selepas pelajar dikenal pasti mempunyai isu kesihatan mental?</label>
+
+<label class="option"><input type="radio" name="prosedur" value="Bertulis"> Ya, secara bertulis</label>
+<label class="option"><input type="radio" name="prosedur" value="Tidak didokumentasi"> Ada tetapi belum didokumentasikan</label>
+<label class="option"><input type="radio" name="prosedur" value="Pertimbangan kaunselor"> Bergantung kepada pertimbangan kaunselor</label>
+<label class="option"><input type="radio" name="prosedur" value="Tiada"> Tiada prosedur khusus</label>
+</div>
+
+<div class="question">
+<label class="title">C2. Bagaimanakah tahap risiko ditentukan sekarang?</label>
+<textarea name="penentuanRisiko"></textarea>
+</div>
+
+<div class="question">
+<label class="title">C3. Adakah kampus menggunakan kategori tahap risiko?</label>
+
+<label class="option"><input type="radio" name="kategoriRisiko" value="Ya"> Ya</label>
+<label class="option"><input type="radio" name="kategoriRisiko" value="Tidak"> Tidak</label>
+</div>
+
+<div class="question">
+<label class="title">C4. Nyatakan tindakan yang biasanya diambil mengikut tahap risiko.</label>
+
+<table>
+<tr>
+<th>Tahap Risiko</th>
+<th>Amalan Semasa Kampus</th>
+</tr>
+
+<tr>
+<td>Rendah</td>
+<td><textarea name="risikoRendah"></textarea></td>
+</tr>
+
+<tr>
+<td>Sederhana</td>
+<td><textarea name="risikoSederhana"></textarea></td>
+</tr>
+
+<tr>
+<td>Tinggi</td>
+<td><textarea name="risikoTinggi"></textarea></td>
+</tr>
+
+<tr>
+<td>Kritikal / Kecemasan</td>
+<td><textarea name="risikoKritikal"></textarea></td>
+</tr>
+</table>
+
+</div>
+
+</section>
+
+
+<!-- BAHAGIAN D -->
+
+<section class="section">
+
+<h2 class="section-title">Bahagian D — Intervensi dan Pengurusan Krisis</h2>
+
+<div class="question">
+<label class="title">D1. Bentuk intervensi yang dilaksanakan</label>
+
+<label class="option"><input type="checkbox" name="intervensi" value="Kaunseling individu"> Kaunseling individu</label>
+<label class="option"><input type="checkbox" name="intervensi" value="Kaunseling kelompok"> Kaunseling kelompok</label>
+<label class="option"><input type="checkbox" name="intervensi" value="Psikopendidikan"> Psikopendidikan</label>
+<label class="option"><input type="checkbox" name="intervensi" value="Intervensi krisis"> Intervensi krisis</label>
+<label class="option"><input type="checkbox" name="intervensi" value="Pemantauan"> Pemantauan berkala</label>
+<label class="option"><input type="checkbox" name="intervensi" value="Rujukan"> Rujukan profesional kesihatan</label>
+</div>
+
+
+<div class="question">
+<label class="title">D2. Adakah terdapat prosedur khusus bagi kes berikut?</label>
+
+<label class="option"><input type="checkbox" name="kesKrisis" value="Idea bunuh diri"> Idea bunuh diri</label>
+<label class="option"><input type="checkbox" name="kesKrisis" value="Percubaan bunuh diri"> Percubaan bunuh diri</label>
+<label class="option"><input type="checkbox" name="kesKrisis" value="Mencederakan diri"> Tingkah laku mencederakan diri</label>
+<label class="option"><input type="checkbox" name="kesKrisis" value="Krisis akut"> Serangan panik / krisis akut</label>
+<label class="option"><input type="checkbox" name="kesKrisis" value="Gangguan emosi serius"> Gangguan emosi serius</label>
+<label class="option"><input type="checkbox" name="kesKrisis" value="Kes psikiatri"> Kes psikiatri sedia ada</label>
+</div>
+
+
+<div class="question">
+<label class="title">D3. Jika berlaku kes berisiko tinggi atau kritikal, apakah tindakan sebenar yang dilakukan?</label>
+<textarea name="tindakanKritikal"></textarea>
+</div>
+
+</section>
+
+
+<!-- BAHAGIAN E -->
+
+<section class="section">
+
+<h2 class="section-title">Bahagian E — Sistem Rujukan</h2>
+
+<div class="question">
+<label class="title">E1. Ke manakah pelajar biasanya dirujuk?</label>
+
+<label class="option"><input type="checkbox" name="rujukan" value="Klinik Kesihatan"> Klinik Kesihatan</label>
+<label class="option"><input type="checkbox" name="rujukan" value="Hospital kerajaan"> Hospital kerajaan</label>
+<label class="option"><input type="checkbox" name="rujukan" value="Psikiatri"> Jabatan Psikiatri</label>
+<label class="option"><input type="checkbox" name="rujukan" value="MENTARI"> MENTARI</label>
+<label class="option"><input type="checkbox" name="rujukan" value="Swasta"> Klinik / hospital swasta</label>
+</div>
+
+<div class="question">
+<label class="title">E2. Adakah kampus mempunyai jaringan / pegawai hubungan dengan fasiliti tersebut?</label>
+<label class="option"><input type="radio" name="jaringan" value="Ya"> Ya</label>
+<label class="option"><input type="radio" name="jaringan" value="Tidak"> Tidak</label>
+</div>
+
+<div class="question">
+<label class="title">E3. Adakah prosedur rujukan didokumentasikan?</label>
+<label class="option"><input type="radio" name="prosedurRujukan" value="Ya"> Ya</label>
+<label class="option"><input type="radio" name="prosedurRujukan" value="Tidak"> Tidak</label>
+</div>
+
+<div class="question">
+<label class="title">E4. Terangkan proses rujukan yang sedang diamalkan.</label>
+<textarea name="prosesRujukan"></textarea>
+</div>
+
+<div class="question">
+<label class="title">E5. Apakah masalah utama yang dihadapi semasa membuat rujukan?</label>
+<textarea name="masalahRujukan"></textarea>
+</div>
+
+</section>
+
+
+<!-- BAHAGIAN F -->
+
+<section class="section">
+
+<h2 class="section-title">Bahagian F — Susulan Kes</h2>
+
+<div class="question">
+<label class="title">F1. Selepas pelajar dirujuk, adakah UPsK melakukan susulan?</label>
+
+<label class="option"><input type="radio" name="susulan" value="Sentiasa"> Sentiasa</label>
+<label class="option"><input type="radio" name="susulan" value="Kebiasaannya"> Kebiasaannya</label>
+<label class="option"><input type="radio" name="susulan" value="Mengikut keperluan"> Mengikut keperluan</label>
+<label class="option"><input type="radio" name="susulan" value="Tidak"> Tidak</label>
+</div>
+
+<div class="question">
+<label class="title">F2. Bagaimanakah susulan dilakukan?</label>
+<textarea name="kaedahSusulan"></textarea>
+</div>
+
+<div class="question">
+<label class="title">F3. Siapakah yang bertanggungjawab melakukan susulan?</label>
+<input type="text" name="pegawaiSusulan">
+</div>
+
+<div class="question">
+<label class="title">F4. Adakah kampus mempunyai kriteria penutupan kes?</label>
+<label class="option"><input type="radio" name="penutupanKes" value="Ya"> Ya</label>
+<label class="option"><input type="radio" name="penutupanKes" value="Tidak"> Tidak</label>
+
+<textarea name="kriteriaPenutupan" placeholder="Jika ya, nyatakan kriteria yang digunakan"></textarea>
+</div>
+
+</section>
+
+
+<!-- BAHAGIAN G -->
+
+<section class="section">
+
+<h2 class="section-title">Bahagian G — Dokumentasi, Kerahsiaan dan Pelaporan</h2>
+
+<div class="question">
+<label class="title">G1. Bagaimanakah kes direkodkan?</label>
+
+<label class="option"><input type="checkbox" name="rekod" value="Fail fizikal"> Fail kaunseling fizikal</label>
+<label class="option"><input type="checkbox" name="rekod" value="Sistem digital"> Sistem digital kampus</label>
+<label class="option"><input type="checkbox" name="rekod" value="MyKaunseling"> MyKaunseling</label>
+<label class="option"><input type="checkbox" name="rekod" value="Lain-lain"> Rekod lain</label>
+</div>
+
+<div class="question">
+<label class="title">G2. Apakah maklumat kesihatan mental yang direkodkan?</label>
+<textarea name="maklumatDirekod"></textarea>
+</div>
+
+<div class="question">
+<label class="title">G3. Siapakah yang mempunyai akses kepada maklumat tersebut?</label>
+<textarea name="aksesData"></textarea>
+</div>
+
+<div class="question">
+<label class="title">G4. Terangkan mekanisme yang digunakan untuk melindungi kerahsiaan data.</label>
+<textarea name="kerahsiaan"></textarea>
+</div>
+
+<div class="question">
+<label class="title">G5. Apakah data yang kini dilaporkan kepada pengurusan kampus / IPGM?</label>
+<textarea name="dataPelaporan"></textarea>
+</div>
+
+</section>
+
+
+<!-- BAHAGIAN H -->
+
+<section class="section">
+
+<h2 class="section-title">Bahagian H — Amalan Baik, Cabaran dan Cadangan Penyeragaman</h2>
+
+<div class="question">
+<label class="title">H1. Nyatakan amalan terbaik kampus yang wajar dikongsikan kepada IPG lain.</label>
+<textarea name="amalanTerbaik"></textarea>
+</div>
+
+<div class="question">
+<label class="title">H2. Nyatakan tiga cabaran utama.</label>
+<textarea name="cabaran"></textarea>
+</div>
+
+<div class="question">
+<label class="title">H3. Apakah perkara yang perlu diseragamkan di seluruh IPG KPM?</label>
+
+<label class="option"><input type="checkbox" name="penyeragaman" value="Instrumen saringan"> Instrumen saringan</label>
+<label class="option"><input type="checkbox" name="penyeragaman" value="Kekerapan saringan"> Masa / kekerapan saringan</label>
+<label class="option"><input type="checkbox" name="penyeragaman" value="Kategori risiko"> Kategori tahap risiko</label>
+<label class="option"><input type="checkbox" name="penyeragaman" value="Intervensi"> Prosedur intervensi</label>
+<label class="option"><input type="checkbox" name="penyeragaman" value="Risiko bunuh diri"> Pengurusan risiko bunuh diri / mencederakan diri</label>
+<label class="option"><input type="checkbox" name="penyeragaman" value="Rujukan"> Prosedur rujukan</label>
+<label class="option"><input type="checkbox" name="penyeragaman" value="Susulan"> Susulan kes</label>
+<label class="option"><input type="checkbox" name="penyeragaman" value="Dokumentasi"> Dokumentasi</label>
+<label class="option"><input type="checkbox" name="penyeragaman" value="Pelaporan"> Pelaporan</label>
+<label class="option"><input type="checkbox" name="penyeragaman" value="Jaringan"> Kerjasama fasiliti kesihatan</label>
+</div>
+
+<div class="question">
+<label class="title">H4. Apakah bentuk sokongan yang diperlukan daripada UPsK IPGM?</label>
+<textarea name="sokonganIPGM"></textarea>
+</div>
+
+<div class="question">
+<label class="title">H5. Cadangan lain untuk memperkukuh pengurusan kesihatan mental pelajar IPG KPM.</label>
+<textarea name="cadangan"></textarea>
+</div>
+
+</section>
+
+
+<!-- BAHAGIAN I -->
+
+<section class="section">
+
+<h2 class="section-title">Bahagian I — Dokumen Sokongan</h2>
+
+<div class="note">
+Sekiranya ada, sila sediakan SOP, carta alir, borang saringan,
+borang rujukan, borang penilaian risiko, prosedur pengurusan krisis,
+borang susulan atau dokumen lain yang sedang digunakan oleh kampus.
+</div>
+
+<div class="question">
+<label class="title">I1. Nyatakan pautan Google Drive / repositori dokumen berkaitan.</label>
+
+<input type="text"
+       name="dokumenURL"
+       placeholder="Masukkan pautan dokumen">
+</div>
+
+</section>
+
+
+<div class="submit-area">
+
+<button type="submit">
+Hantar Maklum Balas
+</button>
+
+</div>
+
+</form>
+
+</main>
+
+<footer class="footer">
+Unit Psikologi dan Kaunseling (UPsK)<br>
+Institut Pendidikan Guru Malaysia<br>
+Kementerian Pendidikan Malaysia
+</footer>
+
+
+<script>
+
+document
+.getElementById("mentalHealthForm")
+.addEventListener("submit", function(event){
+
+    event.preventDefault();
+
+    /*
+    =========================================
+    SAMBUNGKAN GOOGLE SHEETS / DATABASE DI SINI
+    =========================================
+
+    Contoh:
+
+    const formData = new FormData(this);
+
+    fetch("URL_GOOGLE_APPS_SCRIPT", {
+        method: "POST",
+        body: formData
+    })
+    .then(response => response.text())
+    .then(data => {
+        alert("Maklum balas berjaya dihantar.");
+        this.reset();
+    })
+    .catch(error => {
+        alert("Ralat semasa menghantar data.");
+    });
+
+    */
+
+    alert(
+        "Borang telah lengkap. " +
+        "Sambungan pangkalan data perlu dikonfigurasi sebelum data boleh dihantar."
+    );
+
+});
+
+</script>
+
+</body>
+</html>
