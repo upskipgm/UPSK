@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soal Selidik Pengalaman dan Tingkah Laku Buli - Guru Pelatih IPG</title>
+<!--
+  ================================================================
+  SOAL SELIDIK PENGALAMAN DAN TINGKAH LAKU BULI - GURU PELATIH IPG
+  Adaptasi konstruk OBVQ (draf saringan awal RESET DIRI)
+  ----------------------------------------------------------------
+  Fail ini LENGKAP BERDIRI SENDIRI (satu fail HTML sahaja).
+  Data responden dihantar TERUS ke Google Spreadsheet anda melalui
+  Google Apps Script Web App.
+
+  UNTUK MENUKAR ALAMAT GOOGLE SHEETS:
+  Cari pembolehubah  SHEET_URL  di bahagian <script> bawah fail ini
+  dan gantikan alamatnya dengan URL Web App anda (berakhir /exec).
+  ================================================================
+-->
+<style>
+  :root{
+    --g900:#064e3b; --g800:#065f46; --g700:#047857; --g600:#059669;
+    --g100:#d1fae5; --g50:#ecfdf5; --g200:#a7f3d0;
+    --rose:#e11d48; --rose-bg:#fff1f2;
+    --amber:#b45309; --amber-bg:#fffbeb; --amber-bd:#fde68a;
+    --ink:#1f2937; --mut:#6b7280; --bd:#e5e7eb; --bg:#f6f8f7;
+    --card:#ffffff; --focus:#0ea5e9;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.55; font-size:15px;
+  }
+  .wrap{max-width:880px; margin:0 auto; padding:0 16px 60px;}
+
+  /* ---------- Pengepala ---------- */
+  header.top{
+    background:linear-gradient(135deg,var(--g800),var(--g700));
+    color:#fff; padding:26px 16px 22px; text-align:center;
+  }
+  header.top .shield{font-size:34px; line-height:1;}
+  header.top h1{font-size:20px; font-weight:800; letter-spacing:.2px; margin-top:8px;}
+  header.top p{font-size:12.5px; opacity:.92; margin-top:5px; max-width:640px; margin-left:auto; margin-right:auto;}
+
+  /* ---------- Langkah (stepper) ---------- */
+  .stepper{display:flex; justify-content:center; gap:6px; margin:18px 0 4px; flex-wrap:wrap;}
+  .stepchip{display:flex; align-items:center; gap:8px; padding:7px 14px; border-radius:999px;
+    background:#fff; border:1.5px solid var(--bd); font-size:12.5px; color:var(--mut); font-weight:600;}
+  .stepchip .num{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px;
+    border-radius:50%; background:var(--bd); color:#fff; font-size:11px; font-weight:700;}
+  .stepchip.active{border-color:var(--g700); color:var(--g800); background:var(--g50);}
+  .stepchip.active .num{background:var(--g700);}
+  .stepchip.done{border-color:var(--g200); color:var(--g800);}
+  .stepchip.done .num{background:var(--g600);}
+
+  /* ---------- Kad umum ---------- */
+  .card{background:var(--card); border:1px solid var(--bd); border-radius:14px;
+    padding:22px; margin-top:18px; box-shadow:0 1px 3px rgba(6,78,59,.06);}
+  .card h2{font-size:16.5px; color:var(--g900); display:flex; align-items:center; gap:10px;}
+  .card h2 .ico{display:inline-flex; width:34px; height:34px; border-radius:9px; background:var(--g100);
+    align-items:center; justify-content:center; font-size:17px;}
+  .card .desc{font-size:12.5px; color:var(--mut); margin:6px 0 0 44px;}
+  .sect-head{margin-bottom:14px;}
+
+  .info{background:var(--g50); border:1px solid var(--g200); border-radius:10px;
+    padding:12px 14px; font-size:13px; color:var(--g900); margin-bottom:16px;}
+  .info b{font-weight:700;}
+  .notice{background:var(--amber-bg); border:1px solid var(--amber-bd); border-radius:10px;
+    padding:12px 14px; font-size:12.5px; color:var(--amber); margin-top:14px;}
+
+  /* ---------- Borang demografi ---------- */
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media(max-width:620px){.grid2{grid-template-columns:1fr;}}
+  .field label{display:block; font-size:12.5px; font-weight:700; margin-bottom:5px; color:#374151;}
+  .field .req{color:var(--rose);}
+  .field .opt{color:var(--mut); font-weight:500;}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%; padding:9px 11px; border:1.5px solid var(--bd); border-radius:9px;
+    font-size:14px; font-family:inherit; background:#fff; color:var(--ink);}
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--focus);
+    box-shadow:0 0 0 3px rgba(14,165,233,.15);}
+  textarea{min-height:64px; resize:vertical;}
+  .err{color:var(--rose); font-size:11.5px; margin-top:4px; display:none;}
+  .field.invalid input,.field.invalid select{border-color:var(--rose);}
+  .field.invalid .err{display:block;}
+
+  /* ---------- Item soal selidik ---------- */
+  .bahagian{margin-top:20px;}
+  .bahagian h3{font-size:14.5px; color:var(--g900); background:var(--g100);
+    padding:9px 13px; border-radius:9px; border-left:4px solid var(--g700);}
+  .bahagian .bdesc{font-size:12px; color:var(--mut); margin:6px 2px 10px;}
+  .item{background:#fff; border:1px solid var(--bd); border-radius:12px; padding:14px 15px; margin-top:10px;}
+  .item.answered{border-color:var(--g200); background:linear-gradient(0deg,var(--g50),#fff 55%);}
+  .item .q{display:flex; gap:9px; font-size:13.8px; font-weight:600; color:#111827;}
+  .item .q .no{flex:none; width:26px; height:26px; border-radius:8px; background:var(--g100);
+    color:var(--g800); font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center;}
+  .scale{display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:11px;}
+  .scale label{position:relative; cursor:pointer;}
+  .scale input{position:absolute; opacity:0; inset:0; cursor:pointer;}
+  .scale .pill{border:1.5px solid var(--bd); border-radius:9px; text-align:center; padding:7px 3px 6px;
+    transition:all .12s; background:#fff;}
+  .scale .pill .v{font-size:15px; font-weight:800; color:#374151;}
+  .scale .pill .t{display:block; font-size:9.3px; color:var(--mut); margin-top:2px; line-height:1.25;}
+  .scale label:hover .pill{border-color:var(--g600);}
+  .scale input:checked + .pill{border-color:var(--g700); background:var(--g100);}
+  .scale input:checked + .pill .v{color:var(--g800);}
+  .scale input:focus-visible + .pill{box-shadow:0 0 0 3px rgba(14,165,233,.25);}
+
+  /* ---------- Bar kemajuan melekat ---------- */
+  #progbar{position:sticky; top:0; z-index:40; background:#fff; border-bottom:1px solid var(--bd);
+    padding:9px 0; display:none;}
+  #progbar .row{max-width:880px; margin:0 auto; padding:0 16px; display:flex; justify-content:space-between;
+    font-size:12px; color:var(--mut); font-weight:600; margin-bottom:5px;}
+  #progbar .track{max-width:880px; margin:0 auto; padding:0 16px;}
+  #progbar .fill{height:7px; border-radius:99px; background:var(--g100);}
+  #progbar .fill span{display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,var(--g600),var(--g700));
+    width:0%; transition:width .25s;}
+
+  /* ---------- Butang ---------- */
+  .btnrow{display:flex; justify-content:space-between; gap:10px; margin-top:20px; flex-wrap:wrap;}
+  button.btn{border:none; cursor:pointer; font-family:inherit; font-weight:700; border-radius:10px;
+    padding:11px 22px; font-size:14px; display:inline-flex; align-items:center; gap:8px; transition:all .15s;}
+  .btn.primary{background:var(--g700); color:#fff;}
+  .btn.primary:hover{background:var(--g800);}
+  .btn.ghost{background:#fff; color:#374151; border:1.5px solid var(--bd);}
+  .btn.ghost:hover{border-color:var(--g600); color:var(--g800);}
+  .btn.subtle{background:var(--g50); color:var(--g800); border:1.5px solid var(--g200);}
+  .btn:disabled{opacity:.55; cursor:not-allowed;}
+
+  /* ---------- Modal ---------- */
+  #overlay{position:fixed; inset:0; background:rgba(6,78,59,.45); z-index:100; display:none;
+    align-items:center; justify-content:center; padding:16px;}
+  #overlay.show{display:flex;}
+  .modal{background:#fff; border-radius:14px; max-width:430px; width:100%; padding:22px;
+    box-shadow:0 20px 50px rgba(0,0,0,.25);}
+  .modal h4{font-size:15.5px; color:var(--g900); margin-bottom:8px;}
+  .modal p{font-size:13.5px; color:#374151;}
+  .modal .btnrow{justify-content:flex-end;}
+
+  /* ---------- Keputusan ---------- */
+  .chips{display:flex; flex-wrap:wrap; gap:7px; margin-top:12px;}
+  .chip{background:var(--g50); border:1px solid var(--g200); color:var(--g900);
+    font-size:11.5px; padding:4px 10px; border-radius:999px;}
+  .chip b{font-weight:800;}
+  .avg-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:14px;}
+  @media(max-width:620px){.avg-grid{grid-template-columns:repeat(2,1fr);}}
+  .avgcard{border:1px solid var(--bd); border-radius:12px; padding:13px 14px; background:#fff;}
+  .avgcard .t{font-size:11px; font-weight:700; color:var(--mut); text-transform:uppercase; letter-spacing:.4px;}
+  .avgcard .v{font-size:26px; font-weight:800; color:var(--g800); margin-top:2px;}
+  .avgcard .n{font-size:10.5px; color:var(--mut);}
+  .avgcard .bar{height:6px; border-radius:99px; background:var(--g100); margin-top:8px;}
+  .avgcard .bar span{display:block; height:100%; border-radius:99px; background:var(--g700);}
+  .warn{display:none; background:var(--rose-bg); border:1px solid #fecdd3; border-radius:12px;
+    padding:14px 16px; margin-top:14px; font-size:13px; color:#9f1239;}
+  .warn.show{display:block;}
+  .warn ul{margin:8px 0 0 18px;}
+  .warn li{margin-top:4px;}
+  .itembars{margin-top:16px;}
+  .ibar{display:flex; align-items:center; gap:10px; margin-top:6px;}
+  .ibar .lbl{flex:0 0 46px; font-size:11px; font-weight:700; color:#374151; text-align:right;}
+  .ibar .track{flex:1; height:14px; background:var(--g50); border-radius:99px; overflow:hidden; border:1px solid var(--g200);}
+  .ibar .track span{display:block; height:100%; background:var(--g600); border-radius:99px;}
+  .ibar.hi .track span{background:var(--rose);}
+  .ibar .val{flex:0 0 22px; font-size:11px; font-weight:800; color:#374151;}
+  .ibar.hi .val{color:var(--rose);}
+  table.result{width:100%; border-collapse:collapse; margin-top:12px; font-size:12.3px;}
+  table.result th{background:var(--g700); color:#fff; text-align:left; padding:8px 10px; font-size:11.5px;}
+  table.result td{border-bottom:1px solid var(--bd); padding:7px 10px; vertical-align:top;}
+  table.result tr:nth-child(even) td{background:#fafcfa;}
+  td.c{text-align:center; font-weight:800; color:var(--g800);}
+  td.c.hi{color:var(--rose);}
+  .sendbox{border:1.5px solid var(--g200); background:var(--g50); border-radius:12px; padding:14px 16px; margin-top:16px;}
+  .sendbox h4{font-size:13.5px; color:var(--g900); display:flex; align-items:center; gap:8px;}
+  .sendbox p{font-size:12px; color:#374151; margin-top:5px;}
+  .status{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700;
+    padding:4px 11px; border-radius:999px; margin-top:9px;}
+  .status.ok{background:var(--g100); color:var(--g800);}
+  .status.fail{background:var(--rose-bg); color:#9f1239;}
+  .status.wait{background:#fef3c7; color:#92400e;}
+
+  .footbox{border:1px solid var(--bd); border-radius:12px; padding:13px 16px; margin-top:12px;
+    font-size:11.8px; color:#4b5563; background:#fff;}
+  .footbox b{color:var(--g900); display:block; margin-bottom:4px; font-size:12px;}
+  .print-head{display:none;}
+
+  /* ---------- Cetak ---------- */
+  @media print{
+    body{background:#fff;}
+    .no-print{display:none !important;}
+    header.top{background:var(--g800) !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    .card{box-shadow:none; break-inside:avoid;}
+    .print-head{display:block; text-align:center; margin-top:8px;}
+    .print-head h1{font-size:15px; color:#111;}
+    .print-head p{font-size:10.5px; color:#444; margin-top:2px;}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="shield">&#128737;&#65039;</div>
+  <h1>SOAL SELIDIK PENGALAMAN DAN TINGKAH LAKU BULI</h1>
+  <p>Guru Pelatih IPG &#183; Adaptasi konstruk OBVQ (draf saringan awal RESET DIRI)</p>
+</header>
+
+<div id="progbar">
+  <div class="row"><span id="proglabel">0/32 item dijawab</span><span id="progpct">0%</span></div>
+  <div class="track"><div class="fill"><span id="progfill"></span></div></div>
+</div>
+
+<div class="wrap">
+
+  <div class="stepper no-print" id="stepper">
+    <div class="stepchip" data-step="1"><span class="num">1</span> Demografi</div>
+    <div class="stepchip" data-step="2"><span class="num">2</span> Soal Selidik</div>
+    <div class="stepchip" data-step="3"><span class="num">3</span> Keputusan</div>
+  </div>
+
+  <div id="draftnote" class="info no-print" style="display:none; margin-top:14px;">
+    &#128221; <b>Draf diteruskan.</b> Jawapan tidak lengkap anda sebelum ini telah dipulihkan secara automatik.
+  </div>
+
+  <!-- ============ BAHAGIAN 1: DEMOGRAFI ============ -->
+  <section id="step1" class="card" style="display:none;">
+    <div class="sect-head">
+      <h2><span class="ico">&#128100;</span> Section 1: Demografi Pelajar IPG</h2>
+      <p class="desc">Bahagian A: Maklumat Responden &mdash; bahagian ini tidak memerlukan nama anda.</p>
+    </div>
+    <div class="grid2">
+      <div class="field" id="f_kod">
+        <label for="kod">Kod responden <span class="req">*</span></label>
+        <input type="text" id="kod" placeholder="cth. R001" maxlength="20">
+        <div class="err">Kod responden diperlukan (contoh: R001).</div>
+      </div>
+      <div class="field" id="f_umur">
+        <label for="umur">Umur <span class="req">*</span></label>
+        <input type="number" id="umur" min="15" max="80" placeholder="cth. 21">
+        <div class="err">Umur mestilah antara 15 hingga 80 tahun.</div>
+      </div>
+      <div class="field" id="f_jantina">
+        <label for="jantina">Jantina <span class="req">*</span></label>
+        <select id="jantina"><option value="">Pilih jantina</option></select>
+        <div class="err">Sila pilih jantina.</div>
+      </div>
+      <div class="field" id="f_program">
+        <label for="program">Program <span class="req">*</span></label>
+        <select id="program"><option value="">Pilih program</option></select>
+        <div class="err">Sila pilih program.</div>
+      </div>
+      <div class="field">
+        <label for="opsyen">Opsyen / Pengkhususan <span class="opt">(pilihan)</span></label>
+        <input type="text" id="opsyen" placeholder="cth. Pendidikan Awal Kanak-Kanak" maxlength="120">
+      </div>
+      <div class="field">
+        <label for="semester">Semester <span class="opt">(pilihan)</span></label>
+        <select id="semester"><option value="">Pilih semester</option></select>
+      </div>
+      <div class="field">
+        <label for="kampus">Kampus IPG <span class="opt">(pilihan)</span></label>
+        <input type="text" id="kampus" placeholder="cth. IPG Kampus Pulau Pinang" maxlength="120">
+      </div>
+      <div class="field">
+        <label for="tarikh">Tarikh</label>
+        <input type="date" id="tarikh">
+      </div>
+    </div>
+    <div class="btnrow">
+      <span></span>
+      <button class="btn primary" onclick="goStep2()">Teruskan ke Soal Selidik &#8594;</button>
+    </div>
+  </section>
+
+  <!-- ============ BAHAGIAN 2: SOAL SELIDIK ============ -->
+  <section id="step2" style="display:none;">
+    <div class="card">
+      <div class="sect-head">
+        <h2><span class="ico">&#128221;</span> Section 2: Soal Selidik Buli</h2>
+        <p class="desc">Bahagian B &ndash; F &middot; Skala kekerapan 0 &ndash; 4</p>
+      </div>
+      <div class="info"><b>Arahan:</b> <span id="arahanTxt"></span></div>
+      <div id="itemsHost"></div>
+      <div class="bahagian">
+        <h3>Bahagian F: Refleksi Ringkas <span style="font-weight:500;font-size:12px;color:var(--mut);">(Pilihan)</span></h3>
+        <p class="bdesc">Jawapan anda adalah pilihan dan boleh dikosongkan.</p>
+        <div id="refleksiHost"></div>
+      </div>
+      <div class="notice"><b>Notis Penting:</b> <span id="notisTxt"></span></div>
+      <div class="btnrow">
+        <button class="btn ghost" onclick="goStep(1)">&#8592; Kembali</button>
+        <button class="btn primary" onclick="finishQuiz()">Lihat Keputusan &#8594;</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BAHAGIAN 3: KEPUTUSAN ============ -->
+  <section id="step3" style="display:none;">
+    <div class="card">
+      <div class="print-head">
+        <h1>SOAL SELIDIK PENGALAMAN DAN TINGKAH LAKU BULI &mdash; KEPUTUSAN RESPONDEN</h1>
+        <p>Versi Bahasa Melayu untuk Guru Pelatih IPG &#183; Adaptasi konstruk OBVQ (draf saringan awal RESET DIRI)</p>
+      </div>
+      <div class="sect-head">
+        <h2><span class="ico">&#128202;</span> Section 3: Paparan Keputusan Soal Selidik</h2>
+        <p class="desc">Ringkasan skor, amaran item tinggi, jadual penuh, muat turun dan cetakan.</p>
+      </div>
+      <div class="chips" id="demoChips"></div>
+      <div class="avg-grid" id="avgGrid"></div>
+      <div class="warn" id="warnBox"></div>
+      <h3 style="margin-top:20px;font-size:13.5px;color:var(--g900);">Skor Setiap Item (0 &ndash; 4)</h3>
+      <div class="itembars" id="itemBars"></div>
+      <h3 style="margin-top:22px;font-size:13.5px;color:var(--g900);">Jadual Keputusan Penuh</h3>
+      <div style="overflow-x:auto;">
+        <table class="result">
+          <thead><tr><th>Bahagian</th><th>Bil.</th><th>Pernyataan</th><th style="text-align:center;">Skor</th><th>Label Kekerapan</th></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div id="refBox"></div>
+      <div class="sendbox no-print" id="sendBox">
+        <h4>&#128228; Hantar ke Google Spreadsheet</h4>
+        <p>Respons anda akan direkodkan sebagai satu baris dalam tab &laquo;Respons&raquo; spreadsheet penyelidikan. Pastikan anda bersambung ke internet.</p>
+        <div id="sendStatus"></div>
+        <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn primary" id="sendBtn" onclick="sendToSheets()">&#128640; Hantar Sekarang</button>
+          <button class="btn subtle no-print" onclick="downloadCsv()">&#128190; Muat Turun CSV</button>
+          <button class="btn ghost no-print" onclick="window.print()">&#128424;&#65039; Cetak / Simpan PDF</button>
+        </div>
+      </div>
+      <div class="btnrow no-print">
+        <button class="btn ghost" onclick="goStep(2)">&#8592; Kembali ke Soal Selidik</button>
+        <button class="btn primary" onclick="startNew()">&#128260; Respons Baharu</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="footbox"><b>Skala Kekerapan</b><span id="scaleLegend"></span></div>
+  <div class="footbox"><b>Panduan Fasilitator</b><span id="panduanTxt"></span></div>
+  <div class="footbox"><b>Rujukan Konsep</b><span id="rujukanTxt"></span></div>
+</div>
+
+<!-- Modal pengesahan -->
+<div id="overlay">
+  <div class="modal">
+    <h4 id="mTitle">Tetapkan</h4>
+    <p id="mBody"></p>
+    <div class="btnrow">
+      <button class="btn ghost" id="mCancel">Kembali</button>
+      <button class="btn primary" id="mOk">Teruskan</button>
+    </div>
+  </div>
+</div>
+<script>
+/* ================================================================
+   KONFIGURASI - TUKAR ALAMAT GOOGLE SHEETS DI SINI
+   ================================================================ */
+var SHEET_URL = "https://script.google.com/macros/s/AKfycbx5XnTlNn6er5t0ihQUfWzXbB52as96ZwXMqLAqYKUr5dpmOkzR4OLRcA6P7LB3zLiS/exec";
+
+/* ================= DATA INSTRUMEN ================= */
+var SCALE = [
+  { v:0, label:"Tidak pernah" },
+  { v:1, label:"Sekali atau dua kali" },
+  { v:2, label:"Dua atau tiga kali sebulan" },
+  { v:3, label:"Lebih kurang sekali seminggu" },
+  { v:4, label:"Beberapa kali seminggu" }
+];
+function scaleLabel(v){
+  if(v===undefined||v===null) return "Tidak dijawab";
+  for(var i=0;i<SCALE.length;i++){ if(SCALE[i].v===v) return SCALE[i].label; }
+  return "Tidak dijawab";
+}
+
+var SECTIONS = [
+  { code:"B", title:"Pengalaman Menerima Perlakuan Buli",
+    description:"Item 1 - 10: Pengalaman anda menerima perlakuan buli dalam tempoh 2 bulan terakhir.",
+    items:[
+      {id:1, text:"Saya diejek atau diberi gelaran yang menyakitkan hati."},
+      {id:2, text:"Orang lain memperlekeh cara saya bercakap, loghat atau latar belakang saya."},
+      {id:3, text:"Saya sengaja diketepikan daripada aktiviti atau kumpulan rakan."},
+      {id:4, text:"Cerita atau khabar angin yang memalukan tentang saya disebarkan."},
+      {id:5, text:"Saya diugut atau ditakut-takutkan oleh rakan."},
+      {id:6, text:"Barang saya diambil, disembunyikan atau dirosakkan tanpa izin."},
+      {id:7, text:"Saya ditolak, ditampar atau dicederakan secara fizikal."},
+      {id:8, text:"Saya dihina berkaitan penampilan atau bentuk badan."},
+      {id:9, text:"Saya dimalukan di hadapan rakan atau ketika pembentangan."},
+      {id:10, text:"Saya menerima mesej, komen atau hantaran dalam talian yang menghina atau mengancam."}
+    ]},
+  { code:"C", title:"Tingkah Laku terhadap Rakan",
+    description:"Item 11 - 20: Tingkah laku anda terhadap rakan dalam tempoh 2 bulan terakhir.",
+    items:[
+      {id:11, text:"Saya mengejek atau memanggil rakan dengan gelaran yang menyakitkan hati."},
+      {id:12, text:"Saya mentertawakan kelemahan atau kesilapan rakan di hadapan orang lain."},
+      {id:13, text:"Saya sengaja tidak mengajak seseorang menyertai kumpulan untuk menyisihkannya."},
+      {id:14, text:"Saya menyebarkan cerita buruk atau khabar angin tentang rakan."},
+      {id:15, text:"Saya menggunakan ancaman atau tekanan supaya rakan mengikut kehendak saya."},
+      {id:16, text:"Saya mengambil atau menyembunyikan barang rakan sebagai gurauan walaupun mereka tidak suka."},
+      {id:17, text:"Saya menolak atau bertindak kasar secara fizikal terhadap rakan."},
+      {id:18, text:"Saya menghina penampilan, badan atau identiti sosial rakan."},
+      {id:19, text:"Saya memalukan rakan semasa aktiviti pembelajaran atau pembentangan."},
+      {id:20, text:"Saya menghantar atau berkongsi kandungan digital yang memalukan atau menyakitkan hati rakan."}
+    ]},
+  { code:"D", title:"Pengalaman sebagai Pemerhati dan Sokongan",
+    description:"Item 21 - 28: Pengalaman anda apabila menyaksikan kejadian buli.",
+    items:[
+      {id:21, text:"Saya menyaksikan rakan diejek atau dihina berulang kali."},
+      {id:22, text:"Saya melihat rakan sengaja dipulaukan oleh kumpulan."},
+      {id:23, text:"Saya melihat buli berlaku dalam kumpulan sembang atau media sosial."},
+      {id:24, text:"Saya menyertai gelak ketawa apabila seseorang dijadikan bahan ejekan."},
+      {id:25, text:"Saya berdiam diri kerana takut menjadi sasaran apabila menyaksikan buli."},
+      {id:26, text:"Saya menegur perlakuan buli dengan cara yang selamat."},
+      {id:27, text:"Saya memberi sokongan kepada rakan yang menjadi sasaran buli."},
+      {id:28, text:"Saya mendapatkan bantuan pensyarah, kaunselor atau pihak yang sesuai apabila menyaksikan buli."}
+    ]},
+  { code:"E", title:"Persepsi Keselamatan dan Kesediaan Mendapatkan Bantuan",
+    description:"Item 29 - 32: Persepsi anda tentang keselamatan dan kesediaan mendapatkan bantuan.",
+    items:[
+      {id:29, text:"Saya berasa selamat untuk menyuarakan kebimbangan tentang buli di kampus."},
+      {id:30, text:"Saya tahu saluran untuk melaporkan kejadian buli secara selamat."},
+      {id:31, text:"Saya percaya aduan berkaitan buli akan ditangani secara adil dan sulit setakat yang dibenarkan."},
+      {id:32, text:"Saya bersedia mendapatkan bantuan sekiranya terlibat atau menyaksikan kejadian buli."}
+    ]}
+];
+
+var REFLEKSI_QUESTIONS = [
+  "Apakah situasi yang paling memberi kesan kepada anda?",
+  "Apakah tindakan selamat yang boleh diambil untuk mencegah atau menghentikan perlakuan buli?",
+  "Siapakah individu atau saluran sokongan yang boleh anda hubungi?"
+];
+
+var ARAHAN = "Fikirkan pengalaman anda dalam TEMPOH 2 BULAN TERAKHIR di kampus, asrama atau ruang digital berkaitan pengajian. Tandakan satu jawapan bagi setiap pernyataan. Buli merujuk tingkah laku menyakitkan atau memudaratkan yang berulang dan melibatkan ketidakseimbangan kuasa; satu insiden serius tetap wajar dilaporkan. Penyertaan adalah sukarela dan anda boleh melangkau item yang tidak selesa.";
+
+var NOTIS_PENTING = "Dokumen ini BUKAN Olweus Bully/Victim Questionnaire (OBVQ) rasmi, bukan terjemahan berlesen dan belum melalui pengesahan psikometrik. Digunakan hanya sebagai alat refleksi atau saringan awal; tidak boleh dijadikan asas tunggal keputusan disiplin atau diagnosis.";
+
+var PANDUAN_FASILITATOR = "Item 1-10: pengalaman menerima perlakuan; 11-20: perlakuan terhadap rakan; 21-28: pemerhatian dan respons; 29-32: keselamatan serta bantuan. Semak respons mengikut item dan konteks, bukan jumlah skor tunggal. Item 26-28 dan 29-32 bersifat perlindungan/sokongan; jangan dicampurkan terus dengan item risiko. Tiada titik potong atau kategori tahap risiko yang disahkan untuk draf ini. Tindak lanjut secara sulit, utamakan keselamatan, dan gunakan penilaian profesional serta prosedur institusi. Elakkan pelabelan peserta sebagai \u201cpembuli\u201d.";
+
+var RUJUKAN = "Rujukan konsep: Olweus, D. (1996). The Revised Olweus Bully/Victim Questionnaire. Bergen, Norway: Research Center for Health Promotion, University of Bergen. Rujukan ini tidak bermaksud item di atas ialah salinan instrumen asal.";
+
+var GENDER_OPTIONS = ["Lelaki","Perempuan","Tidak mahu menyatakan"];
+var PROGRAM_OPTIONS = [
+  "PISMP (Program Ijazah Sarjana Muda Perguruan)",
+  "PISPA (Program Ijazah Sarjana Muda Pendidikan Awal Kanak-Kanak)",
+  "Ijazah Sarjana Muda Pendidikan (Lain-lain IPT)",
+  "Lain-lain"
+];
+var SEMESTER_OPTIONS = ["Semester 1","Semester 2","Semester 3","Semester 4","Semester 5","Semester 6","Semester 7","Semester 8","Lain-lain"];
+
+/* ================= KEADAAN ================= */
+var draftKey = "soalselidik-buli-html-v1";
+var state = {
+  step: 1,
+  demo: { kodResponden:"", umur:"", jantina:"", program:"", opsyen:"", semester:"", kampus:"", tarikh:"" },
+  answers: {},        // { "1": 2, ... }
+  refleksi: { r1:"", r2:"", r3:"" },
+  submitted: false
+};
+
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+/* ================= NAVIGASI LANGKAH ================= */
+function goStep(n){
+  state.step = n;
+  $("step1").style.display = (n===1) ? "block" : "none";
+  $("step2").style.display = (n===2) ? "block" : "none";
+  $("step3").style.display = (n===3) ? "block" : "none";
+  $("progbar").style.display = (n===2) ? "block" : "none";
+  var chips = document.querySelectorAll("#stepper .stepchip");
+  for(var i=0;i<chips.length;i++){
+    var s = Number(chips[i].getAttribute("data-step"));
+    chips[i].classList.toggle("active", s===n);
+    chips[i].classList.toggle("done", s<n);
+  }
+  window.scrollTo({top:0, behavior:"smooth"});
+  saveDraft();
+}
+
+function goStep2(){
+  if(!validateDemo()) return;
+  goStep(2);
+}
+
+function validateDemo(){
+  var ok = true;
+  var kod = $("kod").value.trim();
+  var umur = Number($("umur").value);
+  var jantina = $("jantina").value;
+  var program = $("program").value;
+  setInvalid("f_kod", !kod); if(!kod) ok=false;
+  var umurOk = $("umur").value!=="" && Number.isFinite(umur) && umur>=15 && umur<=80;
+  setInvalid("f_umur", !umurOk); if(!umurOk) ok=false;
+  setInvalid("f_jantina", !jantina); if(!jantina) ok=false;
+  setInvalid("f_program", !program); if(!program) ok=false;
+  if(!ok){
+    var el = document.querySelector(".field.invalid");
+    if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
+  }
+  return ok;
+}
+function setInvalid(id, bad){
+  var f = $(id);
+  if(bad) f.classList.add("invalid"); else f.classList.remove("invalid");
+}
+
+/* ================= MODAL ================= */
+var modalCb = null;
+function showModal(title, body, okText, cb){
+  $("mTitle").textContent = title;
+  $("mBody").textContent = body;
+  $("mOk").textContent = okText || "Teruskan";
+  modalCb = cb || null;
+  $("overlay").classList.add("show");
+}
+function closeModal(){ $("overlay").classList.remove("show"); modalCb=null; }
+document.addEventListener("DOMContentLoaded", function(){
+  $("mOk").addEventListener("click", function(){ var cb=modalCb; closeModal(); if(cb) cb(); });
+  $("mCancel").addEventListener("click", closeModal);
+  $("overlay").addEventListener("click", function(e){ if(e.target===$("overlay")) closeModal(); });
+});
+/* ================= PEMBINAAN UI ================= */
+function buildSelect(id, options){
+  var sel = $(id);
+  for(var i=0;i<options.length;i++){
+    var o = document.createElement("option");
+    o.value = options[i]; o.textContent = options[i];
+    sel.appendChild(o);
+  }
+}
+
+function buildItems(){
+  var host = $("itemsHost");
+  var html = "";
+  for(var s=0; s<SECTIONS.length; s++){
+    var sec = SECTIONS[s];
+    html += '<div class="bahagian"><h3>Bahagian ' + sec.code + ': ' + esc(sec.title) + '</h3>';
+    html += '<p class="bdesc">' + esc(sec.description) + '</p>';
+    for(var i=0; i<sec.items.length; i++){
+      var it = sec.items[i];
+      html += '<div class="item" id="item' + it.id + '"><div class="q"><span class="no">' + it.id + '</span><span>' + esc(it.text) + '</span></div>';
+      html += '<div class="scale">';
+      for(var k=0; k<SCALE.length; k++){
+        var sc = SCALE[k];
+        html += '<label><input type="radio" name="q' + it.id + '" value="' + sc.v + '" onchange="setAnswer(' + it.id + ',' + sc.v + ')">';
+        html += '<div class="pill"><span class="v">' + sc.v + '</span><span class="t">' + esc(sc.label) + '</span></div></label>';
+      }
+      html += '</div></div>';
+    }
+    html += '</div>';
+  }
+  host.innerHTML = html;
+}
+
+function buildRefleksi(){
+  var host = $("refleksiHost");
+  var html = "";
+  for(var i=0;i<REFLEKSI_QUESTIONS.length;i++){
+    html += '<div class="field" style="margin-top:10px;"><label>' + (i+1) + '. ' + esc(REFLEKSI_QUESTIONS[i]) + '</label>';
+    html += '<textarea id="ref' + (i+1) + '" maxlength="500" oninput="setRefleksi(' + (i+1) + ', this.value)"></textarea></div>';
+  }
+  host.innerHTML = html;
+}
+
+function setAnswer(id, v){
+  state.answers[String(id)] = v;
+  var card = $("item" + id);
+  card.classList.add("answered");
+  updateProgress();
+  saveDraft();
+}
+
+function setRefleksi(n, val){
+  state.refleksi["r" + n] = val;
+  saveDraft();
+}
+
+function answeredCount(){
+  var n = 0;
+  for(var k in state.answers){ if(state.answers.hasOwnProperty(k)) n++; }
+  return n;
+}
+
+function updateProgress(){
+  var n = answeredCount();
+  var pct = Math.round(n / 32 * 100);
+  $("proglabel").textContent = n + "/32 item dijawab";
+  $("progpct").textContent = pct + "%";
+  $("progfill").style.width = pct + "%";
+}
+
+function finishQuiz(){
+  var unanswered = 32 - answeredCount();
+  if(unanswered > 0){
+    showModal("Item Belum Dijawab",
+      "Anda mempunyai " + unanswered + " item yang belum dijawab. Item yang tidak dijawab tidak akan dikira dalam purata skor. Anda boleh teruskannya jika ingin melangkau item yang tidak selesa.",
+      "Teruskan ke Keputusan",
+      function(){ renderResults(); goStep(3); });
+  } else {
+    renderResults();
+    goStep(3);
+  }
+}
+
+/* ================= KEPUTUSAN ================= */
+function avgOf(ids){
+  var vals = [];
+  for(var i=0;i<ids.length;i++){
+    var v = state.answers[String(ids[i])];
+    if(typeof v === "number") vals.push(v);
+  }
+  if(!vals.length) return null;
+  var sum = 0;
+  for(var j=0;j<vals.length;j++) sum += vals[j];
+  return sum / vals.length;
+}
+
+function renderResults(){
+  // Cip demografi
+  var d = readDemoForm();
+  var chips = [
+    ["Kod", d.kodResponden], ["Umur", d.umur], ["Jantina", d.jantina],
+    ["Program", d.program], ["Opsyen", d.opsyen], ["Semester", d.semester],
+    ["Kampus", d.kampus], ["Tarikh", d.tarikh]
+  ];
+  var ch = "";
+  for(var i=0;i<chips.length;i++){
+    if(chips[i][1]) ch += '<span class="chip"><b>' + esc(chips[i][0]) + ':</b> ' + esc(chips[i][1]) + '</span>';
+  }
+  $("demoChips").innerHTML = ch;
+
+  // Kad purata
+  var avgHtml = "";
+  for(var s=0; s<SECTIONS.length; s++){
+    var sec = SECTIONS[s];
+    var ids = sec.items.map(function(x){ return x.id; });
+    var a = avgOf(ids);
+    var disp = (a===null) ? "-" : a.toFixed(2);
+    var w = (a===null) ? 0 : Math.round(a/4*100);
+    avgHtml += '<div class="avgcard"><div class="t">Purata ' + sec.code + '</div><div class="v">' + disp + '</div>';
+    avgHtml += '<div class="n">' + (sec.items.length ? ids.length : 0) + ' item &#183; ' + (a===null?"0":countAnswered(ids)) + ' dijawab</div>';
+    avgHtml += '<div class="bar"><span style="width:' + w + '%"></span></div></div>';
+  }
+  $("avgGrid").innerHTML = avgHtml;
+
+  // Amaran item tinggi (>=3)
+  var hi = [];
+  for(var s2=0; s2<SECTIONS.length; s2++){
+    for(var i2=0; i2<SECTIONS[s2].items.length; i2++){
+      var it = SECTIONS[s2].items[i2];
+      var v = state.answers[String(it.id)];
+      if(typeof v === "number" && v >= 3) hi.push({id:it.id, text:it.text, v:v, code:SECTIONS[s2].code});
+    }
+  }
+  var wb = $("warnBox");
+  if(hi.length){
+    var wh = "<b>&#9888;&#65039; Amaran: " + hi.length + " item dengan skor tinggi (&ge;3) dikesan.</b>";
+    wh += "<span style='display:block;font-size:11.5px;margin-top:3px;color:#9f1239;'>Item ini menunjukkan kekerapan yang tinggi dalam tempoh 2 bulan terakhir. Tindak lanjut secara sulit dan penilaian profesional disarankan.</span><ul>";
+    for(var h=0; h<hi.length; h++){
+      wh += "<li><b>Item " + hi[h].id + "</b> (Bhg " + hi[h].code + ", skor " + hi[h].v + "): " + esc(hi[h].text) + "</li>";
+    }
+    wh += "</ul>";
+    wb.innerHTML = wh;
+    wb.classList.add("show");
+  } else {
+    wb.classList.remove("show");
+    wb.innerHTML = "";
+  }
+
+  // Bar per item
+  var barHtml = "";
+  for(var s3=0; s3<SECTIONS.length; s3++){
+    for(var i3=0; i3<SECTIONS[s3].items.length; i3++){
+      var it2 = SECTIONS[s3].items[i3];
+      var v2 = state.answers[String(it2.id)];
+      var vv = (typeof v2 === "number") ? v2 : 0;
+      var pct2 = Math.round(vv/4*100);
+      var isHi = (typeof v2 === "number" && v2 >= 3);
+      barHtml += '<div class="ibar' + (isHi?" hi":"") + '"><span class="lbl">Item ' + it2.id + '</span>';
+      barHtml += '<div class="track"><span style="width:' + pct2 + '%"></span></div>';
+      barHtml += '<span class="val">' + (typeof v2 === "number" ? v2 : "-") + '</span></div>';
+    }
+  }
+  $("itemBars").innerHTML = barHtml;
+
+  // Jadual penuh
+  var tb = "";
+  for(var s4=0; s4<SECTIONS.length; s4++){
+    var sec2 = SECTIONS[s4];
+    for(var i4=0; i4<sec2.items.length; i4++){
+      var it3 = sec2.items[i4];
+      var v3 = state.answers[String(it3.id)];
+      var hiCell = (typeof v3 === "number" && v3 >= 3) ? " hi" : "";
+      tb += "<tr><td>" + sec2.code + ". " + esc(sec2.title) + "</td><td class='c" + hiCell + "'>" + it3.id + "</td><td>" + esc(it3.text) + "</td>";
+      tb += "<td class='c" + hiCell + "'>" + (typeof v3 === "number" ? v3 : "-") + "</td><td>" + esc(scaleLabel(v3)) + "</td></tr>";
+    }
+  }
+  $("tableBody").innerHTML = tb;
+
+  // Refleksi
+  var rHtml = '<table class="result"><thead><tr><th style="width:55%;">Refleksi Ringkas (Pilihan)</th><th>Jawapan</th></tr></thead><tbody>';
+  var refs = [state.refleksi.r1, state.refleksi.r2, state.refleksi.r3];
+  for(var r=0; r<REFLEKSI_QUESTIONS.length; r++){
+    rHtml += "<tr><td>" + esc(REFLEKSI_QUESTIONS[r]) + "</td><td>" + (refs[r] ? esc(refs[r]) : "-") + "</td></tr>";
+  }
+  rHtml += "</tbody></table>";
+  $("refBox").innerHTML = rHtml;
+
+  // Status hantar
+  if(!state.submitted){
+    setSendStatus("", "");
+    $("sendBtn").disabled = false;
+  }
+}
+
+function countAnswered(ids){
+  var n=0;
+  for(var i=0;i<ids.length;i++){ if(state.answers[String(ids[i])]!==undefined) n++; }
+  return n;
+}
+/* ================= BORANG DEMOGRAFI ================= */
+function readDemoForm(){
+  return {
+    kodResponden: $("kod").value.trim(),
+    umur: $("umur").value,
+    jantina: $("jantina").value,
+    program: $("program").value,
+    opsyen: $("opsyen").value.trim(),
+    semester: $("semester").value,
+    kampus: $("kampus").value.trim(),
+    tarikh: $("tarikh").value
+  };
+}
+function writeDemoForm(d){
+  $("kod").value = d.kodResponden || "";
+  $("umur").value = d.umur || "";
+  $("jantina").value = d.jantina || "";
+  $("program").value = d.program || "";
+  $("opsyen").value = d.opsyen || "";
+  $("semester").value = d.semester || "";
+  $("kampus").value = d.kampus || "";
+  $("tarikh").value = d.tarikh || "";
+}
+function syncDemoFromForm(){ state.demo = readDemoForm(); }
+
+/* ================= HANTAR KE GOOGLE SHEETS ================= */
+function buildPayload(){
+  var d = readDemoForm();
+  return {
+    id: "HTML-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,8),
+    tarikhHantar: new Date().toISOString(),
+    kodResponden: d.kodResponden,
+    umur: Number(d.umur),
+    jantina: d.jantina,
+    program: d.program,
+    opsyen: d.opsyen || "",
+    semester: d.semester || "",
+    kampus: d.kampus || "",
+    tarikh: d.tarikh || new Date().toISOString().slice(0,10),
+    answers: state.answers,
+    refleksi1: state.refleksi.r1 || "",
+    refleksi2: state.refleksi.r2 || "",
+    refleksi3: state.refleksi.r3 || ""
+  };
+}
+
+function setSendStatus(cls, text){
+  var el = $("sendStatus");
+  if(!cls){ el.innerHTML = ""; return; }
+  el.innerHTML = '<span class="status ' + cls + '">' + text + '</span>';
+}
+
+var sending = false;
+function sendToSheets(){
+  if(sending) return;
+  syncDemoFromForm();
+  if(!validateDemo()){ showModal("Maklumat Tidak Lengkap","Sila lengkapkan maklumat demografi yang diperlukan (Kod responden, Umur, Jantina, Program) terlebih dahulu.","Kembali"); goStep(1); return; }
+  sending = true;
+  $("sendBtn").disabled = true;
+  setSendStatus("wait", "&#8987; Menghantar ke Google Sheets...");
+  var payload = buildPayload();
+  var ctrl = new AbortController();
+  var timer = setTimeout(function(){ ctrl.abort(); }, 25000);
+  fetch(SHEET_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+    redirect: "follow",
+    signal: ctrl.signal
+  })
+  .then(function(res){ return res.text(); })
+  .then(function(txt){
+    clearTimeout(timer);
+    var ok = false, msg = "";
+    try{
+      var j = JSON.parse(txt);
+      ok = !!j.ok;
+      msg = j.error || "";
+    }catch(e){
+      msg = "Respons tidak dijangka daripada pelayan Google.";
+    }
+    if(ok){
+      state.submitted = true;
+      state.lastPayload = payload;
+      setSendStatus("ok", "&#9989; Berjaya! Respons anda telah direkodkan dalam Google Spreadsheet.");
+      try{ localStorage.setItem(draftKey + "-last", JSON.stringify(payload)); }catch(e){}
+      clearDraft();
+    }else{
+      failSend(msg || "Hantaran gagal. Sila cuba lagi.");
+    }
+    sending = false;
+    $("sendBtn").disabled = false;
+  })
+  .catch(function(err){
+    clearTimeout(timer);
+    failSend("Sambungan internet gagal atau alamat Google Sheets tidak sah. Respons anda masih boleh dihantar semula dengan menekan butang Hantar Sekarang.");
+    sending = false;
+    $("sendBtn").disabled = false;
+  });
+}
+function failSend(msg){
+  setSendStatus("fail", "&#10060; " + esc(msg));
+  try{ localStorage.setItem(draftKey + "-pending", JSON.stringify(buildPayload())); }catch(e){}
+}
+
+/* ================= MUAT TURUN CSV ================= */
+function csvEsc(v){
+  var s = String(v==null?"":v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+function downloadCsv(){
+  var d = readDemoForm();
+  var rows = [];
+  rows.push("SOAL SELIDIK PENGALAMAN DAN TINGKAH LAKU BULI - KEPUTUSAN RESPONDEN");
+  rows.push("Versi Bahasa Melayu untuk Guru Pelatih IPG | Adaptasi konstruk OBVQ (draf saringan awal RESET DIRI)");
+  rows.push("");
+  rows.push("MAKLUMAT RESPONDEN");
+  rows.push("Kod responden," + csvEsc(d.kodResponden));
+  rows.push("Umur," + csvEsc(d.umur));
+  rows.push("Jantina," + csvEsc(d.jantina));
+  rows.push("Program," + csvEsc(d.program));
+  rows.push("Opsyen/Pengkhususan," + csvEsc(d.opsyen));
+  rows.push("Semester," + csvEsc(d.semester));
+  rows.push("Kampus IPG," + csvEsc(d.kampus));
+  rows.push("Tarikh," + csvEsc(d.tarikh));
+  rows.push("");
+  rows.push("KEPUTUSAN ITEM");
+  rows.push("Bahagian,Bil.,Pernyataan,Skor,Label Kekerapan");
+  for(var s=0; s<SECTIONS.length; s++){
+    for(var i=0; i<SECTIONS[s].items.length; i++){
+      var it = SECTIONS[s].items[i];
+      var v = state.answers[String(it.id)];
+      rows.push(csvEsc(SECTIONS[s].code + ". " + SECTIONS[s].title) + "," + it.id + "," +
+        csvEsc(it.text) + "," + (v===undefined?"":v) + "," + csvEsc(scaleLabel(v)));
+    }
+  }
+  rows.push("");
+  rows.push("REFLEKSI RINGKAS (PILIHAN)");
+  var refs = [state.refleksi.r1, state.refleksi.r2, state.refleksi.r3];
+  for(var r=0; r<REFLEKSI_QUESTIONS.length; r++){
+    rows.push(csvEsc(REFLEKSI_QUESTIONS[r]) + "," + csvEsc(refs[r]));
+  }
+  rows.push("");
+  rows.push("Skala: " + SCALE.map(function(x){ return x.v + " = " + x.label; }).join(" | "));
+  rows.push("Panduan: " + csvEsc(PANDUAN_FASILITATOR));
+  rows.push("Rujukan: " + csvEsc(RUJUKAN));
+  var bom = "\uFEFF";
+  var blob = new Blob([bom + rows.join("\n")], { type:"text/csv;charset=utf-8;" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  var fname = "Keputusan_SoalSelidik_" + (d.kodResponden||"responden").replace(/[^a-zA-Z0-9-_ ]/g,"").replace(/\s+/g,"_") + "_" + (d.tarikh||"") + ".csv";
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ================= DRAF AUTOMATIK ================= */
+var draftTimer = null;
+function saveDraft(){
+  if(draftTimer) return;
+  draftTimer = setTimeout(function(){
+    draftTimer = null;
+    try{
+      localStorage.setItem(draftKey, JSON.stringify({
+        demo: readDemoForm(), answers: state.answers, refleksi: state.refleksi
+      }));
+    }catch(e){}
+  }, 400);
+}
+function clearDraft(){
+  try{ localStorage.removeItem(draftKey); }catch(e){}
+}
+function loadDraft(){
+  try{
+    var raw = localStorage.getItem(draftKey);
+    if(!raw) return false;
+    var d = JSON.parse(raw);
+    if(!d) return false;
+    if(d.demo) writeDemoForm(d.demo);
+    state.answers = d.answers || {};
+    state.refleksi = d.refleksi || {r1:"",r2:"",r3:""};
+    // Pulihkan radio & kelas
+    for(var k in state.answers){
+      if(!state.answers.hasOwnProperty(k)) continue;
+      var radios = document.getElementsByName("q" + k);
+      for(var i=0;i<radios.length;i++){
+        if(Number(radios[i].value) === state.answers[k]) radios[i].checked = true;
+      }
+      var card = $("item" + k);
+      if(card) card.classList.add("answered");
+    }
+    for(var r=1; r<=3; r++){
+      $("ref" + r).value = state.refleksi["r" + r] || "";
+    }
+    updateProgress();
+    return true;
+  }catch(e){ return false; }
+}
+
+/* ================= MULA BAHARU ================= */
+function startNew(){
+  showModal("Mulakan Respons Baharu",
+    "Semua jawapan semasa akan dipadamkan daripada skrin ini. Pastikan anda telah menghantar atau memuat turun keputusan sebelum ini. Teruskan?",
+    "Ya, Mula Baharu",
+    function(){
+      state = {
+        step: 1,
+        demo: { kodResponden:"", umur:"", jantina:"", program:"", opsyen:"", semester:"", kampus:"", tarikh:"" },
+        answers: {},
+        refleksi: { r1:"", r2:"", r3:"" },
+        submitted: false
+      };
+      clearDraft();
+      try{ localStorage.removeItem(draftKey + "-pending"); }catch(e){}
+      writeDemoForm(state.demo);
+      buildItems(); buildRefleksi();
+      $("sendStatus").innerHTML = "";
+      $("sendBtn").disabled = false;
+      goStep(1);
+    });
+}
+
+/* ================= PEMULA ================= */
+(function init(){
+  buildSelect("jantina", GENDER_OPTIONS);
+  buildSelect("program", PROGRAM_OPTIONS);
+  buildSelect("semester", SEMESTER_OPTIONS);
+  $("arahanTxt").textContent = ARAHAN;
+  $("notisTxt").textContent = NOTIS_PENTING;
+  $("panduanTxt").textContent = PANDUAN_FASILITATOR;
+  $("rujukanTxt").textContent = RUJUKAN;
+  $("scaleLegend").textContent = SCALE.map(function(x){ return x.v + " = " + x.label; }).join("  \u2022  ");
+  if(!$("tarikh").value){
+    var today = new Date();
+    var mm = String(today.getMonth()+1); if(mm.length<2) mm = "0"+mm;
+    var dd = String(today.getDate()); if(dd.length<2) dd = "0"+dd;
+    $("tarikh").value = today.getFullYear() + "-" + mm + "-" + dd;
+  }
+  buildItems();
+  buildRefleksi();
+  var restored = loadDraft();
+  if(restored) $("draftnote").style.display = "block";
+  var demoFields = ["kod","umur","jantina","program","opsyen","semester","kampus","tarikh"];
+  for(var i=0;i<demoFields.length;i++){
+    $(demoFields[i]).addEventListener("change", saveDraft);
+    $(demoFields[i]).addEventListener("input", saveDraft);
+  }
+  goStep(state.step || 1);
+})();
+
+</script>
+</body>
+</html>
